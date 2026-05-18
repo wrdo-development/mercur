@@ -6,7 +6,6 @@ import {
     ContainerRegistrationKeys,
     Modules,
 } from "@medusajs/framework/utils"
-import jwt from "jsonwebtoken"
 import Scrypt from "scrypt-kdf"
 import { createSellerAccountWorkflow } from "@mercurjs/core/workflows"
 
@@ -63,7 +62,7 @@ export const createSellerUser = async (
     const config = container.resolve(ContainerRegistrationKeys.CONFIG_MODULE)
     const { projectConfig } = config
     const { jwtSecret, jwtOptions } = projectConfig.http
-    const token = jwt.sign(
+    const token = (await import("jsonwebtoken")).default.sign(
         {
             actor_id: member.id,
             actor_type: "member",
