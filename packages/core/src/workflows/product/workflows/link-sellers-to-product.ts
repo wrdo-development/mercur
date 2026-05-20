@@ -5,7 +5,7 @@ import {
 
 import { associateSellersWithProductStep } from "../steps/associate-sellers-with-product"
 import { detachSellersFromProductStep } from "../steps/detach-sellers-from-product"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 /**
  * Manages which sellers are authorized to sell a product
@@ -22,7 +22,7 @@ export type LinkSellersToProductWorkflowInput = {
 
 export const linkSellersToProductWorkflowId = "link-sellers-to-product"
 
-export const linkSellersToProductWorkflow = createIdempotentWorkflow(
+export const linkSellersToProductWorkflow = overrideWorkflow(
   linkSellersToProductWorkflowId,
   (
     input: WorkflowData<LinkSellersToProductWorkflowInput>

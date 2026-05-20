@@ -12,7 +12,7 @@ import {
   updateProductVariantsStep,
   UpdateProductVariantsStepInput,
 } from "../steps/update-product-variants"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const updateProductVariantsWorkflowId = "update-product-variants"
 
@@ -27,7 +27,7 @@ type UpdateProductVariantsWorkflowInput = (
 ) &
   AdditionalData
 
-export const updateProductVariantsWorkflow: ReturnType<typeof createIdempotentWorkflow> = createIdempotentWorkflow(
+export const updateProductVariantsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
   updateProductVariantsWorkflowId,
   function (input: UpdateProductVariantsWorkflowInput) {
     const stepInput = transform({ input }, (data) => {

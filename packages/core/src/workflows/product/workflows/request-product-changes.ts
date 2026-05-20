@@ -16,7 +16,7 @@ import {
   createProductChangesStep,
   createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const requestProductChangesWorkflowId = "request-product-changes"
 
@@ -26,7 +26,7 @@ type RequestProductChangesWorkflowInput = {
   actor_id?: string
 }
 
-export const requestProductChangesWorkflow = createIdempotentWorkflow(
+export const requestProductChangesWorkflow = overrideWorkflow(
   requestProductChangesWorkflowId,
   function (input: RequestProductChangesWorkflowInput) {
     const { data: products } = useQueryGraphStep({

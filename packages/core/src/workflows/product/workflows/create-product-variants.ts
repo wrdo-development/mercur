@@ -9,7 +9,7 @@ import { CreateProductVariantDTO } from "@mercurjs/types"
 
 import { ProductVariantWorkflowEvents } from "../events"
 import { createProductVariantsStep } from "../steps/create-product-variants"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const createProductVariantsWorkflowId = "create-product-variants"
 
@@ -17,7 +17,7 @@ type CreateProductVariantsWorkflowInput = {
   product_variants: CreateProductVariantDTO[]
 } & AdditionalData
 
-export const createProductVariantsWorkflow: ReturnType<typeof createIdempotentWorkflow> = createIdempotentWorkflow(
+export const createProductVariantsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
   createProductVariantsWorkflowId,
   function (input: CreateProductVariantsWorkflowInput) {
     const variants = createProductVariantsStep(input.product_variants)

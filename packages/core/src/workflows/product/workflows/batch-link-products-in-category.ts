@@ -3,7 +3,7 @@ import {
 } from "@medusajs/framework/workflows-sdk"
 
 import { batchLinkProductsToCategoryStep } from "../steps/batch-link-products-in-category"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const batchLinkProductsToCategoryWorkflowId =
   "batch-link-products-to-category"
@@ -14,7 +14,7 @@ type BatchLinkProductsToCategoryWorkflowInput = {
   remove?: string[]
 }
 
-export const batchLinkProductsToCategoryWorkflow = createIdempotentWorkflow(
+export const batchLinkProductsToCategoryWorkflow = overrideWorkflow(
   batchLinkProductsToCategoryWorkflowId,
   (
     input: WorkflowData<BatchLinkProductsToCategoryWorkflowInput>

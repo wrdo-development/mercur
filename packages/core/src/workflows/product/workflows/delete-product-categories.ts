@@ -6,7 +6,7 @@ import { emitEventStep } from "@medusajs/medusa/core-flows"
 
 import { ProductCategoryWorkflowEvents } from "../events"
 import { deleteProductCategoriesStep } from "../steps/delete-product-categories"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const deleteProductCategoriesWorkflowId = "delete-product-categories"
 
@@ -14,7 +14,7 @@ type DeleteProductCategoriesWorkflowInput = {
   ids: string[]
 }
 
-export const deleteProductCategoriesWorkflow = createIdempotentWorkflow(
+export const deleteProductCategoriesWorkflow = overrideWorkflow(
   deleteProductCategoriesWorkflowId,
   function (input: DeleteProductCategoriesWorkflowInput) {
     deleteProductCategoriesStep(input.ids)
