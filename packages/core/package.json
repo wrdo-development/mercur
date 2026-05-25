@@ -18,7 +18,7 @@
       "default": "./.medusa/server/src/with-mercur.js"
     },
     "./_generated": {
-      "types": "./.mercur/index.d.ts"
+      "types": "./.mercur/routes.d.ts"
     },
     "./package.json": "./package.json",
     "./workflows": "./.medusa/server/src/workflows/index.js",
@@ -93,5 +93,9 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "pkg-dir": "4",
+    "resolve-cwd": "^3.0.0"
   }
 }

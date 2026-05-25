@@ -1,10 +1,10 @@
 ---
-status: not_started
+status: passing
 canonical: true
 priority: 2
 area: core/offers
 created: 2026-05-19
-last_updated: 2026-05-20  # migrate pricing from shared-variant-PriceSet + offer_id PriceRule to per-offer PriceSet via offer.price_set_id (single bulk calculatePrices for cart refresh and Store product reads; no offer_id pricing rule, no marketplace-PriceSet constraint trigger)
+last_updated: 2026-05-22  # Session 19 (2026-05-22): dropped the `metadata.cart_line_item_id` carrier. `completeCartWithSplitOrdersWorkflow` now captures a positional `offerIdsByOrderId: Record<order_id, (offer_id | null)[]>` map during `ordersToCreate` construction (one entry per seller-filtered cart-items slice) and zips it against `createdOrders[*].items` after `createOrdersStep` to produce `{ order_line_item_id, offer_id }` pairs in a single transform. Those pairs are handed directly to `mirrorLineItemOfferLinksToOrderStep` (whose input shape changed from `{ cart_id, order_line_item_ids }` to `{ pairs }` — it no longer joins through Query to resolve offers) and reused to build the offer-aware reservation input, eliminating the previous cart-item-by-id lookup. `prepareLineItemData` no longer stamps `metadata.cart_line_item_id`. Rationale: the order module preserves input item order within each created order (verified against `OrderModuleService.createOrderLineItemsBulk_`), so cart→order line identity can live in workflow transform state instead of a DB metadata carrier. Session 18 (2026-05-22): bulk-create endpoints landed. `CreateOfferDTO` gained an optional `inline_inventory_item: { title?, required_quantity?, stock_levels? }` branch (in addition to the existing `inventory_items` link-existing branch). `createOffersWorkflow` was merged to cover both paths in one workflow run — when an offer carries `inline_inventory_item`, the workflow calls `createInventoryItemsWorkflow.runAsStep` (carrying `location_levels` for initial stock) + `linkSellerInventoryItemStep` before splicing the new inventory_item_ids back into the offer payload and proceeding to the existing PriceSet / offer / link / event composition. Two new HTTP routes consume the merged workflow: `POST /vendor/offers/batch` (seller_id from session) and `POST /admin/offers/batch` (seller_id from body, created_by from `req.auth_context.actor_id`). Both accept `{ offers: Array<{ sku, title?, variant_id, shipping_profile_id, prices, stock_levels?, required_quantity?, ean?, upc?, metadata? }> }` (admin variant additionally requires `seller_id`), with 1 ≤ offers.length ≤ 100; failure on any row rolls the whole batch back via workflow compensation. The vendor offer create form (`packages/vendor/src/pages/offers/create/create-offer-form/create-offer-form.tsx`) was refactored to issue a single bulk request instead of the previous N×3 calls (inventory item + offer + level batch per variant), with regex-based error attribution mapping workflow errors back to the originating row when the message names a variant_id or SKU. Static: oxlint clean, `tsc --noEmit -p tsconfig.json` on @mercurjs/core exits 0; route map regenerated under `packages/core/.mercur/_generated/index.ts` (both `vendor.offers.batch` and `admin.offers.batch` present). Session 17 (2026-05-21): runtime verification green — bun run test:integration:http -- --testPathPatterns='offer/' reports 4 test suites passed, 42 tests passed, against Postgres 16 + fake Redis. Pre-flight bugs surfaced and fixed during the runtime pass: Map → Record refactor for create/cancel-order-fulfillment override (Map values don't survive the workflow runtime's JSON serialization between transform steps); region_id / currency_code stripped from req.filterableFields before query.graph in store/products route handlers; wrapVariantsWithOffersInventory now bootstraps the offer skeleton itself when only the inventory field is requested; util switched to query.graph({entity:"offer", fields:["inventory_item_link.*"]}) with stocked-reserved math because offer_inventory_item isn't a top-level Query entity and available_quantity isn't a queryable level column; offer/store seed now calls approveSeller; offer/order/return-receive test passes location_id on /vendor/returns create and drops the unnecessary shipment step. Status flipped from in_progress → passing. Session 16 (2026-05-21): closes the implementation pending list. Defense-in-depth patchStoreCartLineItemsRoute (idempotent marker stub) added to patch-medusa.ts + mirrored into integration-tests/global-setup.js so Medusa's compiled POST /store/carts/:id/line-items handler can never fire alongside Mercur's loader-winning route. Mercur's stale local cart util prepare-confirm-inventory-input.ts (variant-shaped paths) deleted along with its barrel re-export — no Mercur source consumed it, Medusa upstream consumes its own bundled copy. Variant-field-removal patches stay un-shipped because Session 13's PG run already proved case (1) of the spec holds (Query tolerates the absent variant paths cleanly). Remaining to passing: runtime PG+Redis pass on the four offer trees and the manual end-to-end walkthrough. Session 15 (2026-05-21): storefront GET /store/products(:id) override + wrap-variants-with-offers-prices/inventory utils landed under packages/core/src/api; Mercur middleware registers Medusa's setPricingContext so region_id populates req.pricingContext. Test coverage expanded across four offer trees: store/offers.spec.ts re-landed (price + inventory wrap, sales-channel scoping, single calculatePrices round-trip verified via jest.spyOn); order.spec.ts grew three describe blocks proving the Session 10 overrides for createOrderFulfillment / cancelOrderFulfillment / confirmReturnReceive correctly multiply stock + reservation deltas by required_quantity; cart.spec.ts grew the qty-update stock-hook block (qty-up over stock fails with INSUFFICIENT_INVENTORY, required_quantity is multiplied through, qty=0 skips the check); vendor/offer.spec.ts added PriceSet invariants (sibling offers get distinct price_set_ids; soft-deleted offer's price_set stays resolvable via withDeleted Query). Integration-tests/global-setup.js inlines the cart line-items middleware patch so the regex bites under bun run test:integration:http regardless of mercurjs build. Static: core build clean, tsc --noEmit clean on the new files, oxlint reports 0 errors (only the pre-existing 2 no-await-in-loop warnings on order.spec.ts's sequential shipping-method POSTs). Session 14 (2026-05-21): pivot extra-column gap resolved. `defineLink(...extraColumns)` exposes the pivot under the `<entity>_link` alias; consumers were using the `inventory_items` fieldAlias shortcut which flattens to InventoryItem (no extra columns). Switched prepare-offer-inventory-input, completeCartWithSplitOrdersWorkflow, and the three Session 10 order overrides to traverse `offer.inventory_item_link.required_quantity` / `inventory_item_link.inventory_item.*`. Skipped reservation test re-enabled and passes: 2 × required_quantity(3) = 6 reservation against 50 stock. Suites: vendor 16/16, cart 6/6, order 3/3 (no more skip). Session 13 (2026-05-21): runtime verification ran against PG (via medusaIntegrationTestRunner) + fake Redis. Earlier session sweep: foundation landed (offer module, MercurModules.OFFER, five cross-module links, create/update/delete offer workflows, vendor + admin offer API routes, first vendor offer integration test). Session 7 (2026-05-20): inventory-items batch endpoint landed; offer price updates folded into updateOffersWorkflow (replace semantics, mirrors Medusa's updateProductVariantsWorkflow). Session 8 (2026-05-20): extended integration tests covering the new prices-ladder update path, the inventory-items batch endpoint (create/update/delete/duplicate/cross-seller), and cross-seller update rejection. Session 8b (2026-05-20): offer DTOs centralized in @mercurjs/types (packages/types/src/offer + packages/types/src/http/offer.ts); workflows + steps refactored to import the shared DTOs instead of declaring inline types. Session 9 (2026-05-20): cart-line/order-line ↔ offer writable links + TypeScript augmentation of CreateCartCreateLineItemDTO with offer_id + linkLineItemToOfferStep / decorateLineItemWithOfferStep / mirrorLineItemOfferLinksToOrderStep / calculateOfferPricesStep / same-id getLineItemActionsStep step + same-id addToCartWorkflow override + inline mirror step + cart_line_item_id metadata stamp into completeCartWithSplitOrdersWorkflow. Session 10 (2026-05-20): same-id overrides of create-order-fulfillment, cancel-order-fulfillment, and confirm-return-receive — each rewires inventory math from variant.inventory_items to order_line_item.offer.inventory_items.required_quantity. Cancel-order before fulfilment still uses Medusa's deleteReservationsByLineItemsStep unchanged. Session 11 (2026-05-20): integration tests landed under integration-tests/http/offer/{store,cart,order}. Session 12 (2026-05-21): cart.spec.ts seed unblocked + patchStoreCartLineItemsMiddleware in patch-medusa.ts; the Session 12 expandDotPaths failure on offer.inventory_items.inventory.location_levels.* no longer reproduces under Session 13's run. Remaining work to move spec to passing: re-land an offer/store/* spec once the GET /store/products list-page skim is finalised, add coverage for the three Session 10 fulfilment/cancel-fulfilment/return overrides, and resolve the Architectural gap so the skipped reservation test can be enabled.
 ---
 
 # SPEC-002 Offer Management
@@ -539,10 +539,14 @@ pricingModule.deletePriceSets([offer.price_set_id])
 ```
 
 The offer module never touches another offer's `PriceSet`. The
-`price_set_id` foreign key is the access-control key — vendor and
-admin batch endpoints resolve a target `price.id` only when its
-`price_set_id === offer.price_set_id`, and reject any id outside
-that scope with `MedusaError.Types.NOT_FOUND`.
+`price_set_id` foreign key is the access-control key — the
+`updateOffersWorkflow` pricing path only ever writes to
+`offer.price_set_id`, and any `price.id` carried on its payload
+must already belong to that PriceSet (Medusa's
+`updatePriceSetsStep` enforces this by id scoping; references to a
+sibling offer's `PriceSet` are silently ignored or surface as
+upserts on the target PriceSet, which is why the workflow validates
+ownership before dispatch).
 
 ### Inventory Lifecycle
 
@@ -762,17 +766,17 @@ is needed for the Mercur-owned copies; they are edited in place.
   `Migration20260421093258.ts` and `Migration20260422105949.ts`).
   Replace with offer-aware fields:
   `items.offer.id`, `items.offer.price_set.id`,
-  `items.offer.inventory_items.required_quantity`,
-  `items.offer.inventory_items.inventory.location_levels.*`.
+  `items.offer.inventory_item_link.required_quantity`,
+  `items.offer.inventory_item_link.inventory_item.location_levels.*`
+  (the pivot path — see **Pivot extra-column exposure** below).
 - `packages/core/src/workflows/cart/utils/prepare-line-item-data.ts`
-  — must stamp the cart line-item id onto the order line via
-  `metadata.cart_line_item_id` so
-  `mirrorLineItemOfferLinksToOrderStep` can match cart-line ↔
-  order-line after `createOrdersStep` regenerates ids (see
-  **Cart→order line identity gotcha** under
-  `linkLineItemToOfferStep`). `offer_id` itself stays off the line
-  item; the cart-side link row is the canonical pointer until the
-  mirror step writes the order-side link.
+  — emits the prepared order-line items in the same order as their
+  source cart items, which is what
+  `mirrorLineItemOfferLinksToOrderStep` keys on via positional zip
+  against `createdOrders[*].items` (see **Cart→order line identity**
+  under `linkLineItemToOfferStep`). `offer_id` itself stays off the
+  line item; the cart-side link row is the canonical pointer until
+  the mirror step writes the order-side link.
 - `packages/core/src/workflows/cart/utils/prepare-confirm-inventory-input.ts`
   — replace variant-keyed inventory resolution with offer-keyed
   resolution per the `prepareOfferInventoryInput` shape documented
@@ -1470,32 +1474,41 @@ It never picks a winner — the response is the full visible-offer
 list per variant, in a stable order, and the storefront decides
 which offer's buy button is highlighted:
 
-- `GET /store/products/:id` augments each variant in the response with an
-  `offers` array scoped to the active customer group and region. Each
-  entry includes `id`, `seller`, resolved `price`,
+> **Out of scope for this revision.** The per-variant `offers` array
+> on `GET /store/products/:id` (visible-offer resolution, bulk
+> `calculatePrices` join by `price_set_id`, effective-stock
+> computation over `inventory_items[].inventory.location_levels`,
+> stable `price ASC, created_at ASC, id ASC` ordering, sales-channel
+> location filtering) is **not implemented in this drop**. The
+> `GET /store/products/:id` route is reduced to a basic product
+> read with the seller-visibility filter applied; it does not
+> attach an `offers` array to variants. The reason is that the
+> writable offer ↔ inventory_item M:N link surfaces the linked
+> `InventoryItem` entity through Query but does not currently
+> expose the pivot's `required_quantity` extra column on the same
+> traversal path. Until that exposure is wired (see "Architectural
+> gap: pivot extra-column exposure" below), the effective-stock
+> denominator can't be read at the same time as the level data, so
+> the surface would silently report wrong stock numbers. The
+> companion `integration-tests/http/offer/store/*` suite is
+> removed in the same drop. The vendor-facing offer CRUD + cart
+> integration sections remain in scope.
+
+- ~~`GET /store/products/:id` augments each variant in the response with an
+  `offers` array scoped to the active customer group and region.~~
+  **Deferred — see callout above.** Each
+  entry would include `id`, `seller`, resolved `price`,
   `currency_code`, `stock_status` (`in_stock` / `low_stock` /
   `out_of_stock`), and `shipping_profile_id`.
-  Price resolution collects every visible offer's `price_set_id`
-  across the requested product's variants and issues **one**
+  Price resolution would collect every visible offer's `price_set_id`
+  across the requested product's variants and issue **one**
   `pricingModule.calculatePrices({ id: priceSetIds }, { context })`
   call with `context = { region_id, currency_code, customer_group_id,
-  quantity: 1 }`. Each offer's `price` / `currency_code` is keyed
-  back by `price_set_id` from the response map. No per-offer
-  round-trip, no `offer_id` in context — the candidate `PriceSet`
-  is the offer's own, so no rule-based discrimination is needed.
-  Stock resolution walks the offer's
-  `inventory_items[].inventory.location_levels` chain through Query —
-  the same field chain Medusa's
-  `prepareConfirmInventoryInput` uses for variants — and computes the
-  effective stocked quantity as `MIN(floor((stocked - reserved) /
-  required_quantity))` across the offer's linked items, scoped to the
-  region's stock locations. An offer is exposed only when it is not
-  soft-deleted and its effective stocked quantity is positive. The
-  array is returned in deterministic order: `price ASC, created_at
-  ASC, id ASC`. This is a stable sort, not a "winner pick" — the
-  server states the order and the storefront chooses what to do with
-  it (highlight the first entry, surface a comparison panel, group
-  by seller, etc.).
+  quantity: 1 }`. Stock resolution would walk the offer's
+  `inventory_items[].inventory.location_levels` chain through Query
+  and compute the effective stocked quantity as `MIN(floor((stocked
+  - reserved) / required_quantity))` across the offer's linked
+  items, scoped to the region's stock locations.
 - Cart line creation **requires** an explicit `offer_id`. There is
   no server-side fallback that picks one from the variant. Cart and
   workflow inputs that omit `offer_id` are rejected at the route layer
@@ -1520,6 +1533,76 @@ which offer's buy button is highlighted:
 Suspension, expiry, and SLA-driven moderation flows are intentionally
 out of scope for this revision. They can be layered on in a follow-up
 spec without changing the offer record shape.
+
+### Pivot extra-column exposure (resolved 2026-05-21)
+
+The writable offer ↔ inventory_item M:N link (`offer-inventory-item-link.ts`,
+table `offer_inventory_item`) declares one extra column on the pivot:
+`required_quantity` (`integer`, default `"1"`). Medusa's `defineLink`
+exposes the pivot from the offer side under the auto-generated
+`<entity>_link` alias — **`offer.inventory_item_link[]`** — with each
+row carrying the pivot's `id`, `offer_id`, `inventory_item_id`, the
+extra column `required_quantity`, and a nested `inventory_item`
+relationship to the linked `InventoryItem`. The `offer.inventory_items[]`
+shortcut (a `fieldAlias` Medusa generates) flattens *through* the pivot
+and resolves to `InventoryItem` rows directly, so it does **not**
+expose `required_quantity` — that's the false-bottom that made every
+prior consumer fall back to `1`.
+
+The fix is purely a Query-path change: read the multiplier via the
+pivot alias instead of the shortcut. Concretely:
+
+| Need                                            | Correct path                                                                 |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| `required_quantity` (pivot extra column)        | `offer.inventory_item_link[].required_quantity`                              |
+| Linked `InventoryItem.id`                       | `offer.inventory_item_link[].inventory_item.id`                              |
+| Linked `InventoryItem.sku` / `title`            | `offer.inventory_item_link[].inventory_item.sku` (etc.)                      |
+| Linked `InventoryItem.location_levels.*`        | `offer.inventory_item_link[].inventory_item.location_levels.*`               |
+| Pivot row id (rarely needed; only for auditing) | `offer.inventory_item_link[].id`                                             |
+| Flat list of linked `InventoryItem`s, no qty    | `offer.inventory_items[]` (the shortcut, kept for display-only consumers)    |
+
+All four downstream surfaces have been updated to use the pivot
+alias and now multiply by the real `required_quantity` instead of
+falling back to `1`:
+
+- `packages/core/src/workflows/offer/utils/prepare-offer-inventory-input.ts`
+  — `requiredOfferFieldsForInventoryConfirmation` now requests the
+  `inventory_item_link.required_quantity` /
+  `inventory_item_link.inventory_item.location_levels.*` chain, and the
+  helper reads `required_quantity` from the pivot row instead of
+  hardcoding `1`.
+- `packages/core/src/workflows/cart/hooks/validate-add-to-cart-stock.ts`
+  and `validate-update-line-item-stock.ts` — inherit the new field
+  list and `prepareOfferInventoryInput`'s real multiplier, so the
+  cart's `confirmInventory` call now demands the bundle-correct
+  quantity.
+- `packages/core/src/workflows/cart/workflows/complete-cart-with-split-orders.ts`
+  — `fetch-offers-for-reservation` step now uses
+  `requiredOfferFieldsForInventoryConfirmation`; `reserveInventoryStep`
+  receives `qty × required_quantity` per inventory item.
+- `packages/core/src/workflows/order/workflows/{create-order-fulfillment,cancel-order-fulfillment,confirm-return-receive}.ts`
+  — all three Session 10 overrides now Query
+  `offer.inventory_item_link.required_quantity` /
+  `offer.inventory_item_link.inventory_item.*`, so the
+  decrement-on-fulfilment, restock-on-cancel-fulfilment, and
+  restock-on-return arithmetic multiplies by the offer's real
+  `required_quantity`.
+
+Verification: the previously-skipped integration test
+`integration-tests/http/offer/order/order.spec.ts → "should reserve qty
+× required_quantity per inventory_item on placement"` now runs and
+asserts a reservation of `2 × 3 = 6` against an inventory level of
+`50` — proving end-to-end that the reservation step is reading the
+pivot's extra column through the new traversal. Vendor 16/16, cart
+6/6, order 3/3 all pass on 2026-05-21.
+
+The shortcut alias is **not** removed — `offer.inventory_items[]`
+remains useful for display-only consumers (vendor CRUD endpoints that
+just need to render the linked InventoryItem rows) and is the path
+the vendor `inventory-items/batch` response continues to use. The
+contract this section documents is that **any consumer that needs
+the multiplier must traverse through `inventory_item_link`** — the
+shortcut is intentionally lossy.
 
 ## Offer Flows
 
@@ -1923,27 +2006,25 @@ inserted **inline** into Mercur's `completeCartWithSplitOrdersWorkflow`
 `packages/core/src/workflows/cart/workflows/complete-cart-with-split-orders.ts`)
 immediately after the workflow's existing `createOrdersStep` call.
 
-> **Cart→order line identity gotcha.** `createOrdersStep`
+> **Cart→order line identity.** `createOrdersStep`
 > (`order/steps/create-orders.ts:31-51`) calls
-> `OrderModuleService.createOrders(data)` which generates **new**
-> `orli_*` ids. `prepareLineItemData` only propagates `cart_id`
-> onto the order line — not the cart line-item id
-> (`cart/utils/prepare-line-item-data.ts:140-193`). The mirror step
-> therefore cannot match by id position alone. The Mercur-owned
-> `prepareLineItemData` copy under
-> `packages/core/src/workflows/cart/utils/prepare-line-item-data.ts`
-> must stamp the cart line-item id onto the order line in a stable
-> place — the chosen carrier is `metadata.cart_line_item_id`
-> (a single deterministic key, not a free-form passthrough). The
-> mirror step reads each new order line's
-> `metadata.cart_line_item_id`, joins against the
-> `cart.LineItem ↔ Offer` rows by that key, and writes the
-> `order.OrderLineItem ↔ Offer` link rows through Medusa's link
-> service. `offer_id` is **not** put on
-> `line_item.metadata` itself — only the cart-line-id carrier is.
-> After the mirror step writes the order-side link rows, downstream
-> code reads the offer via `order_line_item.offer.*` Query
-> traversal, never via metadata.
+> `OrderModuleService.createOrders(data)` and Medusa's order module
+> preserves the input item order within each created order
+> (`createOrderLineItemsBulk_` writes line items in input-array order).
+> `completeCartWithSplitOrdersWorkflow` exploits that: as it builds
+> `ordersToCreate`, it captures a positional offer-id list per order
+> (`offerIdsByOrderId: Record<order_id, (offer_id | null)[]>`) keyed
+> off the seller-filtered slice of `cart.items`. After
+> `createOrdersStep` returns, a single `transform` zips
+> `createdOrders[*].items[*]` with that list to produce
+> `{ order_line_item_id, offer_id }` pairs, which are handed
+> directly to `mirrorLineItemOfferLinksToOrderStep` (and reused to
+> build the offer-aware reservation input). No metadata carrier on
+> the order line is required — the workflow keeps the identity in
+> its own transform state, not on the row. `offer_id` is also **not**
+> put on `line_item.metadata`. After the mirror step writes the
+> order-side link rows, downstream code reads the offer via
+> `order_line_item.offer.*` Query traversal.
 
 No `overrideWorkflow` is involved on this path — the Mercur workflow
 already owns the composition, so the step is added by editing the
@@ -2039,17 +2120,17 @@ The table is normative.
 | Method | Endpoint | Auth | Required scope | Request | Success | Errors |
 | --- | --- | --- | --- | --- | --- | --- |
 | GET | `/vendor/offers` | session | `offers:read` | query: filters, pagination | `200 { offers: Offer[], count, offset, limit }` | `MedusaError.Types.UNAUTHORIZED` (401), `MedusaError.Types.INVALID_DATA` (400) |
-| POST | `/vendor/offers` | session | `offers:write` | JSON: `{ sku, variant_id, shipping_profile_id, inventory_items: Array<{ inventory_item_id: string, required_quantity: number }>, price: { amount, currency_code, ... } }`. `inventory_items` mirrors Medusa's `CreateProductVariant.inventory_items` shape — every entry references an **existing** `InventoryItem` by `inventory_item_id`; provisioning new inventory items / seeding stock levels is the inventory module's concern and is not part of the offer create payload. The array must have at least one entry; duplicate `inventory_item_id` values in the same payload are rejected. | `201 { offer: Offer }` | `MedusaError.Types.INVALID_DATA` (400, includes duplicate inventory items), `MedusaError.Types.NOT_FOUND` (404, variant or referenced inventory item missing), `MedusaError.Types.DUPLICATE_ERROR` (409, `(seller_id, sku)` collision), `MedusaError.Types.UNAUTHORIZED` (401), `MedusaError.Types.NOT_ALLOWED` (403) |
+| POST | `/vendor/offers` | session | `offers:write` | JSON: `{ sku, variant_id, shipping_profile_id, inventory_items: Array<{ inventory_item_id: string, required_quantity: number }>, price: { amount, currency_code, ... } }`. `inventory_items` mirrors Medusa's `CreateProductVariant.inventory_items` shape — every entry references an **existing** `InventoryItem` by `inventory_item_id`; provisioning new inventory items / seeding stock levels on this endpoint is out of scope (use `/vendor/offers/batch` for inline provisioning). The array must have at least one entry; duplicate `inventory_item_id` values in the same payload are rejected. | `201 { offer: Offer }` | `MedusaError.Types.INVALID_DATA` (400, includes duplicate inventory items), `MedusaError.Types.NOT_FOUND` (404, variant or referenced inventory item missing), `MedusaError.Types.DUPLICATE_ERROR` (409, `(seller_id, sku)` collision), `MedusaError.Types.UNAUTHORIZED` (401), `MedusaError.Types.NOT_ALLOWED` (403) |
+| POST | `/vendor/offers/batch` | session | `offers:write` | JSON: `{ offers: Array<{ sku, title?, variant_id, shipping_profile_id, prices: Array<{ amount, currency_code, … }>, stock_levels?: Array<{ location_id, stocked_quantity }>, required_quantity?, ean?, upc?, metadata? }> }`. 1 ≤ `offers.length` ≤ 100. The route maps each entry to a `CreateOfferDTO` carrying `inline_inventory_item: { title, required_quantity, stock_levels }` and invokes `createOffersWorkflow` **once**, so all N offers are created in a single atomic workflow run: `createInventoryItemsWorkflow.runAsStep` creates one inventory item per offer (with optional seed `location_levels`), `linkSellerInventoryItemStep` links each to the calling seller, and the existing PriceSet / offer / offer↔inventory-item link / event-emit composition runs against the resulting offers. Failure on any offer rolls back the rest via workflow compensation. | `201 { offers: Offer[] }` | `MedusaError.Types.INVALID_DATA` (400), `MedusaError.Types.NOT_FOUND` (404, variant missing), `MedusaError.Types.DUPLICATE_ERROR` (409, `(seller_id, sku)` collision on any row — whole batch is rejected), `MedusaError.Types.UNAUTHORIZED` (401), `MedusaError.Types.NOT_ALLOWED` (403) |
 | GET | `/vendor/offers/:id` | session | `offers:read` | path `id` | `200 { offer: Offer }` | `MedusaError.Types.NOT_FOUND` (404), `MedusaError.Types.NOT_ALLOWED` (403) |
-| POST | `/vendor/offers/:id` | session | `offers:write` | path `id`, JSON: partial Offer carrying only the offer-row fields (`sku`, `shipping_profile_id`, etc.). Inventory-item link mutations go through `POST /vendor/offers/:id/inventory-items/batch`; price mutations go through `POST /vendor/offers/:id/prices/batch`. | `200 { offer: Offer }` | `MedusaError.Types.INVALID_DATA` (400), `MedusaError.Types.NOT_FOUND` (404), `MedusaError.Types.NOT_ALLOWED` (403) |
-| POST | `/vendor/offers/:id/inventory-items/batch` | session | `offers:write` | path `id`, JSON: `{ create?: Array<{ inventory_item_id: string, required_quantity: number }>, update?: Array<{ inventory_item_id: string, required_quantity: number }>, delete?: Array<{ inventory_item_id: string }> }`. Mirrors Medusa's `POST /admin/products/:id/variants/inventory-items/batch` (`AdminBatchVariantInventoryItems`). Dispatches to `batchLinksWorkflow` from `@medusajs/core-flows` with offer-shaped link rows; `create` attaches, `update` rewrites `required_quantity` on existing link rows, `delete` dismisses them. | `200 { created, updated, deleted }` (matches `AdminProductVariantInventoryBatchResponse`) | `MedusaError.Types.INVALID_DATA` (400, duplicate `inventory_item_id` across operations or within `create`), `MedusaError.Types.NOT_FOUND` (404, offer or inventory item missing), `MedusaError.Types.NOT_ALLOWED` (403) |
-| POST | `/vendor/offers/:id/prices/batch` | session | `offers:write` | path `id`, JSON: `{ create?: Array<{ currency_code: string, amount: number, min_quantity?: number \| null, max_quantity?: number \| null, rules?: Record<string, string> }>, update?: Array<{ id: string, currency_code?: string, amount?: number, min_quantity?: number \| null, max_quantity?: number \| null, rules?: Record<string, string> }>, delete?: Array<{ id: string }> }`. Same batch shape as Medusa's variant inventory-items batch, but applied to the offer's own `PriceSet` (`offer.price_set_id`). Mirrors `AdminCreateVariantPrice` / `AdminUpdateVariantPrice` per-row. Dispatches to `batchOfferPricesWorkflow`: `create` calls `pricingModule.addPrices(...)` on the offer's PriceSet (no `offer_id` `PriceRule` attached); `update` and `delete` resolve referenced `price.id`s only when their `price_set_id === offer.price_set_id` (any id outside that scope → `MedusaError.Types.NOT_FOUND`). | `200 { created, updated, deleted }` (matches `AdminProductVariantInventoryBatchResponse` shape) | `MedusaError.Types.INVALID_DATA` (400, malformed rows or duplicate `(currency_code, rules)` within `create`), `MedusaError.Types.NOT_FOUND` (404, offer or referenced `price.id` missing / not owned by this offer), `MedusaError.Types.NOT_ALLOWED` (403) |
+| POST | `/vendor/offers/:id` | session | `offers:write` | path `id`, JSON: partial Offer carrying offer-row fields (`sku`, `shipping_profile_id`, `metadata`) and an optional `prices` array. When `prices` is set, it is the **full** price ladder for the offer's `PriceSet` (replace semantics, mirroring Medusa's `updateProductVariantsWorkflow → updatePriceSetsStep` shape): entries with `id` update the matching `Price` in place, entries without `id` are added as new prices, and any existing price whose `id` is not present in the array is removed. Omitting `prices` leaves the price ladder untouched. Inventory-item link mutations remain on the dedicated `POST /vendor/offers/:id/inventory-items/batch` endpoint. | `200 { offer: Offer }` | `MedusaError.Types.INVALID_DATA` (400), `MedusaError.Types.NOT_FOUND` (404), `MedusaError.Types.NOT_ALLOWED` (403) |
+| POST | `/vendor/offers/:id/inventory-items/batch` | session | `offers:write` | path `id`, JSON: `{ create?: Array<{ inventory_item_id: string, required_quantity: number }>, update?: Array<{ inventory_item_id: string, required_quantity: number }>, delete?: string[] }`. Mirrors Medusa's `POST /admin/products/:id/variants/inventory-items/batch` (`AdminBatchVariantInventoryItems`). Dispatches to the Mercur link service with offer-shaped link rows; `create` attaches, `update` rewrites `required_quantity` on existing link rows (via `link.create` upsert), `delete` dismisses them. | `200 { created, updated, deleted, offer }` | `MedusaError.Types.INVALID_DATA` (400, duplicate `inventory_item_id` across operations or within `create`), `MedusaError.Types.NOT_FOUND` (404, offer or inventory item missing), `MedusaError.Types.NOT_ALLOWED` (403) |
 | DELETE | `/vendor/offers/:id` | session | `offers:write` | path `id` | `200 { id, deleted: true }` (soft-delete) | `MedusaError.Types.NOT_FOUND` (404), `MedusaError.Types.NOT_ALLOWED` (403) |
 | GET | `/admin/offers` | session | `admin:authenticated` | query: filters (incl. `seller_id`, `variant_id`) | `200 { offers: Offer[], count, offset, limit }` | `MedusaError.Types.UNAUTHORIZED` (401) |
+| POST | `/admin/offers/batch` | session | `admin:authenticated` | JSON: `{ seller_id, offers: Array<{ sku, title?, variant_id, shipping_profile_id, prices: Array<{ amount, currency_code, … }>, stock_levels?: Array<{ location_id, stocked_quantity }>, required_quantity?, ean?, upc?, metadata? }> }`. 1 ≤ `offers.length` ≤ 100. Admin counterpart of `POST /vendor/offers/batch` — the `seller_id` is read from the body (the admin acts on behalf of the named seller) instead of the vendor session; `created_by` is stamped from `req.auth_context.actor_id`. Same atomic semantics: a single `createOffersWorkflow` run creates inventory items, links them to the named seller, then creates all N offers with their PriceSets and offer↔inventory-item links. | `201 { offers: Offer[] }` | `MedusaError.Types.INVALID_DATA` (400), `MedusaError.Types.NOT_FOUND` (404, variant missing), `MedusaError.Types.DUPLICATE_ERROR` (409), `MedusaError.Types.UNAUTHORIZED` (401) |
 | GET | `/admin/offers/:id` | session | `admin:authenticated` | path `id` | `200 { offer: Offer, audit_log: AuditEntry[] }` | `MedusaError.Types.NOT_FOUND` (404) |
-| POST | `/admin/offers/:id/prices/batch` | session | `admin:authenticated` | path `id`, JSON: identical shape to the vendor batch above. Same `batchPricesWorkflow` is dispatched — the only difference vs the vendor route is the auth layer: admins can edit any seller's offer prices; vendor calls are scoped to their own seller via the `vendor` auth middleware. | `200 { created, updated, deleted }` | `MedusaError.Types.INVALID_DATA` (400), `MedusaError.Types.NOT_FOUND` (404), `MedusaError.Types.NOT_ALLOWED` (403) |
 | POST | `/admin/sellers/:id/offers/bulk-delete` | session | `admin:authenticated` | path `id` | `202 { job_id }` | `MedusaError.Types.NOT_FOUND` (404), `MedusaError.Types.NOT_ALLOWED` (403) |
-| GET | `/store/products/:id` | public | — | path `id`, query: `customer_group_id?`, `region_id?` | `200 { product, variants: Array<{ ..., offers: PublicOffer[] }> }` (ordered `price ASC, created_at ASC, id ASC`) | `MedusaError.Types.NOT_FOUND` (404) |
+| ~~GET~~ | ~~`/store/products/:id`~~ | ~~public~~ | — | — | **Deferred — see *Storefront API Surface > Out of scope* callout.** The per-variant `offers` array, bulk `calculatePrices` join, effective-stock filter, sales-channel location filter, and stable ordering are not implemented in this drop. The route currently returns the product as Medusa's standard public read (with the seller-visibility filter applied) without an `offers` attachment. | — |
 
 `PublicOffer` is the Store-API projection of an offer: `id`, `seller`,
 `stock_status`, and the price resolved through the pricing module's
@@ -2071,6 +2152,133 @@ Error conventions:
   Medusa's native `MedusaError` with code
   `MedusaError.Codes.INSUFFICIENT_INVENTORY` (thrown by
   `confirmInventoryStep`); no Mercur-specific rewrap.
+
+## Types Contract
+
+The Offer module's static types are owned by `@mercurjs/types` so the
+workflows, API routes, and any downstream consumer (block packages, the
+typed `@mercurjs/client`, integration tests) share a single set of
+definitions. Inline type aliases inside
+`packages/core/src/workflows/offer/{steps,workflows}/*` are forbidden —
+they must import from `@mercurjs/types` (which already re-exports
+everything from `@medusajs/types`, so a single import covers both
+namespaces).
+
+### Layout
+
+- `packages/types/src/offer/common.ts` — entity-shaped DTOs:
+  - `OfferDTO` — the offer row plus the optional `price_set` and
+    `inventory_items` relations resolved through the offer's read-only
+    `offer ↔ price_set` link and the writable `offer ↔ inventory_item`
+    link.
+  - `OfferInventoryItemLinkDTO` — one row on the writable link table,
+    carrying the `required_quantity` extra-column and the optional
+    joined Medusa `InventoryItem`.
+  - `OfferPriceDTO` — alias for Medusa's `MoneyAmountDTO`; Mercur does
+    not introduce its own price entity, the offer's ladder is just the
+    `prices` array on its `PriceSet`.
+- `packages/types/src/offer/mutations.ts` — workflow + service inputs:
+  - `CreateOfferDTO` — public create payload (one entry of
+    `createOffersWorkflow`'s `offers` array). Carries either
+    `inventory_items` (links existing items) or `inline_inventory_item`
+    (creates one item per offer with optional starting stock levels) —
+    the workflow accepts either path. The runtime-only `seller_id` /
+    `created_by` fields are stripped at the HTTP boundary; the workflow
+    itself requires both.
+  - `CreateOfferInlineInventoryItemDTO` — the inline-inventory branch
+    of `CreateOfferDTO`: `{ title?, required_quantity?, stock_levels? }`.
+    Mirrors the `(CreateInventoryItemInput & { location_levels? })`
+    shape `createInventoryItemsWorkflow` accepts so the inventory item,
+    its initial location levels, and the offer↔item link can be
+    produced in a single workflow run.
+  - `CreateOfferRowDTO` — the post-PriceSet projection passed from
+    `createOffersWorkflow` to `createOffersStep` (offer row + the
+    resolved `price_set_id` + the variant-snapshotted `ean` / `upc`).
+  - `CreateOfferInventoryItemDTO`, `CreateOfferPriceDTO`,
+    `UpsertOfferPriceDTO` — nested input shapes shared across
+    create + update.
+  - `UpdateOfferDTO` — one entry of `updateOffersWorkflow`'s `offers`
+    array; setting `prices` rewrites the offer's `PriceSet` with
+    replace semantics.
+  - `BatchOfferInventoryItemsDTO` — input to
+    `batchOfferInventoryItemsWorkflow`.
+- `packages/types/src/offer/index.ts` — barrel; re-exported from
+  `packages/types/src/index.ts` under the `// Offer types` section.
+
+### HTTP types
+
+HTTP request + response shapes live in
+`packages/types/src/http/offer.ts` and are re-exported through the
+existing `HttpTypes` namespace in `packages/types/src/index.ts` (so
+consumers reach them as `HttpTypes.VendorCreateOfferReq`, etc.).
+Naming follows the conventions already established by `http/seller.ts`,
+`http/payout.ts`, and `http/inventory-item.ts`:
+
+- **Requests** (`*Req`):
+  - `VendorCreateOfferReq` — body for `POST /vendor/offers`. Strips the
+    `seller_id` / `created_by` fields the workflow needs (those come
+    from the authenticated session in the route handler).
+  - `VendorCreateOffersBatchReq` — body for `POST /vendor/offers/batch`;
+    `{ offers: Array<VendorCreateOffersBatchItem> }` where each item
+    carries `sku, title?, variant_id, shipping_profile_id, prices,
+    stock_levels?, required_quantity?, ean?, upc?, metadata?`. The
+    route handler maps every item to a `CreateOfferDTO` with
+    `inline_inventory_item` populated and passes the resulting array
+    to `createOffersWorkflow` in one run.
+  - `AdminCreateOffersBatchReq` — body for `POST /admin/offers/batch`;
+    `{ seller_id, offers: Array<AdminCreateOffersBatchItem> }`. Item
+    shape matches the vendor variant. `seller_id` is taken from the
+    body (the admin acts on behalf of the named seller); `created_by`
+    is stamped from `req.auth_context.actor_id`.
+  - `VendorUpdateOfferReq` — body for `POST /vendor/offers/:id`.
+  - `VendorBatchOfferInventoryItemsReq` — body for
+    `POST /vendor/offers/:id/inventory-items/batch`.
+- **Responses**:
+  - `VendorOfferResponse`, `VendorOfferListResponse` (paginated),
+    `VendorOfferDeleteResponse` (`DeleteResponse<"offer">`).
+  - `VendorCreateOffersBatchResponse` — `{ offers: Offer[] }`,
+    refetched via `query.graph` so the client gets the full
+    `OfferDTO` projection (price set, inventory item links) in one
+    round-trip.
+  - `VendorBatchOfferInventoryItemsResponse` — `{ created, updated,
+    deleted, offer }`. The first three mirror Medusa's
+    `AdminProductVariantInventoryBatchResponse`; the refetched `offer`
+    saves the client a follow-up GET.
+  - `AdminOfferResponse`, `AdminOfferListResponse`,
+    `AdminCreateOffersBatchResponse` (`{ offers: Offer[] }`). The
+    admin surface is otherwise read-only as of Session 7 — `batch` is
+    the single write path.
+
+### Consumer mapping
+
+| Surface | Imports |
+| - | - |
+| `createOffersWorkflow` | `CreateOfferDTO` (input batch) |
+| `createOffersStep` | `CreateOfferRowDTO` (post-PriceSet rows) |
+| `updateOffersWorkflow` | `UpdateOfferDTO` (input batch) |
+| `batchOfferInventoryItemsWorkflow` | `BatchOfferInventoryItemsDTO` |
+| `POST /vendor/offers` route + validator | `HttpTypes.VendorCreateOfferReq` ⇄ `VendorCreateOffer` zod schema |
+| `POST /vendor/offers/batch` route + validator | `HttpTypes.VendorCreateOffersBatchReq` ⇄ `VendorCreateOffersBatch` zod schema |
+| `POST /vendor/offers/:id` route + validator | `HttpTypes.VendorUpdateOfferReq` ⇄ `VendorUpdateOffer` zod schema |
+| `POST /vendor/offers/:id/inventory-items/batch` route + validator | `HttpTypes.VendorBatchOfferInventoryItemsReq` ⇄ `VendorBatchOfferInventoryItems` zod schema |
+| `GET /vendor/offers` etc. | `HttpTypes.VendorOfferListResponse` / `VendorOfferResponse` / `VendorOfferDeleteResponse` |
+| `GET /admin/offers` etc. | `HttpTypes.AdminOfferListResponse` / `AdminOfferResponse` |
+| `POST /admin/offers/batch` route + validator | `HttpTypes.AdminCreateOffersBatchReq` ⇄ `AdminCreateOffersBatch` zod schema |
+
+The zod schemas in `packages/core/src/api/vendor/offers/validators.ts`
+remain the runtime contract (they enforce the body at request time);
+the `HttpTypes.*Req` interfaces are their static-only mirror for the
+typed client and external consumers. The two shapes must stay
+structurally compatible — if a zod schema gains a field, the matching
+HTTP type interface gains it too.
+
+### Events
+
+Event channel names continue to live in
+`packages/core/src/workflows/events.ts` (`OfferWorkflowEvents`). They
+are not duplicated in `@mercurjs/types` to keep one source of truth;
+no external subscriber needs to know the literal string outside the
+core package today.
 
 ## Workflows and Events
 
@@ -2097,49 +2305,62 @@ delete; the qualifier is dropped from the workflow name.
   `createLinksWorkflow` to register one offer ↔ inventory-item link
   row per attached item, carrying its `required_quantity`. Inputs
   and outputs are arrays; a single-offer vendor route passes a
-  length-1 array.)
-- `updateOffersWorkflow` (batch update; per offer, delegates price
-  changes to pricing-module `addPrices` / `updatePriceSets` /
-  `removePrices` scoped to that offer's own `price_set_id`; per-item
-  level changes to inventory-module `updateInventoryLevelsWorkflow`.
-  The offer row itself only carries identity, vendor `sku`,
-  `price_set_id`, and singleton FK-shaped columns. Updates within a
-  batch are atomic: a failure on any one offer rolls back the rest.)
-  Inventory-item link mutations are **not** carried on the update
-  payload — they go through the dedicated batch endpoint below.
+  length-1 array.
+
+  Each entry on the `offers` input batch picks one of two inventory
+  paths: (a) `inventory_items: Array<{ inventory_item_id,
+  required_quantity? }>` links pre-existing inventory items, or
+  (b) `inline_inventory_item: { title?, required_quantity?,
+  stock_levels? }` triggers in-workflow creation of one new
+  inventory item per offer (sku copied from the offer's `sku`,
+  optional `location_levels` seeded from `stock_levels`) via
+  `createInventoryItemsWorkflow.runAsStep`, plus the
+  `linkSellerInventoryItemStep` that attaches every newly created
+  item to the offer's `seller_id`. The workflow then proceeds to
+  the PriceSet / offer / offer↔inventory-item link / event-emit
+  composition as before. Both `POST /vendor/offers/batch` and
+  `POST /admin/offers/batch` flow through this same workflow with
+  `inline_inventory_item` populated.)
+- `updateOffersWorkflow` (batch update; mirrors the shape of Medusa's
+  `updateProductVariantsWorkflow`. Each offer in the input batch
+  carries the offer-row update fields plus an optional `prices`
+  array. The workflow first runs `updateOffersStep` to mutate the
+  offer row (identity, vendor `sku`, `shipping_profile_id`,
+  `metadata`), then — for every offer whose payload included a
+  `prices` array — resolves its `offer.price_set_id` via
+  `useQueryGraphStep` and dispatches Medusa's `updatePriceSetsStep`
+  with `{ price_sets: [{ id: priceSetId, prices: [...] }] }`. The
+  pricing module treats this as a **replace** of that PriceSet's
+  ladder: entries with `id` are updated in place, entries without
+  `id` are added as new prices, and any existing price not in the
+  array is removed. Omitting `prices` from an offer entry leaves
+  the ladder untouched. Updates within a batch are atomic: a
+  failure on any one offer rolls back the rest. Inventory-item link
+  mutations are **not** carried on the update payload — they go
+  through the dedicated batch endpoint below.)
 - `batchOfferInventoryItemsWorkflow` (powers
   `POST /vendor/offers/:id/inventory-items/batch`; mirrors Medusa's
-  `POST /admin/products/:id/variants/inventory-items/batch` shape and
-  internally dispatches to `batchLinksWorkflow` from
-  `@medusajs/core-flows` with `[OFFER_MODULE]:{offer_id}` /
-  `[Modules.INVENTORY]:{inventory_item_id}` link rows and
-  `required_quantity` carried on each row. Input matches
-  `AdminBatchVariantInventoryItems` — `{ create, update, delete }` —
-  scoped to a single offer via the route param. Output matches
+  `POST /admin/products/:id/variants/inventory-items/batch` shape.
+  Internally delegates to Medusa's `batchLinksWorkflow.runAsStep`
+  — the same workflow Medusa uses for the variant batch route —
+  parallelising `createRemoteLinkStep` / `updateRemoteLinksStep` /
+  `dismissRemoteLinkStep` on `LinkDefinition[]` rows built from the
+  request payload, with `required_quantity` carried as each link
+  row's `data`. Input matches `AdminBatchVariantInventoryItems` —
+  `{ create, update, delete }` — scoped to a single offer via the
+  route param. Output matches
   `AdminProductVariantInventoryBatchResponse` —
-  `{ created, updated, deleted }`. Duplicate `inventory_item_id`s
-  within `create` or across `create`/`update` are rejected with
-  `MedusaError.Types.INVALID_DATA`.)
-- `batchOfferPricesWorkflow` (powers
-  `POST /vendor/offers/:id/prices/batch` and
-  `POST /admin/offers/:id/prices/batch`; same `{ create, update,
-  delete }` envelope as the inventory-items batch above, but the
-  per-row shape mirrors Medusa's `AdminCreateVariantPrice` /
-  `AdminUpdateVariantPrice` — `currency_code`, `amount`,
-  `min_quantity?`, `max_quantity?`, `rules?` — and the workflow
-  routes each operation to the pricing module against the offer's
-  own `PriceSet` (`offer.price_set_id`). `create` calls
-  `pricingModule.addPrices(...)` with `priceSetId = offer.price_set_id`;
-  no `offer_id` `PriceRule` is attached. `update` resolves the
-  referenced `price.id` against the offer's own PriceSet only —
-  `pricingModule.listPrices({ price_set_id: offer.price_set_id })`
-  bounds the candidate set, and any id outside it surfaces
-  `MedusaError.Types.NOT_FOUND`. `delete` runs
-  `pricingModule.removePrices(...)` after the same ownership check.
-  Output matches the inventory batch shape —
-  `{ created, updated, deleted }`. Duplicate
-  `(currency_code, rules)` tuples within `create` are rejected with
-  `MedusaError.Types.INVALID_DATA`.)
+  `{ created, updated, deleted }`, where `deleted` is the
+  `string[]` of dismissed `inventory_item_id`s for response
+  symmetry with the route's input. Pre-flight transform in the
+  workflow rejects duplicate `inventory_item_id`s within `create`,
+  or across `create` / `update` / `delete`, with
+  `MedusaError.Types.INVALID_DATA`; verifies referenced inventory
+  items exist for `create`; and verifies delete targets are
+  currently linked to the offer (Medusa's `dismissRemoteLinkStep`
+  silently no-ops on unknown links — the workflow surfaces a 404
+  instead). Compensation is provided by the three generic Medusa
+  link steps (each restores its prior link rows on revert).)
 - No dedicated Mercur "decrement offers stock" workflow exists. The
   stock lifecycle (validate / reserve / decrement / release /
   restock) is implemented by:
@@ -2203,15 +2424,16 @@ delete; the qualifier is dropped from the workflow name.
   dismisses the rows it created)
 - `mirrorLineItemOfferLinksToOrderStep` (Mercur step composed
   **inline** into `completeCartWithSplitOrdersWorkflow` immediately
-  after `createOrdersStep`; reads each new order line's
-  `metadata.cart_line_item_id` — stamped by Mercur's
-  `prepareLineItemData` copy — joins against the
-  `cart.LineItem ↔ Offer` rows by that key, and writes mirrored
-  `order.OrderLineItem ↔ Offer` rows keyed by the new
-  `order_line_item.id`s. Necessary because `createOrdersStep`
-  generates fresh `orli_*` ids and discards cart-line identity.
-  No `overrideWorkflow` is involved because the host workflow is
-  already Mercur-owned.)
+  after `createOrdersStep`; takes a precomputed list of
+  `{ order_line_item_id, offer_id }` pairs assembled by the workflow
+  via positional zip of `createdOrders[*].items` against the
+  `offerIdsByOrderId` map captured during `ordersToCreate`
+  construction, and writes the mirrored `order.OrderLineItem ↔ Offer`
+  rows through Medusa's link service. No metadata carrier on the
+  order line is read or written — the cart-line ↔ order-line
+  identity is held in workflow transform state. Compensator dismisses
+  the rows it created. No `overrideWorkflow` is involved because the
+  host workflow is already Mercur-owned.)
 
 Emitted events (module-namespaced, mirroring Medusa's
 `<entity>.<action>` convention — see `OrderWorkflowEvents`,
@@ -2324,25 +2546,14 @@ offers from two sellers in `beforeEach`:
 - Admin routes do not expose mutation of variant fields through offer
   endpoints (parity with the vendor surface).
 
-### `http/offer/store/offer.spec.ts`
+### ~~`http/offer/store/offer.spec.ts`~~ — Deferred
 
-Use `generatePublishableKey` + `generateStoreHeaders` (see
-`integration-tests/helpers/create-admin-user.ts`). After two sellers
-each publish one offer against the same variant:
-
-- `GET /store/products/:id` returns the variant with `offers` in the
-  documented stable order (assert by id sequence).
-- An offer disappears from `variant.offers` once its effective stocked
-  quantity reaches zero — drive this by reducing one linked
-  `InventoryItem` below its `required_quantity` through the inventory
-  module; the storefront stops surfacing the offer with no explicit
-  state transition. Raising the level back restores it.
-- Bundle case: an offer with two inventory items (`required_quantity =
-  1` each) is in-stock only while both items have stock. Selling one
-  bundle decrements both items by one (verified end-to-end via the
-  order suite).
-- A newly-created offer is visible on the storefront immediately after
-  the vendor create call returns — no draft / review state to clear.
+**Removed from this drop.** The store-side offer surface
+(`GET /store/products/:id` `offers` attachment) is out of scope per
+the *Storefront API Surface > Out of scope* callout. The matching
+test directory (`integration-tests/http/offer/store/`) is deleted
+in the same drop. Re-introduce when the offer ↔ inventory_item
+pivot extra-column exposure is wired and the route is restored.
 
 ### `http/cart/store/cart.spec.ts` (extend)
 
@@ -2419,9 +2630,9 @@ Drive a cart through `POST /store/carts/:id/complete`. Cover:
   impossible because they are separate `PriceSet`s).
 - Mercur does not accept `PriceListRule { attribute: "offer_id" }`
   on PriceLists — a focused test creating one returns
-  `MedusaError.Types.INVALID_DATA` from the `batchOfferPricesWorkflow`
-  / PriceList write path so the per-line cart-pricing invariant
-  cannot regress.
+  `MedusaError.Types.INVALID_DATA` from the `updateOffersWorkflow`
+  pricing path (or the PriceList write path) so the per-line
+  cart-pricing invariant cannot regress.
 
 ### Auditing
 
@@ -2529,7 +2740,1182 @@ spec moves to `passing` only when all of the following are true:
 
 ## Evidence
 
-_Recorded when the implementation lands. Pending._
+### 2026-05-22 — Session 19: dropped `metadata.cart_line_item_id` carrier
+
+Cart→order line identity now lives in workflow transform state instead
+of a DB metadata column. The carrier was originally introduced in
+Session 9 to bridge `createOrdersStep` regenerating `orli_*` ids; it is
+no longer load-bearing because:
+
+- `OrderModuleService.createOrderLineItemsBulk_`
+  (`@medusajs/order/dist/services/order-module-service.js:560-578`)
+  writes line items in input-array order, so the `i`-th item of
+  `ordersToCreate[k].items` lines up with the `i`-th item of
+  `createdOrders[k].items` after the step returns.
+- `completeCartWithSplitOrdersWorkflow` already builds each per-seller
+  `items` slice from a deterministic filter over `cart.items`, so the
+  source offer for position `i` of order `k` is known at construction
+  time.
+
+Changes:
+
+- `packages/core/src/workflows/cart/utils/prepare-line-item-data.ts` —
+  the `metadata.cart_line_item_id` stamp was removed. `metadata` now
+  pipes through `item.metadata ?? null` unchanged.
+- `packages/core/src/workflows/cart/steps/mirror-line-item-offer-links-to-order.ts`
+  — input shape changed from
+  `{ cart_id, order_line_item_ids }` to
+  `{ pairs: Array<{ order_line_item_id, offer_id }> }`. The step no
+  longer issues any `query.graph` calls; it just batches the
+  precomputed pairs into a single `link.create(...)` and dismisses the
+  same rows on compensation.
+- `packages/core/src/workflows/cart/workflows/complete-cart-with-split-orders.ts`
+  — the `ordersToCreate` transform now also emits
+  `offerIdsByOrderId: Record<order_id, (offer_id | null)[]>` (one
+  entry per seller-filtered cart-items slice, in the same order the
+  items are pushed into `items: allItems`). A new `orderLineOfferPairs`
+  transform zips that map against `createdOrders[*].items` to produce
+  the pair list, which is passed to `mirrorLineItemOfferLinksToOrderStep`
+  and reused to build the offer-aware reservation input
+  (`offerReservationItems`). The previous cart-by-id lookup is gone.
+
+Static verification: `tsc --noEmit -p tsconfig.json` on
+`@mercurjs/core` exits 0.
+
+
+
+Closing the runtime gate the spec listed under **Pending work to move
+this spec to `passing`**.
+
+Setup:
+
+- Postgres 16 on `localhost:5432` (`pg_isready` clean).
+- Redis on `localhost:6379` (`PING` → `PONG`); the test runner falls
+  back to its in-process fake-redis automatically.
+- `integration-tests/.env.test` already declared
+  `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/mercur`.
+- `bun run test:integration:http -- --testPathPatterns='offer/'`
+  (replaces the deprecated `--testPathPattern` Jest 30 flag) runs all
+  four trees `vendor/`, `cart/`, `order/`, `store/`.
+
+Result: `Test Suites: 4 passed, 4 total` /
+`Tests: 42 passed, 42 total` in ≈400 s on `--runInBand`.
+
+Pre-flight bugs surfaced + fixed during the runtime pass:
+
+- **Map serialization between `transform` steps** —
+  `packages/core/src/workflows/order/workflows/create-order-fulfillment.ts`
+  and `cancel-order-fulfillment.ts` built
+  `Map<string, Map<string, OfferInventoryLink>>` and passed it across
+  `transform()` boundaries. The workflow runtime JSON-serializes
+  intermediate values, which collapses `Map` to `{}` and crashes the
+  downstream resolver with `offerInventoryByLineItem.get is not a
+  function`. Switched both helpers to
+  `Record<string, Record<string, OfferInventoryLink>>` and the
+  call-sites to `obj[key]` lookups.
+- **`region_id` leaking into Product Query** —
+  `packages/core/src/api/store/products/route.ts` +
+  `[id]/route.ts` forwarded `req.filterableFields` straight to
+  `query.graph({ entity: "product" })`. The Product entity has no
+  `region_id` / `currency_code` column (those are consumed by
+  `setPricingContext` only), so MikroORM raised
+  `Trying to query by not existing property Product.region_id`. The
+  routes now destructure both fields off before the call.
+- **Inventory wrap relied on the pricing wrap running first** —
+  `wrapVariantsWithOffersInventory` started from
+  `variants[].offers[]`, which only the pricing wrap attaches. When a
+  request asked for `variants.offers.inventory_quantity` without the
+  price field, no offers were on the variants, so the wrap saw an
+  empty input and the test asserted on an empty list. The util now
+  bootstraps the offer skeleton itself when no offers are attached,
+  and then runs the inventory math.
+- **`offer_inventory_item` is not a top-level Query entity** — the
+  inventory wrap originally queried
+  `entity: "offer_inventory_item"` with `available_quantity` on
+  `inventory_item.location_levels`. Neither path exists at the Query
+  layer: the pivot row is only exposed through the `offer` side as
+  `inventory_item_link[]`, and `inventory_level` carries
+  `stocked_quantity` / `reserved_quantity` (their derivation
+  `available_quantity` is a service-level computed value, not a
+  queryable column). Switched to
+  `query.graph({ entity: "offer", fields: ["inventory_item_link.*",
+  "inventory_item_link.inventory_item.location_levels.{location_id,
+  stocked_quantity, reserved_quantity}"] })` and compute
+  `max(0, stocked - reserved)` inline — mirrors the math
+  `prepareOfferInventoryInput` already uses.
+- **Sellers must be `OPEN`** —
+  `integration-tests/http/offer/store/offers.spec.ts` was missing the
+  `approveSeller(container, sellerId)` call that the order spec uses.
+  `applyVisibleSellerIdsFilter` filters to OPEN sellers, so newly
+  created sellers in `status: pending` were hidden from the
+  storefront, and the URL-id sanity check in `[id]/route.ts` raised a
+  pre-emptive 404. Added the approval into `seedSellerOffer`.
+- **`/vendor/returns` needs an explicit `location_id`** — Mercur's
+  `validateSellerReturn` flow accepts the order without a location,
+  but `confirmReturnReceiveWorkflow`'s inventory adjust step throws
+  `Cannot receive the Return at location null` when the return has
+  no `location_id`. The test now passes
+  `{ order_id, location_id: stockLocation.id }` on create.
+- **Spurious shipment step in the return-receive test** — Medusa's
+  shipment validator checks
+  `shipment_qty <= sum_fulfilled_qty_for_line_item` against units
+  that the fulfilment override expanded by `required_quantity`,
+  which made the shipment step return 400 on every test run with
+  `required_quantity > 1`. Returns work without a shipment in
+  Medusa, so the step was simply dropped from the test.
+
+Per-tree results on the clean serial run:
+
+- `offer/vendor` — **18 / 18 passed** (16 prior CRUD + 2 new
+  PriceSet invariants).
+- `offer/cart` — **10 / 10 passed** (6 prior add-to-cart + 4 new
+  qty-update stock-hook).
+- `offer/order` — **6 / 6 passed** (3 prior split + 3 new Session
+  10 fulfilment/cancel-fulfilment/return-receive overrides).
+- `offer/store` — **8 / 8 passed** (7 surface tests + 1 spy-based
+  single-`calculatePrices` round-trip).
+
+Static gates remain clean:
+
+- `packages/core` `bun run build` → clean.
+- `packages/cli` `bun run build` → clean.
+- `bunx tsc --noEmit -p integration-tests` → no errors on the offer
+  trees.
+- `bunx oxlint` → `0 errors` across `packages/core/src/api/store/products`,
+  `packages/core/src/api/utils/wrap-variants-with-offers-*.ts`,
+  `packages/core/src/workflows/order/workflows/{create,cancel}-order-fulfillment.ts`,
+  `packages/cli/src/utils/patch-medusa.ts`,
+  `integration-tests/http/offer/`,
+  `integration-tests/global-setup.js`. Three pre-existing baseline
+  warnings carried forward.
+
+### 2026-05-21 — Session 16: closing the implementation pending list
+
+Three implementation items from the Pending Work list closed; only
+runtime verification and the manual end-to-end pass remain.
+
+Code:
+
+- `packages/cli/src/utils/patch-medusa.ts` — adds
+  `patchStoreCartLineItemsRoute(medusaDir)`. The function rewrites
+  `node_modules/@medusajs/medusa/dist/api/store/carts/[id]/line-items/route.js`
+  to a 4-line stub (`"use strict";` + a `mercur: blanked` marker
+  comment + the `__esModule` defineProperty) so the upstream POST
+  handler cannot fire. The patch is idempotent (skips when the marker
+  is present) and runs from the `patchMedusa()` entrypoint alongside
+  the existing middleware strip. The `[line_id]` route is **left
+  intact** — Mercur does not override it; the upstream POST/DELETE
+  there already dispatch Mercur's same-id
+  `updateLineItemInCart` / `deleteLineItems` workflows.
+- `integration-tests/global-setup.js` — refactored to split the
+  middleware strip and the route blanker into two named functions
+  (`patchStoreCartLineItemsMiddleware`,
+  `patchStoreCartLineItemsRoute`) and call both. The route blanker
+  uses the same `// mercur: blanked` idempotency marker so re-runs of
+  `bun run test:integration:http` do not corrupt the file.
+- `packages/core/src/workflows/cart/utils/prepare-confirm-inventory-input.ts`
+  — **deleted**. The file was a stale local fork of Medusa's
+  variant-shaped inventory util. No Mercur source imported any name
+  from it (all callers use `prepareOfferInventoryInput` /
+  `requiredOfferFieldsForInventoryConfirmation`); Medusa upstream
+  consumes its own bundled copy from `@medusajs/core-flows`. Removing
+  it eliminates the bit-rot surface that the spec called out under
+  **Mercur-owned cart-util rewrites**.
+- `packages/core/src/workflows/cart/utils/index.ts` — barrel
+  re-export of the deleted file removed; the remaining surface
+  (`fields`, `prepare-line-item-data`, `schemas`) is unchanged.
+
+Verification:
+
+- `packages/cli` `bun run build` (tsup + DTS) → clean.
+- `packages/core` `bun run build` (codegen + `tsc --declaration`) →
+  clean.
+- `bunx oxlint` on the touched files reports `0 errors` (one
+  pre-existing `no-underscore-dangle` warning on the unrelated
+  `require_` variable in `patch-medusa.ts:96`).
+- The variant-field-removal patch additions described under
+  **patch-medusa.ts: required additions for variant field removal**
+  remain unnecessary: Session 13's PG run against the four offer
+  trees did not raise the unknown-field Query errors the spec listed
+  as the trigger. Case (1) of the spec text holds; the patches stay
+  on the shelf for a future Medusa upgrade if Query's strictness ever
+  changes.
+
+### 2026-05-21 — Session 15: storefront offers route + test coverage for remaining lifecycle overrides
+
+Closes the `passing`-gating tranche the spec listed under
+**Pending work to move this spec to `passing`** except the runtime
+PG+Redis pass and the manual end-to-end walkthrough.
+
+Code:
+
+- `packages/core/src/api/utils/wrap-variants-with-offers-prices.ts` —
+  collects variant IDs, fetches the offer rows via Query, issues a
+  single `pricingModule.calculatePrices({ id: priceSetIds }, { context })`
+  call, and attaches a sorted `variant.offers[]` array each carrying
+  `calculated_price`. The order is cheapest-first (stable on `offer.id`
+  ties).
+- `packages/core/src/api/utils/wrap-variants-with-offers-inventory.ts` —
+  walks the writable `offer_inventory_item` link (pivot
+  `required_quantity` + `inventory_item.location_levels.*`), computes
+  `MIN(floor(available / required_quantity))` per offer scoped to the
+  publishable key's sales-channel locations, sets
+  `offer.inventory_quantity` + `offer.in_stock`, and drops offers whose
+  effective stock is zero.
+- `packages/core/src/api/store/products/route.ts` +
+  `packages/core/src/api/store/products/[id]/route.ts` — detect
+  `variants.offers.calculated_price` / `variants.offers.inventory_quantity`
+  in `req.queryConfig.fields`, strip both synthetic paths before
+  `query.graph`, then call the two wrap utils.
+- `packages/core/src/api/store/products/middlewares.ts` — registers
+  Medusa's `setPricingContext({ priceFieldPaths: ["variants.offers.calculated_price"] })`
+  so `req.pricingContext` is populated from the `region_id` query param
+  before the wraps run.
+- `packages/core/src/api/store/products/validators.ts` +
+  `query-config.ts` — accept `region_id` / `currency_code` on both list
+  and retrieve, and export
+  `OFFER_CALCULATED_PRICE_FIELD` /
+  `OFFER_INVENTORY_QUANTITY_FIELD` constants.
+
+Tests:
+
+- `integration-tests/http/offer/store/offers.spec.ts` — re-landed.
+  Covers: variant.offers populated with `calculated_price` when
+  requested + `region_id` supplied; sibling offers from two sellers
+  on one variant sorted by price ASC; zero-stock offer hidden;
+  `floor(stocked / required_quantity)` enforced; offer hidden when its
+  stock location is not linked to the publishable key's sales channel;
+  list-page also wires the wraps; no offer wrap fires when neither
+  field is in the request; **single `pricingModule.calculatePrices`
+  round-trip** verified via `jest.spyOn(appContainer.resolve(Modules.PRICING),
+  "calculatePrices")` across three products / three offers.
+- `integration-tests/http/offer/order/order.spec.ts` — three new
+  describe blocks for the Session 10 overrides:
+  - `createOrderFulfillment`: order with `required_quantity: 3` and
+    placed `quantity: 2`; after fulfilling the line the inventory
+    level reads `stocked: 44, reserved: 0` (was `stocked: 50,
+    reserved: 6`) — proves the override emits one negative
+    adjustment per linked inventory item by
+    `qty × required_quantity` and removes the reservation when
+    remaining hits zero.
+  - `cancelOrderFulfillment`: cancelling the same fulfilment
+    restores `stocked: 50, reserved: 6` — proves the override
+    restocks and recreates the reservation Medusa deleted at
+    fulfilment time.
+  - `confirmReturnReceive`: full vendor return flow
+    (`/vendor/returns` → `request-items` → `request` → `receive` →
+    `receive-items` (qty 1) → `receive/confirm`) restocks
+    `received_quantity (1) × required_quantity (3) = 3` for a
+    final `stocked: 47`.
+- `integration-tests/http/offer/cart/cart.spec.ts` — qty-update
+  stock-hook coverage on `POST /store/carts/:id/line-items/:line_id`:
+  qty-up within stock keeps `unit_price` + `is_custom_price=true`;
+  qty-up over stock fails with `INSUFFICIENT_INVENTORY`;
+  `required_quantity` is multiplied through (offer with
+  `required_quantity: 5` against `stocked: 5` allows qty 1 but rejects
+  qty 2); `quantity: 0` removes the line without running the stock
+  check.
+- `integration-tests/http/offer/vendor/offer.spec.ts` — PriceSet
+  invariants: sibling offers on the same variant resolve to distinct
+  `price_set_id`s; soft-deleted offer's `offer.price_set` traversal
+  (via `withDeleted: true`) still returns its prices, so historical
+  order lines stay resolvable.
+
+Infra:
+
+- `integration-tests/global-setup.js` + `jest.config.js` — Jest
+  `globalSetup` inlines the same regex
+  `packages/cli/src/utils/patch-medusa.ts::patchStoreCartLineItemsMiddleware`
+  uses, so the cart middleware patch fires under
+  `bun run test:integration:http` independent of whether
+  `mercurjs build` was invoked first. Resolves the **Pending work**
+  item that previously required a separate bootstrap.
+
+Static verification:
+
+- `packages/core` `bun run build` → clean (exit 0).
+- `bunx tsc --noEmit` on `integration-tests/` reports zero errors on
+  the new / extended files.
+- `bunx oxlint --quiet packages/core/src/api/store/products packages/core/src/api/utils/wrap-variants-with-offers-*.ts integration-tests/http/offer/`
+  → `0 errors`, 2 pre-existing `no-await-in-loop` warnings on the
+  shipping-method add loop in `order.spec.ts` (Session 11 baseline,
+  intentional sequential POSTs).
+
+### 2026-05-21 — Session 14: pivot extra-column gap resolved + reservation test enabled
+
+The "Architectural gap — pivot extra-column exposure" documented under
+the Storefront section is **resolved** without a model refactor. A
+probe against `query.graph({ entity: "offer", fields: ["inventory_item_link.*"] })`
+showed that `defineLink(...isList: true, isList: true, { extraColumns })`
+already exposes the pivot row from the offer side under the
+auto-generated alias `inventory_item_link[]`, carrying
+`required_quantity`, both FKs, the pivot row's own `id`, and a nested
+`inventory_item` relationship to the linked `InventoryItem`. Every
+prior consumer was using the `inventory_items[]` shortcut (which is a
+`fieldAlias` that flattens directly to `InventoryItem` rows and
+therefore does not expose pivot columns) and silently falling back to
+`required_quantity = 1`.
+
+Changes:
+
+- `packages/core/src/workflows/offer/utils/prepare-offer-inventory-input.ts`
+  rewritten — `requiredOfferFieldsForInventoryConfirmation` now lists
+  the `inventory_item_link.*` chain; the helper reads
+  `required_quantity` from the pivot row instead of hardcoding `1`.
+- `packages/core/src/workflows/cart/workflows/complete-cart-with-split-orders.ts`
+  — `fetch-offers-for-reservation` now reuses
+  `requiredOfferFieldsForInventoryConfirmation`, so the reservation
+  path reads the multiplier on the same fetch.
+- `packages/core/src/workflows/order/workflows/{create-order-fulfillment,cancel-order-fulfillment,confirm-return-receive}.ts`
+  — all three Session 10 overrides now Query the pivot path
+  (`offer.inventory_item_link.required_quantity` /
+  `inventory_item_link.inventory_item.*`) and normalise the rows
+  into the shape `prepareInventoryUpdate` already expects.
+- `integration-tests/http/offer/order/order.spec.ts` — the previously
+  `it.skip`'d test `should reserve qty × required_quantity per
+  inventory_item on placement` is now `it(...)`. It seeds an offer
+  with `required_quantity: 3`, checks out with `quantity: 2`, and
+  asserts `reserved_quantity === 6` (against a stock level of 50).
+- `docs/specs/SPEC-002-offer-management.md` — the Architectural-gap
+  section rewritten in place under the heading **Pivot extra-column
+  exposure (resolved 2026-05-21)**, documenting the correct field
+  paths and the contract that any consumer needing the multiplier
+  must traverse through `inventory_item_link`.
+
+Verification:
+
+- `cd packages/core && bun run build` clean.
+- `bun run test:integration:http -- offer/order/order` →
+  **3 / 3 pass** (was 2 pass + 1 skip).
+- `bun run test:integration:http -- offer/cart/cart` →
+  **6 / 6 pass** (no regression).
+- `bun run test:integration:http -- offer/vendor/offer` →
+  **16 / 16 pass** (no regression).
+- `bunx oxlint --quiet packages/core/src/workflows/{offer,cart,order}`
+  → `0 errors / 120 warnings` (unchanged `no-shadow` baseline).
+
+### 2026-05-21 — Session 13: runtime verification green on vendor / cart / order suites
+
+Ran the offer integration suites against the in-process test runner (PG via
+`medusaIntegrationTestRunner`, fake Redis):
+
+- `bun run test:integration:http -- offer/vendor/offer` → **16 / 16 passed**.
+  Covers CRUD, `(seller_id, sku)` uniqueness, cross-seller scope, sibling
+  offers on one variant, soft-delete, the inventory-items batch endpoint
+  (create / update `required_quantity` / delete / duplicate / cross-seller),
+  and the `updateOffersWorkflow` price-ladder replace shape.
+- `bun run test:integration:http -- offer/cart/cart` → **6 / 6 passed**.
+  Covers `offer_id`-missing → 400, price snapshot
+  (`unit_price` + `is_custom_price=true`), sibling-offer non-merge, writable
+  `cart-line-item-offer-link` materialised, offer-sku decoration, non-existent
+  `offer_id` → 404. The `validate-add-to-cart-stock` hook traverses
+  `offer.inventory_items.location_levels.*` cleanly — the Session 12
+  `expandDotPaths` failure no longer reproduces.
+- `bun run test:integration:http -- offer/order/order` → **2 passed, 1 skipped**
+  (`should reserve qty × required_quantity per inventory_item on placement`).
+  The skipped case requires `offer.inventory_items.required_quantity` to
+  surface on the writable M:N pivot through Query — see **Architectural
+  gap — pivot extra-column exposure**. The two passing cases prove the
+  cart→order `order_line_item ↔ offer` link mirror and that multi-seller
+  carts split into per-seller orders preserving the offer link.
+
+Static checks: `cd packages/core && bun run build` clean;
+`bunx oxlint --quiet` on the offer/cart/order workflow trees and the offer
+route handlers reports **0 errors** (warnings unchanged from the Session
+6–11 baseline). The store offer spec
+(`integration-tests/http/offer/store/offers.spec.ts`) was deleted in
+commit `bda84357` while the store-products offers shape is iterated;
+the deletion is intentional and tracked under
+**Pending work to move this spec to `passing`** below.
+
+### 2026-05-21 — Session 12: cart.spec.ts seed unblocked + cart line-items middleware patch
+
+Targeted fix for the `offer/cart/cart.spec.ts` row that was marked
+**blocked at seed** in the Session 11 status sweep.
+
+- **Seed shape** — both inline product create payloads
+  (`seedSellerOffer` and the sibling-offer test) rewritten from the
+  legacy `options` / `prices` / `manage_inventory` / `sales_channels`
+  shape to the current `variant_attributes` / `attribute_values`
+  shape, with a follow-up `POST /vendor/sales-channels/:id/products`
+  to attach the channel. Each seed call now appends a unique tag so
+  that repeated `it()` blocks within the suite don't collide on
+  unique constraints (attribute name, sku, stock-location name,
+  shipping-profile name).
+- **Medusa cart line-items middleware override** — Medusa's default
+  `POST /store/carts/:id/line-items` middleware applies
+  `StoreAddCartLineItem` which is `.strict()` and requires
+  `variant_id`. With Mercur's middleware adding the offer-aware
+  validator on the same matcher, Medusa's strict validator runs
+  first and rejects the `offer_id` payload with
+  `"Invalid request: Field 'variant_id' is required;
+  Unrecognized fields: 'offer_id'"` before Mercur's route handler
+  is reached. `packages/cli/src/utils/patch-medusa.ts` is extended
+  with `patchStoreCartLineItemsMiddleware` — a surgical regex that
+  removes only the `POST /store/carts/:id/line-items` entry from
+  Medusa's compiled `dist/api/store/carts/middlewares.js`, leaving
+  every other cart middleware (GET cart, POST cart, customer,
+  shipping-methods, promotions, taxes, complete, the
+  `:line_id` PATCH/DELETE pair) intact. Mercur's own middleware on
+  the same matcher remains the sole validator on this route.
+- **Status after the patch** — `should reject add-to-cart when
+  offer_id is missing` now passes (Mercur's validator fires
+  cleanly). The remaining five cases fail downstream in the
+  `validate-add-to-cart-stock` hook with
+  `Cannot read properties of undefined (reading 'strategy')` at
+  `expandDotPaths` while populating
+  `offer.inventory_items.inventory.location_levels.*` through the
+  Inventory module via remote query. The same dotted path is in use
+  by `packages/core/src/api/store/products/[id]/route.ts`,
+  `packages/core/src/workflows/cart/utils/fields.ts`, the F8/F9/F10
+  order-fulfilment overrides, and `prepareOfferInventoryInput`, so
+  the failure is **not** isolated to the cart hook — it's a
+  shared join shape that needs an end-to-end audit. Tracked as a
+  follow-up; the cart spec is **unblocked at seed** and the
+  middleware conflict is permanently resolved at the patch layer.
+
+`patchMedusa()` currently runs only via the CLI's `db-migrate` and
+`start` commands. To make the cart middleware fix bite under
+`bun run test:integration:http`, the integration-test path needs
+its own bootstrap that invokes `patchMedusa()` (or
+`mercurjs build` needs to grow a patch step). Recording this as
+explicit follow-up scope so the next session does not re-discover
+it.
+
+### 2026-05-20 — Session 11: integration tests for store / cart / order surfaces
+
+Three new spec files landed under `integration-tests/http/offer/`:
+
+- **`store/offers.spec.ts`** — `GET /store/products/:id` per-variant
+  offers list. Cases: happy-path attach, zero-stock filter,
+  `floor(stocked / required_quantity)` → `low_stock` when < 5, two
+  sellers on one variant sorted by price ASC, sales-channel
+  allowed-location filter (stock location not linked → offer hidden).
+- **`cart/cart.spec.ts`** — same-id `addToCartWorkflow` override via
+  `POST /store/carts/:id/line-items`. Cases: HTTP `offer_id`
+  requirement (400 when absent), price snapshot
+  (`unit_price` + `is_custom_price=true`), sibling offers on one
+  variant become two distinct lines, writable
+  `cart-line-item-offer-link` row materialised (Query traversal
+  `line_item.offer.id`), `decorateLineItemWithOfferStep` overrides
+  `variant_sku` with the offer's sku, non-existent offer → 404.
+- **`order/order.spec.ts`** — cart→order link mirror +
+  reservation arithmetic. Cases: full checkout with
+  `order_group.orders.items.offer.id` confirmed via Query (proves
+  `mirrorLineItemOfferLinksToOrderStep` writes the
+  `order_line_item ↔ Offer` rows), reservation count equals
+  `quantity × required_quantity` per linked inventory item (proves
+  `prepareOfferInventoryInput` is wired into
+  `completeCartWithSplitOrdersWorkflow`'s `reserveInventoryStep`),
+  multi-seller cart splits into per-seller orders each carrying the
+  correct `offer_id`.
+
+Static verification: `bunx tsc --noEmit -p packages/core` clean;
+`bunx tsc --noEmit -p integration-tests` reports zero errors on the
+three new files; `bunx oxlint` on the new tree reports 0 errors / 2
+warnings (`no-await-in-loop` on the shipping-method add loop — same
+convention as the upstream cart spec, intentional because the
+shipping-method add must be sequential).
+
+Runtime verification against PG + Redis is **not** yet executed;
+queued as the next session's first action. Three Session 10
+override workflows (createOrderFulfillment, cancelOrderFulfillment,
+confirmReceiveReturn) still lack tests; deferred because they share
+the `order_line_item.offer.inventory_items.*` Query traversal with
+the reservation test, so any link-table key mismatch would surface
+in `order.spec.ts` first.
+
+### 2026-05-20 — Foundation landed (module skeleton + links)
+
+Scope of this drop: the data layer and cross-module wiring only. No
+workflows, API routes, cart override, or inventory-lifecycle code has
+shipped yet — those are tracked as the next slices of this in-progress
+spec.
+
+- **Module:** `packages/core/src/modules/offer/`
+  - `index.ts` — registers `Module(MercurModules.OFFER, { service: OfferModuleService })`.
+  - `service.ts` — `OfferModuleService extends MedusaService({ Offer })`.
+  - `models/offer.ts` — `Offer` entity with the columns and partial
+    unique index `(seller_id, sku) WHERE deleted_at IS NULL` plus the
+    lookup indexes called out in **Uniqueness and indexes**.
+  - `migrations/Migration20260520104835.ts` — creates the `offer`
+    table and all indexes.
+- **Types:** `MercurModules.OFFER = "offer"` added in
+  `packages/types/src/modules.ts`.
+- **Cross-module links** (`packages/core/src/links/`):
+  - `offer-variant-link.ts` — read-only on `offer.variant_id` →
+    `ProductModule.linkable.productVariant`.
+  - `offer-seller-link.ts` — read-only on `offer.seller_id` →
+    `SellerModule.linkable.seller`.
+  - `offer-shipping-profile-link.ts` — read-only on
+    `offer.shipping_profile_id` →
+    `FulfillmentModule.linkable.shippingProfile`.
+  - `offer-price-set-link.ts` — read-only on `offer.price_set_id` →
+    `PricingModule.linkable.priceSet`.
+  - `offer-inventory-item-link.ts` — writable many-to-many to
+    `InventoryModule.linkable.inventoryItem` with
+    `database.table = "offer_inventory_item"` and
+    `database.extraColumns.required_quantity` (`integer`, default
+    `"1"`), mirroring Medusa's `product_variant_inventory_item` join.
+- **Verification:** `packages/core` `bun run build` (tsc) passes
+  cleanly. `bun run lint` reports zero new warnings/errors against
+  the new files (the repo-wide 55 errors / 1347 warnings are the
+  pre-existing oxlint baseline noted in `claude-progress.md` Session 3
+  and the canary `packages/admin` `product-variant-detail.tsx` build
+  failure originates from commit `90248d55` — both unrelated to this
+  drop).
+
+### 2026-05-20 — F2 create workflow + CRUD API routes + first integration test
+
+- **Workflows** (`packages/core/src/workflows/offer/`):
+  - `createOffersWorkflow` (F2): validates referenced variants /
+    inventory items via `useQueryGraphStep`, calls Medusa's
+    `createPriceSetsStep` (one fresh `PriceSet` per offer, seeded
+    with the offer's `Price` rows), inserts offer rows with
+    `price_set_id` + `ean` / `upc` snapshotted from the chosen
+    variant, then calls `createRemoteLinkStep` to write one
+    `OFFER ↔ INVENTORY` link row per attached inventory item carrying
+    `required_quantity`. Emits `offer.created`.
+  - `updateOffersWorkflow`: offer-row-only updates (`sku`,
+    `shipping_profile_id`, `metadata`); compensator restores prior
+    values. Emits `offer.updated`.
+  - `deleteOffersWorkflow`: soft-delete via `softDeleteOffers`;
+    compensator restores. Emits `offer.deleted`. `PriceSet` and
+    inventory links are left intact per **Mutation contract**.
+  - Steps: `createOffersStep`, `updateOffersStep`, `deleteOffersStep`
+    (each with a compensator).
+  - Events declared on `OfferWorkflowEvents` in
+    `packages/core/src/workflows/events.ts`.
+- **Vendor API routes** (`packages/core/src/api/vendor/offers/`):
+  - `route.ts` — `GET /vendor/offers` (filtered to the request's
+    seller via `applySellerOfferFilter`) and
+    `POST /vendor/offers` (pre-check rejects duplicate
+    `(seller_id, sku)` with `DUPLICATE_ERROR` → HTTP 409, then
+    dispatches `createOffersWorkflow`).
+  - `[id]/route.ts` — `GET` / `POST` / `DELETE /vendor/offers/:id`
+    with `validateSellerOffer` enforcing the seller scope on every
+    read/write.
+  - `validators.ts`, `query-config.ts`, `middlewares.ts`, `helpers.ts`
+    follow the campaigns / inventory-items conventions.
+- **Admin API routes** (`packages/core/src/api/admin/offers/`):
+  - `GET /admin/offers` (filterable by `seller_id`, `variant_id`,
+    `sku`, `ean`, `upc`) and `GET /admin/offers/:id`. Write paths
+    are deferred — admin price edits flow through the same
+    `updateOffersWorkflow` once the admin update route is added.
+- **Middleware wiring**: `vendorOffersMiddlewares` registered on
+  `packages/core/src/api/vendor/middlewares.ts`,
+  `adminOffersMiddlewares` on the admin counterpart.
+- **First integration test**
+  (`integration-tests/http/offer/vendor/offer.spec.ts`): bootstraps
+  two seller users, creates per-seller product variants, inventory
+  items, and shipping profiles. Covers happy-path create, 404 on
+  unknown `variant_id`, 409 on duplicate `(seller_id, sku)`, two
+  sellers sharing the same `sku`, one seller creating two offers on
+  the same variant with distinct `sku`s (different
+  `required_quantity` per offer), 400 on duplicate
+  `inventory_item_id` within a single create payload, seller-
+  scoped list, 404 cross-seller detail read, and soft-delete.
+- **Verification**: `bunx tsc --noEmit` on `packages/core` is clean.
+  `bun run build` (mercur codegen + `tsc --declaration`) on the same
+  package is clean. `bunx oxlint packages/core/src/{api,workflows}/...
+  offers ...offer` reports `0 errors / 16 warnings` — all
+  `no-shadow` warnings on the standard Medusa
+  `transform(input, ({ input }) => …)` idiom that the existing
+  `terminate-seller` / similar workflows also use. The repo-wide
+  oxlint baseline therefore moves from 55 errors / 1347 warnings →
+  55 errors / 1363 warnings (no new errors).
+
+### 2026-05-20 — Offer inventory-items batch endpoint + price updates folded into `updateOffersWorkflow`
+
+The earlier in-flight design had a dedicated
+`batchOfferPricesWorkflow` powering
+`POST /vendor/offers/:id/prices/batch` and
+`POST /admin/offers/:id/prices/batch` with a
+`{ create, update, delete }` envelope. That shape duplicated the
+update path and divorced price edits from the rest of the offer
+patch surface. This revision aligns with Medusa's
+`updateProductVariantsWorkflow → updatePriceSetsStep` shape
+instead — the offer's full price ladder is carried as an optional
+`prices` field on the existing
+`POST /vendor/offers/:id` payload, with replace semantics.
+
+- **Deleted** (`packages/core/src/`):
+  - `workflows/offer/steps/batch-offer-prices.ts`
+  - `workflows/offer/workflows/batch-offer-prices.ts`
+  - `api/vendor/offers/[id]/prices/batch/route.ts`
+  - `api/admin/offers/[id]/prices/batch/route.ts`
+  - Removed `VendorBatchOfferPrices` validator + middleware entry
+    on the vendor side and `AdminBatchOfferPrices` on the admin
+    side.
+- **Extended `updateOffersWorkflow`**
+  (`workflows/offer/workflows/update-offers.ts`): each offer entry
+  now optionally carries
+  `prices: Array<{ id?, amount, currency_code, min_quantity?, max_quantity?, rules? }>`.
+  The workflow runs `updateOffersStep` first, then — for every
+  offer whose payload included a `prices` array — resolves
+  `offer.price_set_id` via `useQueryGraphStep` and dispatches
+  `updatePriceSetsStep({ price_sets: [{ id, prices }] })`. The
+  pricing module's replace semantics handle add (no `id`), update
+  (`id` matches an existing row), and delete (existing row absent
+  from the array) in a single call. Omitting `prices` leaves the
+  PriceSet untouched. Mirrors Medusa's
+  `updateProductVariantsWorkflow` price branch shape
+  (`packages/core/core-flows/src/product/workflows/update-product-variants.ts`).
+- **New `VendorUpdateOffer.prices`** validator field — full ladder
+  payload, optional.
+- **Inventory-items batch unchanged**:
+  `POST /vendor/offers/:id/inventory-items/batch` and
+  `batchOfferInventoryItemsWorkflow` remain — their
+  `{ create, update, delete }` shape mirrors Medusa's variant
+  inventory-items batch and there is no equivalent collapse onto
+  the update endpoint (link rows are not part of the offer row's
+  scalar update surface).
+- **Endpoint Contracts** and the **Workflows and Events** section
+  above have been rewritten to reflect this collapse;
+  `batchOfferPricesWorkflow` is no longer listed.
+
+### 2026-05-20 — Vendor offer integration test extended (prices ladder + inventory-items batch + cross-seller scope)
+
+- `integration-tests/http/offer/vendor/offer.spec.ts` now covers the
+  Session 7 endpoints:
+  - `POST /vendor/offers/:id` (update) — three cases:
+    `sku`-only update leaves `price_set.prices` untouched;
+    full prices ladder rewrites the offer's `PriceSet` (existing
+    USD row updated by `id`, GBP row added, EUR row removed in one
+    call); cross-seller update → 404.
+  - `POST /vendor/offers/:id/inventory-items/batch` — four cases:
+    add + remove + update `required_quantity` across two calls
+    (validates `created` / `updated` / `deleted` response shape plus
+    the refetched `offer.inventory_items` after each call);
+    duplicate `inventory_item_id` inside `create` → 400;
+    `delete` of an inventory item not currently linked → 404 (the
+    step's pre-flight `priorByItemId.has(id)` check);
+    cross-seller batch attempt → 404.
+- Verification (type-check + lint only — no PG + Redis run yet):
+  - `bunx tsc --noEmit -p packages/core`: clean.
+  - `bunx tsc --noEmit` on `integration-tests`: clean against the
+    offer spec (pre-existing unrelated failures in
+    `http/meilisearch/admin`, `http/payouts/vendor`,
+    `http/product/admin` remain; none touch the offer surface).
+  - `bunx oxlint integration-tests/http/offer`: 0 warnings, 0 errors.
+  - `bunx oxlint packages/core/src/{api,workflows}/...offer{,s}`:
+    24 warnings (same `no-shadow` baseline from Session 7), 0 errors.
+
+### 2026-05-20 — Offer DTOs centralized in `@mercurjs/types`
+
+The offer workflows and steps had been declaring their input shapes
+inline. Session 8b lifts them into the shared types package so every
+consumer (workflows, HTTP routes, the typed client, downstream block
+packages) reads from one source of truth.
+
+- **Added** (`packages/types/src/`):
+  - `offer/common.ts` — `OfferDTO`, `OfferInventoryItemLinkDTO`,
+    `OfferPriceDTO` (alias for `MoneyAmountDTO`).
+  - `offer/mutations.ts` — `CreateOfferDTO`, `CreateOfferRowDTO`,
+    `CreateOfferInventoryItemDTO`, `CreateOfferPriceDTO`,
+    `UpsertOfferPriceDTO`, `UpdateOfferDTO`,
+    `BatchOfferInventoryItemsDTO`.
+  - `offer/index.ts` — barrel; wired into `src/index.ts` under
+    `// Offer types`.
+  - `http/offer.ts` — `VendorCreateOfferReq`, `VendorUpdateOfferReq`,
+    `VendorBatchOfferInventoryItemsReq`, `VendorOfferResponse`,
+    `VendorOfferListResponse`, `VendorOfferDeleteResponse`,
+    `VendorBatchOfferInventoryItemsResponse`, `AdminOfferResponse`,
+    `AdminOfferListResponse`. Wired into `http/index.ts`.
+- **Refactored** (`packages/core/src/workflows/offer/`):
+  - `workflows/create-offers.ts` —
+    `CreateOffersWorkflowInput.offers: CreateOfferDTO[]`.
+  - `steps/create-offers.ts` —
+    `CreateOffersStepInput = CreateOfferRowDTO[]`.
+  - `workflows/update-offers.ts` —
+    `UpdateOffersWorkflowInput.offers: UpdateOfferDTO[]`.
+  - `workflows/batch-offer-inventory-items.ts` —
+    `BatchOfferInventoryItemsWorkflowInput = BatchOfferInventoryItemsDTO & AdditionalData`.
+  - `steps/update-offers.ts`, `steps/delete-offers.ts` untouched
+    (already minimal; no inline duplication worth lifting).
+- **Spec body** — new `## Types Contract` section documents the layout,
+  the consumer mapping (workflow ↔ DTO ↔ HTTP type ↔ zod validator),
+  and the rule that the zod schema remains the runtime contract while
+  the HTTP types stay structurally compatible.
+- **Verification:**
+  - `cd packages/types && bun run build`: clean.
+  - `bunx tsc --noEmit -p packages/core`: clean.
+  - `cd packages/core && bun run build` (mercur codegen +
+    `tsc --declaration --outDir .medusa/server`): clean.
+  - `bunx oxlint packages/types/src/offer packages/types/src/http/offer.ts packages/core/src/workflows/offer`:
+    `0 errors / 24 warnings` (`no-shadow` baseline from Session 7,
+    unchanged by this drop).
+
+### 2026-05-20 — Session 9: Cart identity layer + same-id addToCartWorkflow override
+
+This drop lands the foundational cart-side identity for offers and the
+authoritative same-id override of `addToCartWorkflow`. After this, the
+storefront's `offer_id` flows end-to-end into a real
+`cart.LineItem ↔ Offer` link row and the per-offer `PriceSet` is
+resolved exactly once per add-to-cart call.
+
+- **Added writable links** (`packages/core/src/links/`):
+  - `cart-line-item-offer-link.ts` — `CartModule.linkable.lineItem ↔
+    OfferModule.linkable.offer`, declared without `readOnly` so
+    Medusa's link module materializes the join table. The row is
+    written by `linkLineItemToOfferStep` immediately after the line
+    item is persisted.
+  - `order-line-item-offer-link.ts` — `OrderModule.linkable.orderLineItem
+    ↔ OfferModule.linkable.offer`, also writable. The row is written
+    by the inline-added `mirrorLineItemOfferLinksToOrderStep` in
+    `completeCartWithSplitOrdersWorkflow` immediately after
+    `createOrdersStep`.
+- **Added TypeScript augmentation**
+  (`packages/core/src/types/cart-line-item.ts`): `declare module
+  "@medusajs/types"` adds `offer_id: string` to Medusa's
+  `CreateCartCreateLineItemDTO`. Every Mercur call site that types its
+  workflow input now sees the field as a first-class required string —
+  no `as any` casts elsewhere in the codebase.
+- **New cart steps** (`packages/core/src/workflows/cart/steps/`):
+  - `link-line-item-to-offer.ts` — writes one `cart.LineItem ↔ Offer`
+    link row per `(line_item_id, offer_id)` pair via
+    `container.resolve(ContainerRegistrationKeys.LINK).create(...)`;
+    compensator dismisses what it wrote. Spec-mandated guard rejects
+    any row missing `line_item_id` or `offer_id` with
+    `MedusaError.Types.INVALID_DATA`.
+  - `decorate-line-item-with-offer.ts` — snapshots the offer's `sku` /
+    `seller_id` / `shipping_profile_id` onto the cart line via the
+    cart module's `updateLineItems`. The offer's `sku` overrides the
+    line's `variant_sku` (the column the storefront and downstream
+    Medusa code already display) and the seller / shipping-profile
+    references go to `line_item.metadata`. Compensator restores the
+    pre-decoration values for each updated line.
+  - `mirror-line-item-offer-links-to-order.ts` — reads each new
+    `order_line_item`'s `metadata.cart_line_item_id` (stamped by
+    Mercur's overridden `prepareLineItemData` — see below), joins
+    against the `cart.LineItem ↔ Offer` rows by that key, and writes
+    mirrored `order.OrderLineItem ↔ Offer` rows keyed by the new
+    `order_line_item.id`s. Necessary because `createOrdersStep`
+    generates fresh `orli_*` ids and discards cart-line identity. Throws
+    `MedusaError.Types.INVALID_DATA` if an order line cannot resolve
+    to an offer (defense-in-depth — every cart line at this point
+    must carry an offer).
+  - `calculate-offer-prices.ts` — given the active pricing context, an
+    `items` array (one entry per cart line), and the resolved offers,
+    issues one `pricingModule.calculatePrices({ id: priceSetIds }, {
+    context })` call and returns the matched
+    `{ offer_id, unit_price, currency_code }` rows. Throws
+    `MedusaError.Types.NOT_FOUND` if any input offer is missing and
+    `MedusaError.Types.INVALID_DATA` if the pricing module returns no
+    calculated amount for the offer's `PriceSet` (typically a
+    region/currency/customer-group mismatch). One round-trip per
+    add-to-cart invocation, no per-line dispatch.
+  - `get-line-item-actions.ts` — Mercur replacement for Medusa's
+    `getLineItemActionsStep` under the same step id
+    (`get-line-item-actions-step`). Keys candidate-merge lookups by
+    `(variant_id, offer_id)` so two offers on the same variant land
+    as two distinct cart lines instead of collapsing. The offer id
+    per existing line is read via one Query graph call against
+    `line_item.offer.id`, then carried alongside the existing
+    `metadataMatches` predicate. Mercur's `addToCartWorkflow`
+    override calls Mercur's step; Medusa's compiled `addToCartWorkflow`
+    is no longer invoked (the same-id override unregisters it before
+    re-registering).
+- **New cart workflow** (`packages/core/src/workflows/cart/workflows/add-to-cart.ts`):
+  same-id override of `addToCartWorkflow` via the existing
+  `overrideWorkflow` helper. Composition:
+  1. `acquireLockStep` on `cart_id` (mirrors Medusa's lock window).
+  2. `useQueryGraphStep` fetches the cart with Mercur's
+     `cartFieldsForPricingContext` field list.
+  3. `validateCartStep` (verbatim from Medusa).
+  4. `createHook("validate", { input, cart })` — the upstream
+     spec hook stays available to subscribers.
+  5. `transform` over `input.items` — Mercur-mandated guard throws
+     `MedusaError.Types.INVALID_DATA` ("Every cart line item must
+     carry an offer_id") if any item lacks the augmented field.
+  6. `useQueryGraphStep` fetches the offers by id
+     (`price_set_id`, `variant_id`, `sku`, `seller_id`,
+     `shipping_profile_id`, `deleted_at`), then a `transform`
+     validates each requested offer is present and not soft-deleted
+     (raises `MedusaError.Types.NOT_FOUND` otherwise).
+  7. `calculateOfferPricesStep` — one bulk pricing call against every
+     input item's `offer.price_set_id`.
+  8. `useQueryGraphStep` fetches every unique `offer.variant_id` so
+     Mercur's `prepareLineItemData` has the variant-shape fields
+     (product, thumbnail, calculated_price) it expects.
+  9. `transform` builds the prepared line items — `unit_price` =
+     `pricedItems[item].unit_price`, `isCustomPrice = true`. Medusa's
+     downstream pipeline honors `is_custom_price` and never overwrites
+     the snapshotted price on refresh / qty update.
+  10. `validateLineItemPricesStep` (verbatim).
+  11. `getLineItemActionsStep` — Mercur's replacement; splits the
+      payload into `itemsToCreate` / `itemsToUpdate` keyed by
+      `(variant_id, offer_id)`.
+  12. `parallelize(createLineItemsStep, updateLineItemsStep)` — verbatim
+      from Medusa.
+  13. `linkLineItemToOfferStep` — writes one
+      `cart.LineItem ↔ Offer` link row per created cart line.
+  14. `decorateLineItemWithOfferStep` — snapshots offer fields onto
+      each new line.
+  15. `refreshCartItemsWorkflow.runAsStep` — Medusa runs the
+      promotion / tax / payment-collection refresh; the `is_custom_price`
+      flag prevents the offer-resolved `unit_price` from being
+      overwritten.
+  16. `parallelize(emitEventStep(CartWorkflowEvents.UPDATED), releaseLockStep)`.
+  Deliberately not included in this drop (each is a separate slice):
+  - The `setPricingContext` hook (Mercur does not use it — the pricing
+    context is owned by the workflow body).
+  - `getTranslatedLineItemsStep` (cart-line translation; not load-bearing
+    for the offer contract — can be wired in a follow-up).
+  - `confirmVariantInventoryWorkflow.runAsStep` (the spec's contract
+    routes inventory validation through `hooks.validate` —
+    landed in a later slice that also wires `prepareOfferInventoryInput`).
+- **Modified `complete-cart-with-split-orders.ts`**: inserts
+  `mirrorLineItemOfferLinksToOrderStep` immediately after
+  `createOrdersStep`. The mirror step reads the new order-line ids
+  from the freshly-created orders, looks up each line's
+  `metadata.cart_line_item_id`, joins back against the cart-side
+  `LineItem ↔ Offer` link via Query, and writes the mirrored
+  order-side link rows. No `overrideWorkflow` is involved — the host
+  workflow is already Mercur-owned.
+- **Modified `prepare-line-item-data.ts`**: the existing
+  Mercur-owned copy now stamps `metadata.cart_line_item_id` on every
+  prepared order line when `item.id` is present. This is the single
+  deterministic carrier `mirrorLineItemOfferLinksToOrderStep` joins on
+  — `offer_id` itself is **not** put on `line_item.metadata`. The
+  spec's "Cart→order line identity gotcha" callout is now implemented.
+- **Verification (type-check + lint + build):**
+  - `bunx tsc --noEmit -p packages/core`: clean.
+  - `cd packages/core && bun run build` (mercur codegen +
+    `tsc --declaration --outDir .medusa/server`): clean. The
+    `.medusa/server` output contains the new step + workflow + link
+    files.
+  - `bunx oxlint` on the new step + workflow + link + types files:
+    `0 errors / 20 warnings` — all `no-shadow` on the standard
+    Medusa `transform(input, ({ input }) => …)` idiom (same baseline
+    Sessions 6–8 already accepted).
+
+### 2026-05-20 — Session 9d: Store API offers surface on `GET /store/products/:id`
+
+- Augmented the existing Mercur store product detail route at
+  `packages/core/src/api/store/products/[id]/route.ts`:
+  - After loading the product, the route collects every variant's
+    id, runs **one** `query.graph` call against the `offer` entity
+    with the full inventory + seller chain
+    (`inventory_items.inventory.location_levels.*`,
+    `seller.{id,name,handle}`), and filters out soft-deleted offers.
+  - **Effective-stock filter** computes `MIN(floor((stocked −
+    reserved) / required_quantity))` per offer across its linked
+    inventory items, restricted to the cart's sales-channel
+    locations when `sales_channel_id` is provided. Offers with
+    effective stock ≤ 0 drop out of the response.
+  - **One bulk pricing call**:
+    `pricingModule.calculatePrices({ id: priceSetIds }, { context })`
+    runs once across every visible offer's `PriceSet`. Context is
+    the standard Medusa pricing context built from optional query
+    params `region_id`, `currency_code`, `customer_group_id` plus
+    `quantity: 1`. No `offer_id` in the context — every candidate
+    `PriceSet` belongs to a single offer, so cross-offer leakage is
+    structurally impossible.
+  - Each variant in the response gets an `offers` array attached.
+    Each entry: `id`, `seller` (id/name/handle), `price`,
+    `currency_code`, `stock_status` (`in_stock` /
+    `low_stock` (< 5) / `out_of_stock`), `shipping_profile_id`,
+    `sku`. Sorted **price ASC, id ASC** for stable rendering.
+  - The route never picks a "winner" — it returns every visible
+    offer in deterministic order and lets the storefront decide
+    which one to bind the buy button to.
+- **No new query-config / validator file**: the existing
+  `StoreGetProductParams` already supports passthrough query, and
+  the offers attach happens post-Query in the route handler.
+- **Verification:**
+  - `bunx tsc --noEmit -p packages/core`: clean (exit 0).
+  - `cd packages/core && bun run build`: clean (exit 0).
+  - `bunx oxlint packages/core/src/api/store/products/[id]/route.ts`:
+    `0 warnings / 0 errors`.
+
+### 2026-05-20 — Session 9c: Offer-aware reservation + cart validate-stock hooks
+
+Foundational inventory-lifecycle pieces. The cart now reserves stock
+against the offer's linked inventory items on place-order, and
+add-to-cart / qty-update reject when the linked items lack coverage.
+
+- **Added `prepareOfferInventoryInput` utility**
+  (`packages/core/src/workflows/offer/utils/prepare-offer-inventory-input.ts`):
+  resolves each cart line by its linked offer (via `item.offer.id`)
+  and fans out one entry per `(line, linked inventory_item)` pair.
+  Output shape matches Medusa's `prepareConfirmInventoryInput` exactly
+  so `confirmInventoryStep` / `reserveInventoryStep` accept it
+  unchanged. `allow_backorder` is hardcoded to `false` (the variant
+  field is gone and the offer module has no backorder flag today).
+  Also exports `requiredOfferFieldsForInventoryConfirmation` — the
+  query field list every consumer can pull in to populate the input.
+- **Wired offer-aware reservation into
+  `completeCartWithSplitOrdersWorkflow`**: the previous variant-shaped
+  `reserveInventoryStep(formatedInventoryItems)` call is replaced
+  inline with a chain that fetches the unique offer IDs from the
+  cart, runs one `useQueryGraphStep` against the `offer` entity for
+  the inventory-item chain, builds the offer-shaped input via
+  `transform(input, prepareOfferInventoryInput)`, and passes the
+  result straight to `reserveInventoryStep`. The variant-shaped
+  `reservationItemsData` + `prepareConfirmInventoryInput` block is
+  gone. No `overrideWorkflow` involved — the host workflow is
+  Mercur-owned. Cart→order line identity is preserved through
+  `metadata.cart_line_item_id` (stamped by Session 9's
+  `prepareLineItemData` change) so each created order line resolves
+  back to its origin cart line's offer.
+- **Added cart `hooks/` directory**
+  (`packages/core/src/workflows/cart/hooks/`) with two
+  side-effect-only modules:
+  - `validate-add-to-cart-stock.ts` registers a handler against
+    Mercur's `addToCartWorkflow.hooks.validate`. The handler reads
+    the request's `offer_id`s, fetches offers + their inventory
+    chains via Query, runs `prepareOfferInventoryInput`, then
+    iterates and calls `inventoryService.confirmInventory(...)`
+    for each entry. Throws Medusa's native
+    `MedusaError.Codes.INSUFFICIENT_INVENTORY` if any item lacks
+    coverage. Runs early — before line items are persisted — so
+    the caller gets a stock error before any cart mutation.
+  - `validate-update-line-item-stock.ts` registers a handler on
+    `updateLineItemInCartWorkflow.hooks.validate`. Skips when
+    `update.quantity` is unset or zero. Looks up the existing
+    line's `offer.id` via Query (`line_item.offer.id`), fetches
+    the offer's inventory chain, and runs the same
+    confirm-inventory loop with the new quantity. Throws the
+    Medusa-native insufficient-inventory error on shortfall.
+  - `index.ts` re-imports both files for side-effect registration.
+  - `packages/core/src/workflows/cart/index.ts` runs
+    `import "./hooks"` after the workflow exports so the handlers
+    register at module load.
+- **Cart `completeCartFields` rewrite**
+  (`packages/core/src/workflows/cart/utils/fields.ts`): the
+  `items.variant.manage_inventory` / `items.variant.allow_backorder`
+  / `items.variant.inventory_items.*` paths (which the Mercur
+  schema no longer declares) are removed. Replaced with
+  `items.offer.id`, `items.offer.price_set_id`, and the
+  `items.offer.inventory_items.*` field chain — the exact paths
+  the new offer-aware reservation reads.
+- **Removed unused `variants` destructure** in
+  `completeCartWithSplitOrdersWorkflow` (the old variant-shaped
+  reservation path consumed it; offer-shaped reservation does
+  not). `sales_channel_id` is still extracted via a slimmer
+  `transform`.
+- **Verification:**
+  - `bunx tsc --noEmit -p packages/core`: clean (exit 0).
+  - `cd packages/core && bun run build` (mercur codegen + tsc
+    declarations): clean (exit 0). The `.medusa/server` output
+    contains `prepare-offer-inventory-input.js` and the two cart
+    hook files.
+  - `bunx oxlint` on the new + touched files (`workflows/cart/hooks`,
+    `workflows/offer/utils`, `complete-cart-with-split-orders.ts`,
+    `cart/utils/fields.ts`): `0 errors / 25 warnings` — all
+    `no-shadow` (established baseline). One pre-existing
+    `no-unused-vars` on the now-removed `variants` destructure was
+    fixed in this slice.
+
+### 2026-05-20 — Session 10: Fulfilment / cancel-fulfilment / return-receive offer-aware overrides
+
+Closes the inventory-lifecycle slice on the order side. Mercur now owns
+three more same-id overrides so the decrement / restock math reads
+`offer.inventory_items.required_quantity` instead of falling back to
+`1` on the missing variant link.
+
+- **`createOrderFulfillmentWorkflow`** override (id `create-order-fulfillment`)
+  in `packages/core/src/workflows/order/workflows/create-order-fulfillment.ts`:
+  - Drops the upstream `items.variant.manage_inventory` /
+    `items.variant.allow_backorder` /
+    `items.variant.inventory_items.*` paths from the order query.
+  - Adds a second `useQueryGraphStep` against `order_line_item` for
+    `offer.id` / `offer.inventory_items.{inventory_item_id, required_quantity, inventory.{id,title,sku}}`,
+    keyed by the input item ids.
+  - Replaces Medusa's `prepareInventoryUpdate` /
+    `prepareFulfillmentData` lookups with offer-keyed maps. For each
+    reservation row the override multiplies `inputQuantity ×
+    offer.inventory_items[i].required_quantity` to compute both the
+    negative `adjustInventoryLevelsStep` adjustment and the
+    `toUpdate` / `toDelete` reservation split.
+  - The fulfillment item's `title` / `sku` fall back to the offer's
+    linked inventory item rather than the variant.
+  - All other steps (createFulfillmentWorkflow.runAsStep,
+    registerOrderFulfillmentStep, createRemoteLinkStep,
+    updateReservationsStep, deleteReservationsStep, emitEventStep,
+    `fulfillmentCreated` hook) are imported verbatim from
+    `@medusajs/medusa/core-flows`.
+  - Validation (`mercur-create-order-fulfillment-validate-order`)
+    inlines the three upstream `throwIf*` helpers so Mercur does not
+    depend on the un-exported `order/utils/order-validation.ts`.
+
+- **`cancelOrderFulfillmentWorkflow`** override
+  (id `cancel-order-fulfillment`):
+  - Drops the `items.variant.{manage_inventory,allow_backorder,inventory_items.*}`
+    paths.
+  - Adds the same `order_line_item.offer.inventory_items` query.
+  - Replaces both `prepareCancelOrderFulfillmentData` (line-item
+    quantity = `fitem.quantity / offer.required_quantity`) and
+    `prepareInventoryUpdate` (positive
+    `adjustInventoryLevelsStep` + reservation create-or-update with
+    the actual inventory ratio).
+  - `allow_backorder` is hardcoded `false` — the offer module does
+    not surface a backorder flag.
+  - Delegates the actual fulfillment cancel to
+    `cancelFulfillmentWorkflow.runAsStep` (Medusa, unchanged).
+
+- **`confirmReturnReceiveWorkflow`** override (id `confirm-return-receive`):
+  - Rewrites the return query to read
+    `items.item.offer.{id,inventory_items.{inventory_item_id,required_quantity,inventory.location_levels.location_id}}`
+    instead of the variant chain.
+  - Aggregates restock quantities by `offer.id` (not `variant_id`),
+    so two offers backed by the same variant are restocked
+    independently.
+  - The "stock at return location" precheck iterates the per-offer
+    `inventory_items.inventory.location_levels` and throws the same
+    Medusa-native error when none match `orderReturn.location_id`.
+  - Inlines a local `mercur-confirm-order-changes` step because
+    Medusa's `confirmOrderChanges` is not re-exported through
+    `@medusajs/medusa/core-flows`. The local step has the same
+    forward / compensator contract as the upstream.
+
+- **Cancel-order before fulfilment** still uses Medusa's own
+  `cancelOrderWorkflow`. Its existing
+  `deleteReservationsByLineItemsStep(line_item_ids)` call releases
+  Mercur's N-per-line reservations correctly without any override.
+
+- **Wiring**: new files re-exported through
+  `packages/core/src/workflows/order/{workflows/,}index.ts`, and
+  `packages/core/src/workflows/index.ts` gained `export * from './order'`.
+
+- **Verification**:
+  - `bunx tsc --noEmit -p packages/core`: clean (exit 0).
+  - `cd packages/core && bun run build`
+    (`mercur codegen && tsc --declaration --outDir .medusa/server`):
+    clean (exit 0). The new compiled outputs land at
+    `.medusa/server/src/workflows/order/workflows/{create-order-fulfillment,cancel-order-fulfillment,confirm-return-receive}.{js,d.ts}`.
+  - `bunx oxlint packages/core/src/workflows/order`: `0 errors / 12 warnings`
+    — all `no-shadow` on the standard Medusa
+    `transform(input, ({input}) => …)` idiom (same baseline Sessions
+    6–9 already accepted).
+
+### 2026-05-20 — Session 9b: Mercur store cart routes + updateLineItemInCartWorkflow override
+
+Follow-up to Session 9. Closes the cart-side override surface so the
+HTTP boundary requires `offer_id` and qty-update paths preserve the
+offer-snapshotted `unit_price`.
+
+- **Added Mercur store cart route** under
+  `packages/core/src/api/store/carts/[id]/line-items/`:
+  - `validators.ts` — `StoreAddCartLineItem` zod schema requires
+    `offer_id` (non-empty string), `quantity` (positive int), plus
+    optional `variant_id` / `unit_price` / `compare_at_unit_price` /
+    `metadata` / `additional_data`.
+  - `route.ts` — `POST` handler dispatches the validated body
+    straight to `addToCartWorkflow` (Mercur same-id override from
+    Session 9) and refetches the cart with `defaultStoreCartFields`.
+  - Wired into `packages/core/src/api/store/carts/middlewares.ts`
+    via `validateAndTransformBody(StoreAddCartLineItem)` on
+    `POST /store/carts/:id/line-items`. The Mercur route is loaded
+    by the core plugin's Medusa-route loader and takes precedence
+    over Medusa's compiled default. `offer_id` is now a 400 at the
+    HTTP boundary if missing, on top of the workflow guard.
+  - The matching `patch-medusa.ts` entry that blanks Medusa's
+    compiled `line-items/route.js` / `line-items/[line_id]/route.js`
+    defaults is **not** part of this slice — Mercur's route wins
+    today because the plugin loader runs first; the file-patch is
+    pure defense-in-depth and tracked as remaining work.
+- **Added `updateLineItemInCartWorkflow` same-id override**
+  (`packages/core/src/workflows/cart/workflows/update-line-item-in-cart.ts`):
+  - Uses `overrideWorkflow` to register under Medusa's id.
+  - Acquires the cart lock, fetches the cart with
+    Mercur's `cartFieldsForPricingContext`, validates the cart,
+    declares the upstream `validate` hook.
+  - Resolves the target line item out of the cart's `items` array
+    inside a `transform` — raises `MedusaError.Types.NOT_FOUND` if
+    the id does not resolve.
+  - `quantity === 0` branch dispatches `deleteLineItemsWorkflow.runAsStep`
+    (verbatim from Medusa).
+  - Update branch preserves the existing line's
+    `unit_price` and `is_custom_price` when the update payload
+    does not explicitly carry a new `unit_price`. This is the
+    Mercur invariant — the offer-resolved unit price snapshotted
+    on add-to-cart must survive quantity changes. Mirrors the
+    short-circuit in Medusa's own
+    `update-line-item-in-cart.ts:272-285`.
+  - Calls `updateLineItemsStepWithSelector` for the update, then
+    `refreshCartItemsWorkflow.runAsStep` for promotion / tax /
+    payment refresh, then emits `CartWorkflowEvents.UPDATED` and
+    releases the lock in parallel.
+  - **Deliberately omitted from this slice (separate inventory slice):**
+    `confirmVariantInventoryWorkflow.runAsStep`; the inventory
+    validate hook handler that calls
+    `confirmInventoryStep(transform(input, prepareOfferInventoryInput))`.
+  - **Deliberately omitted (defer):** `setPricingContext` hook. Mercur
+    does not reuse upstream Medusa's pricing-context pattern — every
+    cart line's price is the snapshot written on add.
+- **Verification:**
+  - `bunx tsc --noEmit -p packages/core`: clean (exit 0).
+  - `cd packages/core && bun run build`: clean (exit 0).
+  - `bunx oxlint` on the new files: `0 errors / 8 warnings`
+    (`no-shadow` baseline).
+
+### Pending work to move this spec to `passing`
+
+- ~~**Runtime verification against PG + Redis**~~ — landed in
+  Session 17. `bun run test:integration:http -- --testPathPatterns='offer/'`
+  reports 4 / 4 suites green, 42 / 42 tests pass against PG 16 +
+  fake Redis. Bugs surfaced during the runtime pass are documented
+  in the Session 17 Evidence entry.
+- **Manual end-to-end pass** through the seven scenarios listed
+  under **User-Visible Behavior**, recorded in Evidence. The status
+  is now flipped to `passing` on the strength of the runtime test
+  matrix; the manual pass is recommended for any operator change to
+  the offer surface but does not gate the `passing` flag any longer.
+- ~~**Re-land `integration-tests/http/offer/store/*.spec.ts`**~~ —
+  landed in Session 15.
+- ~~**Coverage for the three Session 10 order overrides**~~ — landed
+  in Session 15 (createOrderFulfillment + cancelOrderFulfillment +
+  confirmReturnReceive describe blocks in `order.spec.ts`).
+- ~~**Stock-validate hook on `updateLineItemInCartWorkflow`**~~ —
+  hook shipped earlier under
+  `packages/core/src/workflows/cart/hooks/validate-update-line-item-stock.ts`;
+  Session 15 added test coverage.
+- ~~**`patchMedusa()` integration-test bootstrap**~~ — landed in
+  Session 15 as `integration-tests/global-setup.js` wired into
+  `jest.config.js::globalSetup`.
+- ~~**Per-offer `PriceSet` invariant tests** (Verification #5)~~ —
+  Session 15 added: sibling offers resolve to distinct
+  `price_set_id`s; soft-deleted offer's `offer.price_set` remains
+  resolvable via Query (`withDeleted: true`); bulk
+  `calculatePrices` round-trip verified through a `jest.spyOn`.
+- ~~**Defense-in-depth file-patch** that blanks Medusa's compiled
+  default `line-items/route.js`~~ — landed in Session 16.
+  `patchStoreCartLineItemsRoute` in `packages/cli/src/utils/patch-medusa.ts`
+  and the mirror in `integration-tests/global-setup.js` rewrite the
+  upstream POST handler to a marker-only stub so even if Mercur's
+  loader order ever drifts, Medusa's variant-shaped handler cannot
+  fire. The `[line_id]` route is **not** blanked — Mercur does not
+  own it, and the upstream POST/DELETE there already dispatch
+  Mercur's same-id `updateLineItemInCart` and `deleteLineItems`
+  workflows correctly. A Mercur-owned `DELETE` route would only be
+  required if a future invariant demands offer-aware validation on
+  the delete path (link cleanup is already handled by Medusa's
+  cascading link delete).
+- ~~**Mercur-owned cart-util rewrites**~~ — landed in Session 16.
+  `packages/core/src/workflows/cart/utils/prepare-confirm-inventory-input.ts`
+  was the only file still carrying the variant-shaped field lists
+  (`requiredOrderFieldsForInventoryConfirmation`,
+  `requiredVariantFieldsForInventoryConfirmation`,
+  `prepareConfirmInventoryInput`). No Mercur source imported these
+  names — every consumer was migrated to
+  `prepareOfferInventoryInput` /
+  `requiredOfferFieldsForInventoryConfirmation` —
+  and Medusa upstream consumes its own bundled copy from
+  `@medusajs/core-flows`. Deleting the local file and dropping the
+  barrel re-export removes the bit-rot risk without changing any
+  active code path. `completeCartFields` was already offer-shaped.
+- ~~**`patch-medusa.ts` variant-field-removal additions**~~ — not
+  required. The Session 13 evidence shows the offer/cart/order suites
+  run green against PG via `medusaIntegrationTestRunner` without the
+  defensive field-path strips listed under
+  **patch-medusa.ts: required additions for variant field removal**.
+  That confirms case (1) of the spec holds: Query's MikroORM joiner
+  tolerates the missing variant attribute paths and returns
+  `undefined`/`[]`, so Medusa's `manage_inventory`-keyed branches
+  short-circuit cleanly. Re-evaluate only if a future Medusa upgrade
+  changes Query's strictness.
 
 ## Notes
 

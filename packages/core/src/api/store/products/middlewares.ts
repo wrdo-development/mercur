@@ -7,13 +7,17 @@ import {
 } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { validateAndTransformQuery } from "@medusajs/framework"
+import { setPricingContext } from "@medusajs/medusa/api/utils/middlewares/products/set-pricing-context"
 
-import { storeProductQueryConfig } from "./query-config"
+import {
+  OFFER_CALCULATED_PRICE_FIELD,
+  storeProductQueryConfig,
+} from "./query-config"
 import {
   StoreGetProductParams,
   StoreGetProductsParams,
 } from "./validators"
-import { ProductStatus, SellerStatus } from "@mercurjs/types"
+import { SellerStatus, ProductStatus } from "@mercurjs/types"
 
 const applyProductFilters = (
   req: MedusaRequest,
@@ -59,6 +63,10 @@ async function applyVisibleSellerIdsFilter(
   next()
 }
 
+const offerPricingMiddleware = setPricingContext({
+  priceFieldPaths: [OFFER_CALCULATED_PRICE_FIELD],
+})
+
 export const storeProductsMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
@@ -75,6 +83,7 @@ export const storeProductsMiddlewares: MiddlewareRoute[] = [
         resourceId: "product_id",
         filterableField: "seller_id",
       }),
+      offerPricingMiddleware,
     ],
   },
   {
@@ -92,6 +101,7 @@ export const storeProductsMiddlewares: MiddlewareRoute[] = [
         resourceId: "product_id",
         filterableField: "seller_id",
       }),
+      offerPricingMiddleware,
     ],
   },
 ]
