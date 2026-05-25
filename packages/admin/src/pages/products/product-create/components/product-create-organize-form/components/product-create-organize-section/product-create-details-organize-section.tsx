@@ -164,16 +164,17 @@ export const ProductCreateOrganizationSection = () => {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="product-create-organize-section-stores">
         <Form.Field
           control={form.control}
-          name="seller_id"
+          name="seller_ids"
           render={({ field }) => {
             return (
               <Form.Item data-testid="product-create-organize-section-stores-item">
                 <Form.Label optional data-testid="product-create-organize-section-stores-label">
-                  {t("fields.store")}
+                  {t("products.fields.stores.label")}
                 </Form.Label>
                 <Form.Control data-testid="product-create-organize-section-stores-control">
                   <Combobox
                     {...field}
+                    value={field.value ?? []}
                     options={sellers.options}
                     searchValue={sellers.searchValue}
                     onSearchValueChange={sellers.onSearchValueChange}

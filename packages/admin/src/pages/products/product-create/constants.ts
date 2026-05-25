@@ -56,7 +56,7 @@ export const ProductCreateSchema = z
     type_id: z.string().optional(),
     collection_id: z.string().optional(),
     category_id: z.string().min(1),
-    seller_id: z.string().optional(),
+    seller_ids: z.array(z.string()).optional(),
     tags: z.array(z.string()).optional(),
     origin_country: z.string().optional(),
     material: z.string().optional(),
@@ -133,7 +133,7 @@ export const PRODUCT_CREATE_FORM_DEFAULTS: Partial<
   z.infer<typeof ProductCreateSchema>
 > = {
   discountable: true,
-  seller_id: "",
+  seller_ids: [],
   tags: [],
   variants: decorateVariantsWithDefaultValues([
     {

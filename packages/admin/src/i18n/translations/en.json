@@ -697,6 +697,9 @@
       "collection": {
         "label": "Collection"
       },
+      "stores": {
+        "label": "Stores"
+      },
       "categories": {
         "label": "Categories"
       },

@@ -711,6 +711,9 @@
       "collection": {
         "label": "Kolekcja"
       },
+      "stores": {
+        "label": "Sklepy"
+      },
       "categories": {
         "label": "Kategorie"
       },
