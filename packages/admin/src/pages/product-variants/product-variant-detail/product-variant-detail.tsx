@@ -2,8 +2,7 @@ import { ReactNode, Children } from "react";
 import { useLoaderData, useParams } from "react-router-dom";
 
 import { HttpTypes } from "@medusajs/types";
-import { SellerDTO } from "@mercurjs/types";
-import { useProduct, useProductVariant } from "../../../hooks/api/products";
+import { useProductVariant } from "../../../hooks/api/products";
 
 import { TwoColumnPageSkeleton } from "../../../components/common/skeleton";
 import { TwoColumnPage } from "../../../components/layout/pages";
@@ -12,19 +11,13 @@ import { VariantInventorySectionConnected } from "./components/variant-inventory
 import { VariantPricesSection } from "./components/variant-prices-section";
 import { variantLoader } from "./loader";
 
-type AdminProductWithSeller = HttpTypes.AdminProduct & {
-  seller?: SellerDTO;
-};
-
 const Root = ({ children }: { children?: ReactNode }) => {
   const initialData = useLoaderData() as Awaited<
     ReturnType<typeof variantLoader>
   >;
 
   const { id, variant_id } = useParams();
-  const { product: rawProduct } = useProduct(id!);
-  const product = rawProduct as AdminProductWithSeller | undefined;
-  const { variant, isLoading, isError, error } = useProductVariant(
+  const { variant: rawVariant, isLoading, isError, error } = useProductVariant(
     id!,
     variant_id!,
     {},
@@ -32,6 +25,7 @@ const Root = ({ children }: { children?: ReactNode }) => {
       initialData,
     },
   );
+  const variant = rawVariant as HttpTypes.AdminProductVariant | undefined;
 
   if (isLoading || !variant) {
     return (
