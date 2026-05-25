@@ -1,6 +1,6 @@
 {
   "name": "@mercurjs/core",
-  "version": "2.2.0-canary.0",
+  "version": "2.2.0-canary.1",
   "repository": {
     "type": "git",
     "url": "https://github.com/mercurjs/mercur",
@@ -47,7 +47,7 @@
     "medusa-v2"
   ],
   "scripts": {
-    "build": "mercurjs codegen && rm -rf .medusa && tsc --declaration --outDir .medusa/server",
+    "build": "bunx @mercurjs/cli codegen && rm -rf .medusa && tsc --declaration --outDir .medusa/server",
     "dev": "medusa plugin:develop",
     "prepublishOnly": "tsc --declaration --outDir .medusa/server"
   },

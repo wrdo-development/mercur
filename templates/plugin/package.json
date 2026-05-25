@@ -1,6 +1,6 @@
 {
   "name": "@acme/plugin",
-  "version": "2.2.0-canary.0",
+  "version": "2.2.0-canary.1",
   "description": "A starter for Mercur plugins.",
   "author": "Mercur (https://mercurjs.com)",
   "license": "MIT",
