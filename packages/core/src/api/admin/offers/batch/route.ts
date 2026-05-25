@@ -32,14 +32,10 @@ export const POST = async (
     variant_id: o.variant_id,
     shipping_profile_id: o.shipping_profile_id,
     prices: o.prices,
+    inventory_items: o.inventory_items,
     ean: o.ean ?? null,
     upc: o.upc ?? null,
     metadata: o.metadata ?? null,
-    inline_inventory_item: {
-      title: o.title,
-      required_quantity: o.required_quantity,
-      stock_levels: o.stock_levels,
-    },
   }))
 
   const { result } = await createOffersWorkflow(req.scope).run({

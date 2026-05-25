@@ -131,22 +131,6 @@ medusaIntegrationTestRunner({
                     headers
                 )
 
-                const inventoryItem = (
-                    await api.post(
-                        `/vendor/inventory-items`,
-                        { title: `Inv${uniqueSuffix}` },
-                        headers
-                    )
-                ).data.inventory_item
-                await api.post(
-                    `/vendor/inventory-items/${inventoryItem.id}/location-levels`,
-                    {
-                        location_id: stockLocation.id,
-                        stocked_quantity: opts.stocked,
-                    },
-                    headers
-                )
-
                 const product = (
                     await api.post(
                         `/vendor/products`,
@@ -190,9 +174,15 @@ medusaIntegrationTestRunner({
                             shipping_profile_id: shippingProfile.id,
                             inventory_items: [
                                 {
-                                    inventory_item_id: inventoryItem.id,
+                                    title: `Inv${uniqueSuffix}`,
                                     required_quantity:
                                         opts.required_quantity ?? 1,
+                                    stock_levels: [
+                                        {
+                                            location_id: stockLocation.id,
+                                            stocked_quantity: opts.stocked,
+                                        },
+                                    ],
                                 },
                             ],
                             prices: [
@@ -210,7 +200,7 @@ medusaIntegrationTestRunner({
                     sellerId: result.seller.id,
                     headers,
                     stockLocation,
-                    inventoryItem,
+                    inventoryItemId: offer.inventory_items[0].id as string,
                     product,
                     variant: product.variants[0],
                     offer,
@@ -413,7 +403,7 @@ medusaIntegrationTestRunner({
                 const { data: levels } = await query.graph({
                     entity: "inventory_level",
                     filters: {
-                        inventory_item_id: seed.inventoryItem.id,
+                        inventory_item_id: seed.inventoryItemId,
                         location_id: seed.stockLocation.id,
                     },
                     fields: [
@@ -615,7 +605,7 @@ medusaIntegrationTestRunner({
                     expect(completeResp.status).toEqual(200)
 
                     const before = await readLevel(
-                        seed.inventoryItem.id,
+                        seed.inventoryItemId,
                         seed.stockLocation.id
                     )
                     expect(before.stocked).toEqual(50)
@@ -637,7 +627,7 @@ medusaIntegrationTestRunner({
                     expect(fulResp.status).toEqual(200)
 
                     const after = await readLevel(
-                        seed.inventoryItem.id,
+                        seed.inventoryItemId,
                         seed.stockLocation.id
                     )
                     // qty (2) × required_quantity (3) = 6 stock units removed,
@@ -684,7 +674,7 @@ medusaIntegrationTestRunner({
                     expect(cancelResp.status).toEqual(200)
 
                     const after = await readLevel(
-                        seed.inventoryItem.id,
+                        seed.inventoryItemId,
                         seed.stockLocation.id
                     )
                     // Cancel re-adds the 6 stock units removed at fulfilment and
@@ -724,7 +714,7 @@ medusaIntegrationTestRunner({
                     )
 
                     const afterFulfilment = await readLevel(
-                        seed.inventoryItem.id,
+                        seed.inventoryItemId,
                         seed.stockLocation.id
                     )
                     expect(afterFulfilment.stocked).toEqual(44)
@@ -769,7 +759,7 @@ medusaIntegrationTestRunner({
                     expect(confirmResp.status).toEqual(200)
 
                     const after = await readLevel(
-                        seed.inventoryItem.id,
+                        seed.inventoryItemId,
                         seed.stockLocation.id
                     )
                     // received_quantity (1) × required_quantity (3) = 3 stock

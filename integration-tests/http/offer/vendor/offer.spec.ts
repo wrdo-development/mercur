@@ -46,12 +46,6 @@ medusaIntegrationTestRunner({
 
                 const variant = product.data.product.variants[0]
 
-                const inventoryItem = await api.post(
-                    `/vendor/inventory-items`,
-                    { title: "Inventory Item A" },
-                    headers
-                )
-
                 const shippingProfile = await api.post(
                     `/vendor/shipping-profiles`,
                     { name: `Standard ${tag}`, type: "default" },
@@ -60,8 +54,6 @@ medusaIntegrationTestRunner({
 
                 return {
                     variant_id: variant.id,
-                    inventory_item_id:
-                        inventoryItem.data.inventory_item.id,
                     shipping_profile_id:
                         shippingProfile.data.shipping_profile.id,
                     ean,
@@ -97,12 +89,7 @@ medusaIntegrationTestRunner({
                             sku: "SELLER1-SKU-001",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id: deps.inventory_item_id,
-                                    required_quantity: 1,
-                                },
-                            ],
+                            inventory_items: [{ required_quantity: 1 }],
                             prices: [{ amount: 2000, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -119,6 +106,10 @@ medusaIntegrationTestRunner({
                         })
                     )
                     expect(response.data.offer.price_set_id).toBeDefined()
+                    expect(response.data.offer.inventory_items).toHaveLength(1)
+                    expect(
+                        response.data.offer.inventory_items[0].id
+                    ).toBeDefined()
                 })
 
                 it("should reject create when variant does not exist", async () => {
@@ -131,12 +122,7 @@ medusaIntegrationTestRunner({
                                 sku: "SELLER1-SKU-002",
                                 variant_id: "variant_does_not_exist",
                                 shipping_profile_id: deps.shipping_profile_id,
-                                inventory_items: [
-                                    {
-                                        inventory_item_id:
-                                            deps.inventory_item_id,
-                                    },
-                                ],
+                                inventory_items: [{}],
                                 prices: [
                                     { amount: 2000, currency_code: "usd" },
                                 ],
@@ -157,11 +143,7 @@ medusaIntegrationTestRunner({
                             sku: "DUPLICATE-SKU",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id: deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1000, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -174,12 +156,7 @@ medusaIntegrationTestRunner({
                                 sku: "DUPLICATE-SKU",
                                 variant_id: deps.variant_id,
                                 shipping_profile_id: deps.shipping_profile_id,
-                                inventory_items: [
-                                    {
-                                        inventory_item_id:
-                                            deps.inventory_item_id,
-                                    },
-                                ],
+                                inventory_items: [{}],
                                 prices: [
                                     { amount: 1000, currency_code: "usd" },
                                 ],
@@ -201,12 +178,7 @@ medusaIntegrationTestRunner({
                             sku: "SHARED-SKU",
                             variant_id: deps1.variant_id,
                             shipping_profile_id: deps1.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps1.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1000, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -218,12 +190,7 @@ medusaIntegrationTestRunner({
                             sku: "SHARED-SKU",
                             variant_id: deps2.variant_id,
                             shipping_profile_id: deps2.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps2.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1500, currency_code: "usd" }],
                         },
                         seller2Headers
@@ -242,12 +209,7 @@ medusaIntegrationTestRunner({
                             sku: "PACK-1",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1000, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -259,13 +221,7 @@ medusaIntegrationTestRunner({
                             sku: "PACK-2",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                    required_quantity: 5,
-                                },
-                            ],
+                            inventory_items: [{ required_quantity: 5 }],
                             prices: [{ amount: 4500, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -273,38 +229,6 @@ medusaIntegrationTestRunner({
 
                     expect(r1.status).toEqual(201)
                     expect(r2.status).toEqual(201)
-                })
-
-                it("should reject duplicate inventory_item_id within the create payload", async () => {
-                    const deps = await seedSellerOfferDeps(seller1Headers)
-
-                    const response = await api
-                        .post(
-                            `/vendor/offers`,
-                            {
-                                sku: "BAD-PAYLOAD",
-                                variant_id: deps.variant_id,
-                                shipping_profile_id:
-                                    deps.shipping_profile_id,
-                                inventory_items: [
-                                    {
-                                        inventory_item_id:
-                                            deps.inventory_item_id,
-                                    },
-                                    {
-                                        inventory_item_id:
-                                            deps.inventory_item_id,
-                                    },
-                                ],
-                                prices: [
-                                    { amount: 1000, currency_code: "usd" },
-                                ],
-                            },
-                            seller1Headers
-                        )
-                        .catch((e) => e.response)
-
-                    expect(response.status).toEqual(400)
                 })
             })
 
@@ -319,12 +243,7 @@ medusaIntegrationTestRunner({
                             sku: "S1-LIST",
                             variant_id: deps1.variant_id,
                             shipping_profile_id: deps1.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps1.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1000, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -335,12 +254,7 @@ medusaIntegrationTestRunner({
                             sku: "S2-LIST",
                             variant_id: deps2.variant_id,
                             shipping_profile_id: deps2.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps2.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1000, currency_code: "usd" }],
                         },
                         seller2Headers
@@ -363,12 +277,7 @@ medusaIntegrationTestRunner({
                             sku: "S1-PRIVATE",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1000, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -394,12 +303,7 @@ medusaIntegrationTestRunner({
                             sku: "UPD-SKU-1",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [
                                 { amount: 1000, currency_code: "usd" },
                             ],
@@ -439,12 +343,7 @@ medusaIntegrationTestRunner({
                             sku: "PRICE-LADDER",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [
                                 { amount: 1000, currency_code: "usd" },
                                 { amount: 900, currency_code: "eur" },
@@ -509,12 +408,7 @@ medusaIntegrationTestRunner({
                             sku: "CROSS-UPDATE",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [
                                 { amount: 1000, currency_code: "usd" },
                             ],
@@ -560,13 +454,7 @@ medusaIntegrationTestRunner({
                             sku: "BATCH-OFFER",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                    required_quantity: 2,
-                                },
-                            ],
+                            inventory_items: [{ required_quantity: 2 }],
                             prices: [
                                 { amount: 1000, currency_code: "usd" },
                             ],
@@ -575,6 +463,8 @@ medusaIntegrationTestRunner({
                     )
 
                     const offerId = created.data.offer.id
+                    const originalInventoryItemId =
+                        created.data.offer.inventory_items[0].id
 
                     // Add the extra link, then in a second call delete the
                     // original and update the extra so the offer keeps a
@@ -606,7 +496,7 @@ medusaIntegrationTestRunner({
                                     required_quantity: 7,
                                 },
                             ],
-                            delete: [deps.inventory_item_id],
+                            delete: [originalInventoryItemId],
                         },
                         seller1Headers
                     )
@@ -614,7 +504,7 @@ medusaIntegrationTestRunner({
                     expect(mutateResp.status).toEqual(200)
                     expect(mutateResp.data.updated).toHaveLength(1)
                     expect(mutateResp.data.deleted).toEqual([
-                        deps.inventory_item_id,
+                        originalInventoryItemId,
                     ])
                     // NOTE: the offer→inventory_items writable M:N link exposes
                     // the linked InventoryItem entity (id, sku) but does not
@@ -642,12 +532,7 @@ medusaIntegrationTestRunner({
                             sku: "BATCH-DUP",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [
                                 { amount: 1000, currency_code: "usd" },
                             ],
@@ -684,12 +569,7 @@ medusaIntegrationTestRunner({
                             sku: "BATCH-MISSING",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [
                                 { amount: 1000, currency_code: "usd" },
                             ],
@@ -722,12 +602,7 @@ medusaIntegrationTestRunner({
                             sku: "BATCH-CROSS",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [
                                 { amount: 1000, currency_code: "usd" },
                             ],
@@ -764,12 +639,7 @@ medusaIntegrationTestRunner({
                             sku: "TO-DELETE",
                             variant_id: deps.variant_id,
                             shipping_profile_id: deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [{ amount: 1000, currency_code: "usd" }],
                         },
                         seller1Headers
@@ -798,11 +668,6 @@ medusaIntegrationTestRunner({
             describe("PriceSet invariants", () => {
                 it("assigns distinct price_set_ids to sibling offers on the same variant", async () => {
                     const deps = await seedSellerOfferDeps(seller1Headers)
-                    const otherInventory = await api.post(
-                        `/vendor/inventory-items`,
-                        { title: "Sibling Inv" },
-                        seller1Headers
-                    )
 
                     const offerA = (
                         await api.post(
@@ -812,12 +677,7 @@ medusaIntegrationTestRunner({
                                 variant_id: deps.variant_id,
                                 shipping_profile_id:
                                     deps.shipping_profile_id,
-                                inventory_items: [
-                                    {
-                                        inventory_item_id:
-                                            deps.inventory_item_id,
-                                    },
-                                ],
+                                inventory_items: [{}],
                                 prices: [
                                     { amount: 1000, currency_code: "usd" },
                                 ],
@@ -833,13 +693,7 @@ medusaIntegrationTestRunner({
                                 variant_id: deps.variant_id,
                                 shipping_profile_id:
                                     deps.shipping_profile_id,
-                                inventory_items: [
-                                    {
-                                        inventory_item_id:
-                                            otherInventory.data.inventory_item
-                                                .id,
-                                    },
-                                ],
+                                inventory_items: [{}],
                                 prices: [
                                     { amount: 2000, currency_code: "usd" },
                                 ],
@@ -865,12 +719,7 @@ medusaIntegrationTestRunner({
                             variant_id: deps.variant_id,
                             shipping_profile_id:
                                 deps.shipping_profile_id,
-                            inventory_items: [
-                                {
-                                    inventory_item_id:
-                                        deps.inventory_item_id,
-                                },
-                            ],
+                            inventory_items: [{}],
                             prices: [
                                 { amount: 4321, currency_code: "usd" },
                             ],

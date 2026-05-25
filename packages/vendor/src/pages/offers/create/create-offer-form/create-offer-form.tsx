@@ -226,11 +226,15 @@ export const CreateOfferForm = () => {
 
       return {
         sku,
-        title: row.variant_title,
         variant_id: row.variant_id,
         shipping_profile_id: row.shipping_profile_id,
         prices,
-        stock_levels,
+        inventory_items: [
+          {
+            title: row.variant_title,
+            stock_levels,
+          },
+        ],
       };
     });
 

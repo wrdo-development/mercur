@@ -30,10 +30,19 @@ export const VendorGetOffersParams = createFindParams({
   limit: 50,
 }).merge(VendorGetOffersParamsFields)
 
+const VendorOfferStockLevel = z
+  .object({
+    location_id: z.string(),
+    stocked_quantity: z.number().int().min(0),
+  })
+  .strict()
+
 const VendorOfferInventoryItem = z
   .object({
-    inventory_item_id: z.string(),
+    title: z.string().min(1).optional(),
+    sku: z.string().min(1).optional(),
     required_quantity: z.number().int().positive().default(1),
+    stock_levels: z.array(VendorOfferStockLevel).optional(),
   })
   .strict()
 
@@ -111,22 +120,13 @@ export const VendorBatchOfferInventoryItems = z
   })
   .strict()
 
-const VendorCreateOffersBatchStockLevel = z
-  .object({
-    location_id: z.string(),
-    stocked_quantity: z.number().int().min(0),
-  })
-  .strict()
-
 const VendorCreateOffersBatchItem = z
   .object({
     sku: z.string().min(1),
-    title: z.string().min(1).optional(),
     variant_id: z.string(),
     shipping_profile_id: z.string(),
     prices: z.array(VendorOfferPrice).min(1),
-    stock_levels: z.array(VendorCreateOffersBatchStockLevel).optional(),
-    required_quantity: z.number().int().positive().default(1),
+    inventory_items: z.array(VendorOfferInventoryItem).min(1),
     ean: z.string().min(1).nullish(),
     upc: z.string().min(1).nullish(),
     metadata: z.record(z.string(), z.unknown()).nullish(),

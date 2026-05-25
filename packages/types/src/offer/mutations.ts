@@ -7,12 +7,20 @@
  */
 
 /**
- * One inventory-item link attached to a new offer. `required_quantity`
- * defaults to `1` on persistence.
+ * One entry on a new offer's `inventory_items` array. Each entry
+ * describes a brand-new `InventoryItem` to create and link to the offer
+ * in the same workflow run. `sku` defaults to the offer's SKU, `title`
+ * defaults to the resolved SKU. `required_quantity` defaults to `1` on
+ * persistence.
  */
 export interface CreateOfferInventoryItemDTO {
-  inventory_item_id: string
   required_quantity?: number
+  title?: string
+  sku?: string
+  stock_levels?: Array<{
+    location_id: string
+    stocked_quantity: number
+  }>
 }
 
 /**
@@ -39,28 +47,13 @@ export interface UpsertOfferPriceDTO extends CreateOfferPriceDTO {
 }
 
 /**
- * Inline inventory item to create together with the offer. Mirrors the
- * `location_levels` shape `createInventoryItemsWorkflow` accepts so the
- * inventory item, its location levels, and the offer↔item link can be
- * produced from a single workflow run.
- */
-export interface CreateOfferInlineInventoryItemDTO {
-  title?: string
-  required_quantity?: number
-  stock_levels?: Array<{
-    location_id: string
-    stocked_quantity: number
-  }>
-}
-
-/**
  * Input to `createOffersWorkflow`. `seller_id` and `created_by` are stamped
  * by the route handler from the authenticated session and are not part of
  * the public HTTP body.
  *
- * Provide `inventory_items` to link existing inventory items, or
- * `inline_inventory_item` to create a new one (with optional starting
- * stock levels) and link it in the same workflow.
+ * Each `inventory_items[]` entry describes a new inventory item to
+ * create (with optional starting `stock_levels`) and link to the offer
+ * in the same workflow run. Offers must have at least one entry.
  */
 export interface CreateOfferDTO {
   seller_id: string
@@ -68,8 +61,7 @@ export interface CreateOfferDTO {
   sku: string
   variant_id: string
   shipping_profile_id: string
-  inventory_items?: CreateOfferInventoryItemDTO[]
-  inline_inventory_item?: CreateOfferInlineInventoryItemDTO
+  inventory_items: CreateOfferInventoryItemDTO[]
   prices: CreateOfferPriceDTO[]
   ean?: string | null
   upc?: string | null

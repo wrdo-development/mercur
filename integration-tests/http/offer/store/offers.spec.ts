@@ -77,23 +77,6 @@ medusaIntegrationTestRunner({
                     }
                 }
 
-                const inventoryItem = (
-                    await api.post(
-                        `/vendor/inventory-items`,
-                        { title: `${opts.name} Inv ${tag}` },
-                        headers
-                    )
-                ).data.inventory_item
-
-                await api.post(
-                    `/vendor/inventory-items/${inventoryItem.id}/location-levels`,
-                    {
-                        location_id: stockLocationId,
-                        stocked_quantity: opts.stocked,
-                    },
-                    headers
-                )
-
                 let productId = opts.productId
                 let variantId = opts.variantId
                 if (!productId || !variantId) {
@@ -154,9 +137,15 @@ medusaIntegrationTestRunner({
                             shipping_profile_id: shippingProfile.id,
                             inventory_items: [
                                 {
-                                    inventory_item_id: inventoryItem.id,
+                                    title: `${opts.name} Inv ${tag}`,
                                     required_quantity:
                                         opts.required_quantity ?? 1,
+                                    stock_levels: [
+                                        {
+                                            location_id: stockLocationId,
+                                            stocked_quantity: opts.stocked,
+                                        },
+                                    ],
                                 },
                             ],
                             prices: [
@@ -175,7 +164,7 @@ medusaIntegrationTestRunner({
                     sellerId: result.seller.id,
                     productId: productId as string,
                     variantId: variantId as string,
-                    inventoryItemId: inventoryItem.id,
+                    inventoryItemId: offer.inventory_items[0].id as string,
                     stockLocationId: stockLocationId as string,
                     offer,
                 }

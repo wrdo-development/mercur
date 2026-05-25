@@ -56,23 +56,6 @@ medusaIntegrationTestRunner({
                     headers
                 )
 
-                const inventoryItem = (
-                    await api.post(
-                        `/vendor/inventory-items`,
-                        { title: `${opts.name} Inv ${tag}` },
-                        headers
-                    )
-                ).data.inventory_item
-
-                await api.post(
-                    `/vendor/inventory-items/${inventoryItem.id}/location-levels`,
-                    {
-                        location_id: stockLocation.id,
-                        stocked_quantity: opts.stocked,
-                    },
-                    headers
-                )
-
                 const product = (
                     await api.post(
                         `/vendor/products`,
@@ -124,9 +107,15 @@ medusaIntegrationTestRunner({
                             shipping_profile_id: shippingProfile.id,
                             inventory_items: [
                                 {
-                                    inventory_item_id: inventoryItem.id,
+                                    title: `${opts.name} Inv ${tag}`,
                                     required_quantity:
                                         opts.required_quantity ?? 1,
+                                    stock_levels: [
+                                        {
+                                            location_id: stockLocation.id,
+                                            stocked_quantity: opts.stocked,
+                                        },
+                                    ],
                                 },
                             ],
                             prices: [
@@ -145,7 +134,7 @@ medusaIntegrationTestRunner({
                     sellerId: result.seller.id,
                     product,
                     variant: product.variants[0],
-                    inventoryItem,
+                    inventoryItemId: offer.inventory_items[0].id as string,
                     stockLocation,
                     offer,
                 }
@@ -278,18 +267,6 @@ medusaIntegrationTestRunner({
                         { add: [salesChannel.id] },
                         headers
                     )
-                    const inventoryItem = (
-                        await api.post(
-                            `/vendor/inventory-items`,
-                            { title: "Siblings Inv" },
-                            headers
-                        )
-                    ).data.inventory_item
-                    await api.post(
-                        `/vendor/inventory-items/${inventoryItem.id}/location-levels`,
-                        { location_id: stockLocation.id, stocked_quantity: 50 },
-                        headers
-                    )
                     const siblingsTag = `siblings${++seedCounter}${Date.now()}`
                     const product = (
                         await api.post(
@@ -341,8 +318,14 @@ medusaIntegrationTestRunner({
                                 shipping_profile_id: shippingProfile.id,
                                 inventory_items: [
                                     {
-                                        inventory_item_id: inventoryItem.id,
+                                        title: "Siblings Inv Single",
                                         required_quantity: 1,
+                                        stock_levels: [
+                                            {
+                                                location_id: stockLocation.id,
+                                                stocked_quantity: 50,
+                                            },
+                                        ],
                                     },
                                 ],
                                 prices: [
@@ -361,8 +344,14 @@ medusaIntegrationTestRunner({
                                 shipping_profile_id: shippingProfile.id,
                                 inventory_items: [
                                     {
-                                        inventory_item_id: inventoryItem.id,
+                                        title: "Siblings Inv Bundle",
                                         required_quantity: 5,
+                                        stock_levels: [
+                                            {
+                                                location_id: stockLocation.id,
+                                                stocked_quantity: 50,
+                                            },
+                                        ],
                                     },
                                 ],
                                 prices: [

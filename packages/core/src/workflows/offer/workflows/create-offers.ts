@@ -30,42 +30,48 @@ export const createOffersWorkflow = createWorkflow(
   function (input: CreateOffersWorkflowInput) {
     const validate = createHook("validate", { input })
 
-    const inlineItemsInput = transform({ input }, ({ input }) => {
+    const inventoryItemsToCreate = transform({ input }, ({ input }) => {
       const items: Array<{
-        sku: string
+        sku?: string
         title: string
         location_levels: Array<{
           location_id: string
           stocked_quantity: number
         }>
       }> = []
-      const offerIdxToInlineIdx: Record<number, number> = {}
+      const offerSpans: Array<{ start: number; length: number }> = []
 
-      input.offers.forEach((offer, offerIdx) => {
-        if (offer.inline_inventory_item) {
-          offerIdxToInlineIdx[offerIdx] = items.length
-          items.push({
-            sku: offer.sku,
-            title: offer.inline_inventory_item.title ?? offer.sku,
-            location_levels:
-              offer.inline_inventory_item.stock_levels ?? [],
-          })
+      input.offers.forEach((offer) => {
+        if (!offer.inventory_items?.length) {
+          throw new MedusaError(
+            MedusaError.Types.INVALID_DATA,
+            "Offer must have at least one inventory item"
+          )
         }
+        const start = items.length
+        offer.inventory_items.forEach((item) => {
+          items.push({
+            sku: item.sku,
+            title: item.title ?? item.sku ?? offer.sku,
+            location_levels: item.stock_levels ?? [],
+          })
+        })
+        offerSpans.push({ start, length: offer.inventory_items.length })
       })
 
-      return { items, offerIdxToInlineIdx }
+      return { items, offerSpans }
     })
 
     const itemsForCreation = transform(
-      { inlineItemsInput },
-      ({ inlineItemsInput }) => inlineItemsInput.items
+      { inventoryItemsToCreate },
+      ({ inventoryItemsToCreate }) => inventoryItemsToCreate.items
     )
 
     const createdInventoryItems = createInventoryItemsWorkflow.runAsStep({
       input: { items: itemsForCreation },
     })
 
-    const newInventoryItemIds = transform(
+    const createdInventoryItemIds = transform(
       { createdInventoryItems },
       ({ createdInventoryItems }) => createdInventoryItems.map((i) => i.id)
     )
@@ -77,47 +83,11 @@ export const createOffersWorkflow = createWorkflow(
 
     linkSellerInventoryItemStep({
       seller_id: sellerId,
-      inventory_item_ids: newInventoryItemIds,
+      inventory_item_ids: createdInventoryItemIds,
     })
 
-    const offersWithInventory = transform(
-      { input, inlineItemsInput, createdInventoryItems },
-      ({ input, inlineItemsInput, createdInventoryItems }) =>
-        input.offers.map((offer, offerIdx) => {
-          const inlineIdx = inlineItemsInput.offerIdxToInlineIdx[offerIdx]
-          if (inlineIdx !== undefined) {
-            const inventoryItem = createdInventoryItems[inlineIdx]
-            const requiredQuantity =
-              offer.inline_inventory_item?.required_quantity ?? 1
-            return {
-              ...offer,
-              inventory_items: [
-                {
-                  inventory_item_id: inventoryItem.id,
-                  required_quantity: requiredQuantity,
-                },
-              ],
-            }
-          }
-          return offer
-        })
-    )
-
-    const variantIds = transform(
-      { offersWithInventory },
-      ({ offersWithInventory }) =>
-        Array.from(new Set(offersWithInventory.map((o) => o.variant_id)))
-    )
-    const inventoryItemIds = transform(
-      { offersWithInventory },
-      ({ offersWithInventory }) =>
-        Array.from(
-          new Set(
-            offersWithInventory.flatMap((o) =>
-              (o.inventory_items ?? []).map((i) => i.inventory_item_id)
-            )
-          )
-        )
+    const variantIds = transform({ input }, ({ input }) =>
+      Array.from(new Set(input.offers.map((o) => o.variant_id)))
     )
 
     const { data: variants } = useQueryGraphStep({
@@ -126,29 +96,16 @@ export const createOffersWorkflow = createWorkflow(
       filters: { id: variantIds },
     }).config({ name: "get-variants" })
 
-    const { data: inventoryItems } = useQueryGraphStep({
-      entity: "inventory_item",
-      fields: ["id"],
-      filters: { id: inventoryItemIds },
-    }).config({ name: "get-inventory-items" })
-
     const validated = transform(
-      {
-        offersWithInventory,
-        variants,
-        inventoryItems,
-        variantIds,
-        inventoryItemIds,
-      },
+      { input, variants, variantIds, inventoryItemsToCreate, createdInventoryItems },
       ({
-        offersWithInventory,
+        input,
         variants,
-        inventoryItems,
         variantIds,
-        inventoryItemIds,
+        inventoryItemsToCreate,
+        createdInventoryItems,
       }) => {
         const variantById = new Map(variants.map((v) => [v.id, v]))
-        const inventoryIds = new Set(inventoryItems.map((i) => i.id))
 
         const missingVariant = variantIds.find((id) => !variantById.has(id))
         if (missingVariant) {
@@ -158,39 +115,17 @@ export const createOffersWorkflow = createWorkflow(
           )
         }
 
-        const missingInventory = inventoryItemIds.find(
-          (id) => !inventoryIds.has(id)
-        )
-        if (missingInventory) {
-          throw new MedusaError(
-            MedusaError.Types.NOT_FOUND,
-            `Inventory item with id ${missingInventory} was not found`
-          )
-        }
-
-        return offersWithInventory.map((offer) => {
-          const items = offer.inventory_items ?? []
-          if (!items.length) {
-            throw new MedusaError(
-              MedusaError.Types.INVALID_DATA,
-              "Offer must have at least one inventory item"
-            )
-          }
-          const seen = new Set<string>()
-          for (const item of items) {
-            if (seen.has(item.inventory_item_id)) {
-              throw new MedusaError(
-                MedusaError.Types.INVALID_DATA,
-                `Duplicate inventory_item_id ${item.inventory_item_id} on offer`
-              )
-            }
-            seen.add(item.inventory_item_id)
-          }
+        return input.offers.map((offer, offerIdx) => {
+          const span = inventoryItemsToCreate.offerSpans[offerIdx]
+          const links = offer.inventory_items.map((entry, i) => ({
+            inventory_item_id: createdInventoryItems[span.start + i].id,
+            required_quantity: entry.required_quantity ?? 1,
+          }))
 
           const variant = variantById.get(offer.variant_id)!
           return {
             ...offer,
-            inventory_items: items,
+            inventory_items: links,
             ean: offer.ean ?? variant.ean ?? null,
             upc: offer.upc ?? variant.upc ?? null,
           }

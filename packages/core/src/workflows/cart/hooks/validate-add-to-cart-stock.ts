@@ -3,6 +3,7 @@ import {
   MathBN,
   MedusaError,
   Modules,
+  promiseAll,
 } from "@medusajs/framework/utils"
 import { addToCartWorkflow } from "../workflows/add-to-cart"
 import {
@@ -63,20 +64,23 @@ addToCartWorkflow.hooks.validate(async ({ input, cart }, { container }) => {
     },
   })
 
-  for (const entry of confirmInputs) {
-    if (entry.allow_backorder) continue
-    const requiredQty = MathBN.mult(entry.required_quantity, entry.quantity)
-    const hasCoverage = await inventoryService.confirmInventory(
-      entry.inventory_item_id,
-      entry.location_ids,
-      requiredQty,
+  const coverage = await promiseAll(
+    confirmInputs
+      .filter((entry) => !entry.allow_backorder)
+      .map((entry) =>
+        inventoryService.confirmInventory(
+          entry.inventory_item_id,
+          entry.location_ids,
+          MathBN.mult(entry.required_quantity, entry.quantity),
+        ),
+      ),
+  )
+
+  if (coverage.some((hasCoverage) => !hasCoverage)) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      "Some inventory item linked to an offer does not have sufficient stock",
+      MedusaError.Codes.INSUFFICIENT_INVENTORY,
     )
-    if (!hasCoverage) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_ALLOWED,
-        "Some inventory item linked to an offer does not have sufficient stock",
-        MedusaError.Codes.INSUFFICIENT_INVENTORY,
-      )
-    }
   }
 })
