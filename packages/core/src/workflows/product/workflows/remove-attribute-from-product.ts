@@ -6,7 +6,7 @@ import { emitEventStep } from "@medusajs/medusa/core-flows"
 
 import { ProductAttributeWorkflowEvents } from "../events"
 import { removeAttributeFromProductStep } from "../steps/remove-attribute-from-product"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const removeAttributeFromProductWorkflowId =
   "remove-attribute-from-product"
@@ -16,7 +16,7 @@ type RemoveAttributeFromProductWorkflowInput = {
   attribute_id: string
 }
 
-export const removeAttributeFromProductWorkflow = createIdempotentWorkflow(
+export const removeAttributeFromProductWorkflow = overrideWorkflow(
   removeAttributeFromProductWorkflowId,
   function (input: RemoveAttributeFromProductWorkflowInput) {
     removeAttributeFromProductStep(input)

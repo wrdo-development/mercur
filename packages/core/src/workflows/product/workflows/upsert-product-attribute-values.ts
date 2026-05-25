@@ -8,7 +8,7 @@ import { UpsertProductAttributeValueDTO } from "@mercurjs/types"
 import { ProductAttributeValueWorkflowEvents } from "../events"
 import { upsertProductAttributeValuesStep } from "../steps/upsert-product-attribute-values"
 import { validateAttributeAcceptsValuesStep } from "../steps/validate-attribute-accepts-values"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const upsertProductAttributeValuesWorkflowId =
   "upsert-product-attribute-values"
@@ -18,7 +18,7 @@ type UpsertProductAttributeValuesWorkflowInput = {
   values: UpsertProductAttributeValueDTO[]
 }
 
-export const upsertProductAttributeValuesWorkflow = createIdempotentWorkflow(
+export const upsertProductAttributeValuesWorkflow = overrideWorkflow(
   upsertProductAttributeValuesWorkflowId,
   function (input: UpsertProductAttributeValuesWorkflowInput) {
     validateAttributeAcceptsValuesStep({ attribute_id: input.attribute_id })

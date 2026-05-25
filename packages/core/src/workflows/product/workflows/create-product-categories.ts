@@ -7,7 +7,7 @@ import { CreateProductCategoryDTO } from "@mercurjs/types"
 
 import { ProductCategoryWorkflowEvents } from "../events"
 import { createProductCategoriesStep } from "../steps/create-product-categories"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const createProductCategoriesWorkflowId = "create-product-categories"
 
@@ -15,7 +15,7 @@ type CreateProductCategoriesWorkflowInput = {
   categories: CreateProductCategoryDTO[]
 }
 
-export const createProductCategoriesWorkflow = createIdempotentWorkflow(
+export const createProductCategoriesWorkflow = overrideWorkflow(
   createProductCategoriesWorkflowId,
   function (input: CreateProductCategoriesWorkflowInput) {
     const categories = createProductCategoriesStep(input.categories)

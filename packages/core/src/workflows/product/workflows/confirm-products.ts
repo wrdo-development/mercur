@@ -4,11 +4,7 @@ import {
   transform,
 } from "@medusajs/framework/workflows-sdk"
 import { useQueryGraphStep, emitEventStep } from "@medusajs/medusa/core-flows"
-import {
-    ProductStatus,
-    ProductChangeActionType,
-    ProductChangeStatus,
-} from "@mercurjs/types"
+import { ProductStatus, ProductChangeStatus, ProductChangeActionType } from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
 import { validateConfirmProductsStep, updateProductsStep } from "../steps"
@@ -16,7 +12,7 @@ import {
     createProductChangesStep,
     createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const confirmProductsWorkflowId = "confirm-products"
 
@@ -30,7 +26,7 @@ type ConfirmProductsWorkflowInput = {
     internal_note?: string
 }
 
-export const confirmProductsWorkflow = createIdempotentWorkflow(
+export const confirmProductsWorkflow = overrideWorkflow(
     confirmProductsWorkflowId,
     function (input: ConfirmProductsWorkflowInput) {
         const { data: products } = useQueryGraphStep({

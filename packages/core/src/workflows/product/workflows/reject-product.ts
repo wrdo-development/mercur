@@ -4,11 +4,7 @@ import {
   transform,
 } from "@medusajs/framework/workflows-sdk"
 import { useQueryGraphStep, emitEventStep } from "@medusajs/medusa/core-flows"
-import {
-  ProductStatus,
-  ProductChangeActionType,
-  ProductChangeStatus,
-} from "@mercurjs/types"
+import { ProductStatus, ProductChangeStatus, ProductChangeActionType } from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
 import { validateRejectProductStep, updateProductsStep } from "../steps"
@@ -16,7 +12,7 @@ import {
   createProductChangesStep,
   createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const rejectProductWorkflowId = "reject-product"
 
@@ -26,7 +22,7 @@ type RejectProductWorkflowInput = {
   actor_id?: string
 }
 
-export const rejectProductWorkflow = createIdempotentWorkflow(
+export const rejectProductWorkflow = overrideWorkflow(
   rejectProductWorkflowId,
   function (input: RejectProductWorkflowInput) {
     const { data: products } = useQueryGraphStep({

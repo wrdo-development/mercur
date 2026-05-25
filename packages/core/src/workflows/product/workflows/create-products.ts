@@ -10,7 +10,7 @@ import { CreateProductDTO } from "@mercurjs/types"
 import { ProductWorkflowEvents } from "../events"
 import { createProductsStep } from "../steps"
 import { linkSellersToProductWorkflow } from "./link-sellers-to-product"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const createProductsWorkflowId = "create-products"
 
@@ -19,7 +19,7 @@ type CreateProductsWorkflowInput = {
   seller_ids?: string[]
 } & AdditionalData
 
-export const createProductsWorkflow: ReturnType<typeof createIdempotentWorkflow> = createIdempotentWorkflow(
+export const createProductsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
   createProductsWorkflowId,
   function (input: CreateProductsWorkflowInput) {
     const validate = createHook("validate", {

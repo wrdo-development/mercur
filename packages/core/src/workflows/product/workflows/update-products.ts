@@ -8,7 +8,7 @@ import { emitEventStep } from "@medusajs/medusa/core-flows"
 
 import { ProductWorkflowEvents } from "../events"
 import { updateProductsStep } from "../steps"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const updateProductsWorkflowId = "update-products"
 
@@ -17,7 +17,7 @@ type UpdateProductsWorkflowInput = {
   data: Record<string, unknown>
 } & AdditionalData
 
-export const updateProductsWorkflow: ReturnType<typeof createIdempotentWorkflow> = createIdempotentWorkflow(
+export const updateProductsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
   updateProductsWorkflowId,
   function (input: UpdateProductsWorkflowInput) {
     const products = updateProductsStep(input)

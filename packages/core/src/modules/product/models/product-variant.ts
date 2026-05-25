@@ -10,6 +10,7 @@ const ProductVariant = model
     id: model.id({ prefix: "variant" }).primaryKey(),
     title: model.text().searchable().translatable(),
     barcode: model.text().searchable().nullable(),
+    sku: model.text().searchable().nullable(),
     ean: model.text().searchable().nullable(),
     upc: model.text().searchable().nullable(),
     hs_code: model.text().nullable(),
@@ -54,6 +55,12 @@ const ProductVariant = model
     {
       name: "IDX_product_variant_barcode_unique",
       on: ["barcode"],
+      unique: true,
+      where: "deleted_at IS NULL",
+    },
+    {
+      name: "IDX_product_variant_sku_unique",
+      on: ["sku"],
       unique: true,
       where: "deleted_at IS NULL",
     },

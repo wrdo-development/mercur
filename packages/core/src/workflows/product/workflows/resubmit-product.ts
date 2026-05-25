@@ -12,7 +12,7 @@ import {
   createProductChangesStep,
   createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const resubmitProductWorkflowId = "resubmit-product"
 
@@ -20,7 +20,7 @@ type ResubmitProductWorkflowInput = {
   product_id: string
 }
 
-export const resubmitProductWorkflow = createIdempotentWorkflow(
+export const resubmitProductWorkflow = overrideWorkflow(
   resubmitProductWorkflowId,
   function (input: ResubmitProductWorkflowInput) {
     const { data: products } = useQueryGraphStep({

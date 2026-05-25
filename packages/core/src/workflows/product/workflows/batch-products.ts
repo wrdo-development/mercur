@@ -6,12 +6,12 @@ import {
 } from "@medusajs/framework/workflows-sdk"
 import { AdditionalData } from "@medusajs/framework/types"
 import { emitEventStep, useQueryGraphStep } from "@medusajs/medusa/core-flows"
-import { ProductStatus, UpdateProductDTO } from "@mercurjs/types"
+import { UpdateProductDTO, ProductStatus } from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
 import { updateProductsStep } from "../steps"
 import { deleteProductsWorkflow } from "./delete-products"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const batchProductsWorkflowId = "batch-products"
 
@@ -28,7 +28,7 @@ const STATUS_EVENT_MAP: Record<ProductStatus, string | undefined> = {
   [ProductStatus.DRAFT]: undefined,
 }
 
-export const batchProductsWorkflow: ReturnType<typeof createIdempotentWorkflow> = createIdempotentWorkflow(
+export const batchProductsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
   batchProductsWorkflowId,
   function (input: BatchProductsWorkflowInput) {
     const updateProducts = transform(

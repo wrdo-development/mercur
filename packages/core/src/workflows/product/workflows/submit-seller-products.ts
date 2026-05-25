@@ -8,10 +8,7 @@ import {
 import {
   emitEventStep,
 } from "@medusajs/medusa/core-flows"
-import {
-  CreateProductDTO,
-  ProductChangeActionType,
-} from "@mercurjs/types"
+import { CreateProductDTO, ProductChangeActionType } from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
 import {
@@ -24,7 +21,7 @@ import {
   createProductChangesStep,
 } from "../../product-edit/steps"
 import { validateSellerProductPermissionsStep } from "../steps/validate-seller-product-permissions"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const submitSellerProductsWorkflowId = "submit-seller-products"
 
@@ -33,7 +30,7 @@ type SubmitSellerProductsWorkflowInput = {
   seller_id: string
 } & AdditionalData
 
-export const submitSellerProductsWorkflow: ReturnType<typeof createIdempotentWorkflow> = createIdempotentWorkflow(
+export const submitSellerProductsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
   submitSellerProductsWorkflowId,
   function (input: SubmitSellerProductsWorkflowInput) {
     const permissionData = transform(input, ({ products, seller_id }) => {

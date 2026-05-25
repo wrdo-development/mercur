@@ -5,7 +5,7 @@ import {
 
 import { associateSellersWithProductBrandStep } from "../steps/associate-sellers-with-product-brand"
 import { detachSellersFromProductBrandStep } from "../steps/detach-sellers-from-product-brand"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 /**
  * Manages which sellers are authorized to use a restricted product brand
@@ -23,7 +23,7 @@ export type LinkSellersToProductBrandWorkflowInput = {
 export const linkSellersToProductBrandWorkflowId =
   "link-sellers-to-product-brand"
 
-export const linkSellersToProductBrandWorkflow = createIdempotentWorkflow(
+export const linkSellersToProductBrandWorkflow = overrideWorkflow(
   linkSellersToProductBrandWorkflowId,
   (
     input: WorkflowData<LinkSellersToProductBrandWorkflowInput>

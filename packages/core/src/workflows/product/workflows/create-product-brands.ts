@@ -7,7 +7,7 @@ import { CreateProductBrandDTO } from "@mercurjs/types"
 
 import { ProductBrandWorkflowEvents } from "../events"
 import { createProductBrandsStep } from "../steps/create-product-brands"
-import { createIdempotentWorkflow } from "../../utils/create-idempotent-workflow"
+import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const createProductBrandsWorkflowId = "create-product-brands"
 
@@ -15,7 +15,7 @@ type CreateProductBrandsWorkflowInput = {
   brands: CreateProductBrandDTO[]
 }
 
-export const createProductBrandsWorkflow = createIdempotentWorkflow(
+export const createProductBrandsWorkflow = overrideWorkflow(
   createProductBrandsWorkflowId,
   function (input: CreateProductBrandsWorkflowInput) {
     const brands = createProductBrandsStep(input.brands)

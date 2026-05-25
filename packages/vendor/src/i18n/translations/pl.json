@@ -476,7 +476,6 @@
         "details": "Szczegóły",
         "organize": "Organizacja",
         "variants": "Warianty",
-        "inventory": "Zestawy magazynowe",
         "attributes": "Atrybuty"
       },
       "defaults": {
@@ -488,25 +487,25 @@
         "variants": "Wybierz co najmniej jeden wariant.",
         "options": "Utwórz co najmniej jedną opcję.",
         "uniqueSku": "SKU musi być unikalny.",
-        "requiredAttribute": "This attribute is required.",
+        "requiredAttribute": "Ten atrybut jest wymagany.",
         "primaryCategoryRequired": "Kategoria główna jest wymagana",
         "titleRequired": "Tytuł jest wymagany",
         "handleInvalidFormat": "Identyfikator może zawierać tylko małe litery, cyfry i myślniki",
         "handleMustContainLetter": "Identyfikator musi zawierać co najmniej jedną literę"
       },
       "attributes": {
-        "header": "Attributes",
-        "addExisting": "Add existing",
-        "createNew": "Create new",
-        "requiredAttributes": "Required attributes",
-        "requiredAttributesHint": "These attributes are required by the Marketplace. Select them before proceeding.",
-        "selectValues": "Select values",
-        "tip": "Tip",
-        "useForVariants": "Use for Variations",
-        "useForVariantsDescription": "If checked, you will be able to create variants using this attribute. If not, the attribute will be used for informational purposes only.",
-        "variantAxisTip": "This attribute will create variants. You can define them in the next step.",
-        "titlePlaceholder": "e.g. Color",
-        "valuePlaceholder": "Enter values",
+        "header": "Atrybuty",
+        "addExisting": "Dodaj istniejący",
+        "createNew": "Utwórz nowy",
+        "requiredAttributes": "Wymagane atrybuty",
+        "requiredAttributesHint": "Te atrybuty są wymagane przez Marketplace. Wybierz je, zanim przejdziesz dalej.",
+        "selectValues": "Wybierz wartości",
+        "tip": "Wskazówka",
+        "useForVariants": "Użyj dla wariantów",
+        "useForVariantsDescription": "Jeśli zaznaczone, będziesz mógł tworzyć warianty przy użyciu tego atrybutu. Jeśli nie, atrybut będzie używany wyłącznie w celach informacyjnych.",
+        "variantAxisTip": "Ten atrybut utworzy warianty. Możesz je zdefiniować w kolejnym kroku.",
+        "titlePlaceholder": "np. Kolor",
+        "valuePlaceholder": "Wprowadź wartości",
         "description": "Dodaj atrybuty do swojego produktu. Wybierz z atrybutów zdefiniowanych przez administratora lub stwórz własne.",
         "requiredHeading": "Wymagane atrybuty",
         "requiredDescription": "Te atrybuty są wymagane dla produktów w tej kategorii.",
@@ -516,12 +515,6 @@
           "label": "Dowiedz się więcej o atrybutach",
           "content": "Atrybuty pomagają klientom znajdować i filtrować Twoje produkty. Atrybuty zdefiniowane przez administratora pojawiają się w wynikach wyszukiwania."
         }
-      },
-      "inventory": {
-        "heading": "Zestawy magazynowe",
-        "label": "Dodaj pozycje magazynowe do zestawu wariantu.",
-        "itemPlaceholder": "Wybierz pozycję magazynową",
-        "quantityPlaceholder": "Ile z tych elementów jest potrzebnych do zestawu?"
       },
       "variants": {
         "header": "Warianty",
@@ -611,7 +604,6 @@
     },
     "editAttributes": "Edytuj atrybuty",
     "editOptions": "Edytuj opcje",
-    "editPrices": "Edytuj ceny",
     "media": {
       "label": "Media",
       "editHint": "Dodaj media do produktu, aby zaprezentować go w swoim sklepie.",
@@ -790,7 +782,6 @@
         "header": "Szczegóły wariantu"
       },
       "deleteWarning": "Czy na pewno chcesz usunąć ten wariant?",
-      "pricesPagination": "1 - {{current}} z {{total}} cen",
       "tableItemAvailable": "{{availableCount}} dostępnych",
       "tableItem_one": "{{availableCount}} dostępny w {{locationCount}} lokalizacji",
       "tableItem_few": "{{availableCount}} dostępne w {{locationCount}} lokalizacji",
@@ -798,21 +789,13 @@
       "tableItem_other": "{{availableCount}} dostępnych w {{locationCount}} lokalizacji",
       "inventory": {
         "notManaged": "Nie zarządzane",
-        "manageItems": "Zarządzaj elementami magazynowymi",
-        "notManagedDesc": "Zapasy nie są zarządzane dla tego wariantu. Włącz 'Zarządzaj zapasami', aby śledzić stan magazynowy wariantu.",
-        "manageKit": "Zarządzaj zestawem magazynowym",
         "navigateToItem": "Przejdź do elementu magazynowego",
-        "actions": {
-          "inventoryItems": "Przejdź do elementu magazynowego",
-          "inventoryKit": "Pokaż elementy magazynowe"
-        },
         "inventoryKit": "Zestaw magazynowy",
         "inventoryKitHint": "Czy ten wariant składa się z kilku elementów magazynowych?",
         "validation": {
           "itemId": "Proszę wybrać element magazynowy.",
           "quantity": "Ilość jest wymagana. Proszę wprowadzić liczbę dodatnią."
         },
-        "header": "Stan magazynowy i zapasy",
         "editItemDetails": "Edytuj szczegóły elementu",
         "manageInventoryLabel": "Zarządzaj zapasami",
         "manageInventoryHint": "Po włączeniu będziemy zmieniać ilość w magazynie przy tworzeniu zamówień i zwrotów.",
@@ -849,15 +832,6 @@
         "toasts": {
           "success": "Pomyślnie zaktualizowano organizację {{title}}."
         }
-      }
-    },
-    "stock": {
-      "heading": "Zarządzaj stanem magazynowym produktów i ich lokalizacjami",
-      "description": "Aktualizuj poziomy zapasów dla wszystkich wariantów produktu.",
-      "loading": "Proszę czekać, może to chwilę potrwać...",
-      "tooltips": {
-        "alreadyManaged": "Ten element magazynowy jest już edytowalny w ramach {{title}}.",
-        "alreadyManagedWithSku": "Ten element magazynowy jest już edytowalny w ramach {{title}} ({{sku}})."
       }
     },
     "shippingProfile": {
@@ -1110,6 +1084,121 @@
       "successToast": "Stany magazynowe zostały pomyślnie zaktualizowane."
     },
     "levelDeleted": "Poziom magazynowy został pomyślnie usunięty."
+  },
+  "offers": {
+    "domain": "Oferty",
+    "subtitle": "Zarządzaj wpisami w katalogu",
+    "create": {
+      "header": "Utwórz ofertę",
+      "successToast": "Oferta została utworzona",
+      "publish": "Opublikuj",
+      "tip": "Wybierz wszystkie istotne produkty pasujące do Twojego asortymentu, a następnie łatwo utwórz dla nich oferty, dodając stany magazynowe i ceny.",
+      "addPrice": "Dodaj cenę",
+      "addInventoryItem": "Dodaj pozycję magazynową",
+      "stockLevelsWarning": "Oferty utworzone, ale nie udało się zapisać niektórych stanów magazynowych: {{message}}",
+      "tabs": {
+        "catalogue": "Katalog",
+        "stockLevelsAndPrices": "Stany magazynowe i ceny"
+      }
+    },
+    "detail": {
+      "offerLabel": "Oferta",
+      "productVariant": "Wariant produktu",
+      "inventoryItems": "Pozycje magazynowe",
+      "manageKit": "Zarządzaj zestawem magazynowym",
+      "noInventoryItems": "Brak dołączonych pozycji magazynowych. Otwórz panel magazynu, aby je dołączyć.",
+      "goToInventoryItem": "Przejdź do pozycji magazynowej"
+    },
+    "edit": {
+      "header": "Edytuj ofertę",
+      "description": "Zaktualizuj dane oferty, profil wysyłki lub metadane.",
+      "successToast": "Oferta została zaktualizowana"
+    },
+    "pricing": {
+      "header": "Zarządzaj cenami",
+      "description": "Dodaj, zmień lub usuń ceny w drabince cenowej tej oferty.",
+      "successToast": "Ceny zostały zaktualizowane",
+      "empty": "Brak skonfigurowanych cen"
+    },
+    "inventory": {
+      "header": "Zarządzaj pozycjami magazynowymi",
+      "description": "Dołącz, odłącz lub zmień wymaganą ilość dla pozycji.",
+      "successToast": "Pozycje magazynowe zostały zaktualizowane",
+      "empty": "Brak dołączonych pozycji magazynowych"
+    },
+    "delete": {
+      "description": "Zamierzasz usunąć ofertę {{sku}}. Tej akcji nie można cofnąć.",
+      "successToast": "Oferta została usunięta"
+    },
+    "bulkDelete": {
+      "description_one": "Zamierzasz usunąć {{count}} ofertę. Tej akcji nie można cofnąć.",
+      "description_few": "Zamierzasz usunąć {{count}} oferty. Tej akcji nie można cofnąć.",
+      "description_many": "Zamierzasz usunąć {{count}} ofert. Tej akcji nie można cofnąć.",
+      "description_other": "Zamierzasz usunąć {{count}} ofert. Tej akcji nie można cofnąć.",
+      "successToast_one": "Usunięto {{count}} ofertę",
+      "successToast_few": "Usunięto {{count}} oferty",
+      "successToast_many": "Usunięto {{count}} ofert",
+      "successToast_other": "Usunięto {{count}} ofert",
+      "partialToast": "Usunięto {{succeeded}} z {{total}} ofert; {{failed}} nieudanych"
+    },
+    "actions": {
+      "create": "Utwórz",
+      "manage_prices": "Zarządzaj cenami",
+      "manage_inventory": "Zarządzaj magazynem",
+      "bulkDelete": "Usuń zaznaczone"
+    },
+    "fields": {
+      "sku": "SKU",
+      "variant": "Wariant główny",
+      "shippingProfile": "Profil wysyłki",
+      "ean": "EAN",
+      "upc": "UPC",
+      "requiredQuantity": "Wymagana ilość",
+      "stockStatus": "Status magazynu",
+      "category": "Kategoria",
+      "collection": "Kolekcja",
+      "variants": "Warianty",
+      "status": "Status",
+      "offer": "Oferta",
+      "minQuantity": "Min. ilość",
+      "maxQuantity": "Maks. ilość",
+      "stockLocation": "Lokalizacja magazynowa {{name}}",
+      "priceCurrency": "Cena {{code}}",
+      "notEnabled": "Nieaktywne",
+      "enabled": "Aktywne",
+      "variantsCount_one": "{{count}} wariant",
+      "variantsCount_few": "{{count}} warianty",
+      "variantsCount_many": "{{count}} wariantów",
+      "variantsCount_other": "{{count}} wariantów"
+    },
+    "status": {
+      "published": "Opublikowana",
+      "draft": "Szkic",
+      "proposed": "Proponowana",
+      "rejected": "Odrzucona"
+    },
+    "stockStatus": {
+      "in_stock": "Dostępny",
+      "low_stock": "Niski stan",
+      "out_of_stock": "Brak w magazynie"
+    },
+    "empty": {
+      "heading": "Brak ofert",
+      "description": "Utwórz oferty, aby rozpocząć sprzedaż na marketplace"
+    },
+    "filtered": {
+      "heading": "Brak pasujących ofert",
+      "description": "Dostosuj filtry lub wyszukiwane terminy."
+    },
+    "validation": {
+      "skuRequired": "SKU jest wymagane dla wierszy z włączoną lokalizacją magazynową lub niezerową ceną.",
+      "duplicateSku": "Inny wiersz w tym zgłoszeniu używa już tego SKU.",
+      "duplicatePriceRule": "Inny wiersz cenowy ma już tę kombinację waluty, regionu, grupy klientów i przedziałów ilości.",
+      "duplicateInventoryItem": "Ta pozycja magazynowa jest już dołączona.",
+      "selectAtLeastOneVariant": "Wybierz co najmniej jeden wariant, aby kontynuować.",
+      "noPublishableRows": "Dodaj SKU, włącz lokalizację magazynową lub ustaw cenę, aby opublikować.",
+      "duplicateBatchEntry": "Pozycja magazynowa może występować tylko w jednym koszyku (utwórz, aktualizuj lub usuń)."
+    }
   },
   "giftCards": {
     "domain": "Karty podarunkowe",
@@ -2466,7 +2555,7 @@
       },
       "type": {
         "standard": {
-          "title": "Standard",
+          "title": "Standardowa",
           "description": "Standardowa promocja"
         },
         "buyget": {
@@ -2484,7 +2573,7 @@
           "description": "Stosuje wartość do wszystkich elementów"
         },
         "once": {
-          "title": "Once",
+          "title": "Jednorazowo",
           "description": "Stosuje wartość do ograniczonej liczby przedmiotów"
         }
       },
@@ -3804,7 +3893,7 @@
     "endDate": "Data końcowa",
     "draft": "Projekt",
     "values": "Wartości",
-    "brand": "Brand",
+    "brand": "Marka",
     "images": "Media",
     "brand_id": "Marka",
     "type_id": "Typ",
@@ -3865,20 +3954,20 @@
   },
   "attributes": {
     "fields": {
-      "name": "Name",
-      "handle": "Handle",
-      "required": "Required",
-      "type": "Type",
-      "values": "Values",
-      "variantAxis": "Use for Variants",
-      "filterable": "Filterable"
+      "name": "Nazwa",
+      "handle": "Identyfikator",
+      "required": "Wymagane",
+      "type": "Typ",
+      "values": "Wartości",
+      "variantAxis": "Użyj dla wariantów",
+      "filterable": "Filtrowalne"
     },
     "type": {
-      "select": "Single Select",
-      "multivalue": "Multi Select",
-      "unit": "Unit",
-      "toggle": "Toggle",
-      "text_area": "Text Area"
+      "select": "Lista jednokrotnego wyboru",
+      "multivalue": "Lista wielokrotnego wyboru",
+      "unit": "Jednostka",
+      "toggle": "Przełącznik",
+      "text_area": "Pole tekstowe"
     }
   },
   "seller": {
