@@ -29,5 +29,23 @@
     "packages/*",
     "packages/providers/*",
     "integration-tests"
-  ]
+  ],
+  "overrides": {
+    "@medusajs/admin-bundler": "2.13.4",
+    "@medusajs/admin-sdk": "2.13.4",
+    "@medusajs/admin-shared": "2.13.4",
+    "@medusajs/admin-vite-plugin": "2.13.4",
+    "@medusajs/cli": "2.13.4",
+    "@medusajs/core-flows": "2.13.4",
+    "@medusajs/dashboard": "2.13.4",
+    "@medusajs/draft-order": "2.13.4",
+    "@medusajs/framework": "2.13.4",
+    "@medusajs/icons": "2.13.4",
+    "@medusajs/medusa": "2.13.4",
+    "@medusajs/test-utils": "2.13.4",
+    "@medusajs/types": "2.13.4",
+    "@medusajs/ui": "4.1.1",
+    "@medusajs/ui-preset": "2.13.4",
+    "zod": "3.25.76"
+  }
 }
