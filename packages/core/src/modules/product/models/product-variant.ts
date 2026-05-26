@@ -24,6 +24,9 @@ const ProductVariant = model
     metadata: model.json().nullable(),
     variant_rank: model.number().default(0).nullable(),
     thumbnail: model.text().nullable(),
+    // todo: remove
+    manage_inventory: model.boolean().default(false).computed(),
+    allow_backorder: model.boolean().default(false).computed(),
 
     // --- Medusa original relations ---
     product: model

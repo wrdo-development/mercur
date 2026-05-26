@@ -9,6 +9,20 @@ last_updated: 2026-05-22  # Session 19 (2026-05-22): dropped the `metadata.cart_
 
 # SPEC-002 Offer Management
 
+> **2026-05-25 entry point: see [SPEC-007](./SPEC-007-shared-priceset-pricing-simplification.md).**
+> The pricing-architecture section of SPEC-002 (per-offer `PriceSet`
+> owned via `offer.price_set_id`) has been **superseded** by SPEC-007,
+> which reverts the design to a shared `PriceSet` per master variant
+> with an `offer_id` `PriceRule` discriminating per-offer rows. SPEC-002
+> remains the canonical source for offer identity, cross-module links
+> (variant / seller / shipping_profile / inventory), cart-line and
+> order-line wiring, vendor / admin / store surfaces, and the
+> inventory-item M:N relationship. For anything related to how
+> per-offer prices are stored, resolved, written, or deleted, **read
+> SPEC-007 first** — the per-offer-`PriceSet` text below this banner
+> describes the now-historical design and is retained for migration
+> context only.
+
 > **2026-05-20 pricing-architecture migration.** Pricing is no longer
 > threaded onto the master variant's shared `PriceSet` with an
 > `offer_id` `PriceRule` discriminating per-offer rows. Each offer
