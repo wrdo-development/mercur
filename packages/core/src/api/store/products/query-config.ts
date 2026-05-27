@@ -1,4 +1,4 @@
-export const storeProductFields = [
+export const defaultStoreProductFields = [
   "id",
   "title",
   "subtitle",
@@ -32,6 +32,7 @@ export const storeProductFields = [
   "*variants",
   "*variants.attribute_values",
   "*variants.attribute_values.attribute",
+  "*variants.offers",
   "*variant_attributes",
   "*variant_attributes.values",
   "*custom_attributes",
@@ -42,16 +43,12 @@ export const storeProductFields = [
 
 export const storeProductQueryConfig = {
   list: {
-    defaults: storeProductFields,
+    defaults: defaultStoreProductFields,
     defaultLimit: 50,
     isList: true,
   },
   retrieve: {
-    defaults: storeProductFields,
+    defaults: defaultStoreProductFields,
     isList: false,
   },
 }
-
-export const OFFER_CALCULATED_PRICE_FIELD = "variants.offers.calculated_price"
-export const OFFER_INVENTORY_QUANTITY_FIELD =
-  "variants.offers.inventory_quantity"

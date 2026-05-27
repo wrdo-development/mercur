@@ -10,19 +10,17 @@ import { emitEventStep } from "@medusajs/medusa/core-flows"
 import { deleteOffersStep } from "../steps"
 import { OfferWorkflowEvents } from "../../events"
 
-export type DeleteOffersWorkflowInput = {
-  ids: string[]
-} & AdditionalData
+export type DeleteOffersWorkflowInput = { ids: string[] } & AdditionalData
 
 export const deleteOffersWorkflowId = "delete-offers"
 
 export const deleteOffersWorkflow = createWorkflow(
   deleteOffersWorkflowId,
   function (input: DeleteOffersWorkflowInput) {
-    deleteOffersStep(input.ids)
+    deleteOffersStep({ ids: input.ids })
 
     const eventData = transform({ input }, ({ input }) =>
-      input.ids.map((id) => ({ id }))
+      input.ids.map((id) => ({ id })),
     )
 
     emitEventStep({
@@ -36,5 +34,5 @@ export const deleteOffersWorkflow = createWorkflow(
     })
 
     return new WorkflowResponse(void 0, { hooks: [offersDeleted] })
-  }
+  },
 )
