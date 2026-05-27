@@ -3,6 +3,8 @@ import {
   createWorkflow,
   transform,
   WorkflowResponse,
+  type Hook,
+  type ReturnWorkflow,
 } from "@medusajs/framework/workflows-sdk"
 import {
   AdditionalData,
@@ -17,7 +19,7 @@ import {
   useQueryGraphStep,
 } from "@medusajs/medusa/core-flows"
 import { MedusaError, Modules } from "@medusajs/framework/utils"
-import { UpdateOfferDTO, MercurModules } from "@mercurjs/types"
+import { UpdateOfferDTO, MercurModules, OfferDTO } from "@mercurjs/types"
 
 import { removeOfferPricesStep, updateOffersStep } from "../steps"
 import { assertOfferPriceOwnership } from "../utils"
@@ -38,9 +40,25 @@ export type UpdateOffersWorkflowInput = {
   offers: UpdateOfferDTO[]
 } & AdditionalData
 
+export type UpdateOffersWorkflowHooks = [
+  Hook<"validate", { input: UpdateOffersWorkflowInput }, unknown>,
+  Hook<
+    "offersUpdated",
+    {
+      offers: OfferDTO[]
+      additional_data: Record<string, unknown> | undefined
+    },
+    unknown
+  >,
+]
+
 export const updateOffersWorkflowId = "update-offers"
 
-export const updateOffersWorkflow = createWorkflow(
+export const updateOffersWorkflow: ReturnWorkflow<
+  UpdateOffersWorkflowInput,
+  OfferDTO[],
+  UpdateOffersWorkflowHooks
+> = createWorkflow(
   updateOffersWorkflowId,
   function (input: UpdateOffersWorkflowInput) {
     const validate = createHook("validate", { input })

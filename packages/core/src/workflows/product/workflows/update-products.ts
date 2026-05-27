@@ -1,23 +1,41 @@
 import {
+  createWorkflow,
   createHook,
   WorkflowResponse,
   transform,
+  type Hook,
+  type ReturnWorkflow,
 } from "@medusajs/framework/workflows-sdk"
 import { AdditionalData } from "@medusajs/framework/types"
 import { emitEventStep } from "@medusajs/medusa/core-flows"
+import { ProductDTO } from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
 import { updateProductsStep } from "../steps"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const updateProductsWorkflowId = "update-products"
+export const updateProductsWorkflowId = "mercur-update-products"
 
-type UpdateProductsWorkflowInput = {
+export type UpdateProductsWorkflowInput = {
   selector: Record<string, unknown>
   data: Record<string, unknown>
 } & AdditionalData
 
-export const updateProductsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
+export type UpdateProductsWorkflowHooks = [
+  Hook<
+    "productsUpdated",
+    {
+      products: ProductDTO[]
+      additional_data: Record<string, unknown> | undefined
+    },
+    unknown
+  >,
+]
+
+export const updateProductsWorkflow: ReturnWorkflow<
+  UpdateProductsWorkflowInput,
+  ProductDTO[],
+  UpdateProductsWorkflowHooks
+> = createWorkflow(
   updateProductsWorkflowId,
   function (input: UpdateProductsWorkflowInput) {
     const products = updateProductsStep(input)

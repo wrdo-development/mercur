@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   createHook,
   WorkflowResponse,
   transform,
@@ -12,9 +13,8 @@ import {
   createProductChangesStep,
   createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const requestProductChangesWorkflowId = "request-product-changes"
+export const requestProductChangesWorkflowId = "mercur-request-product-changes"
 
 type RequestProductChangesWorkflowInput = {
   product_id: string
@@ -22,7 +22,7 @@ type RequestProductChangesWorkflowInput = {
   actor_id?: string
 }
 
-export const requestProductChangesWorkflow = overrideWorkflow(
+export const requestProductChangesWorkflow = createWorkflow(
   requestProductChangesWorkflowId,
   function (input: RequestProductChangesWorkflowInput) {
     const { data: products } = useQueryGraphStep({

@@ -1,14 +1,21 @@
 import {
   AdditionalData } from "@medusajs/framework/types"
 import {
+  createWorkflow,
   createHook,
   transform,
   WorkflowResponse,
+  type Hook,
+  type ReturnWorkflow,
 } from "@medusajs/framework/workflows-sdk"
 import {
   emitEventStep,
 } from "@medusajs/medusa/core-flows"
-import { CreateProductDTO, ProductChangeActionType } from "@mercurjs/types"
+import {
+  CreateProductDTO,
+  ProductChangeActionType,
+  ProductDTO,
+} from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
 import {
@@ -21,16 +28,40 @@ import {
   createProductChangesStep,
 } from "../../product-edit/steps"
 import { validateSellerProductPermissionsStep } from "../steps/validate-seller-product-permissions"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const submitSellerProductsWorkflowId = "submit-seller-products"
+export const submitSellerProductsWorkflowId = "mercur-submit-seller-products"
 
-type SubmitSellerProductsWorkflowInput = {
+export type SubmitSellerProductsWorkflowInput = {
   products: CreateProductDTO[]
   seller_id: string
 } & AdditionalData
 
-export const submitSellerProductsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
+export type SubmitSellerProductsWorkflowHooks = [
+  Hook<
+    "validate",
+    {
+      input: SubmitSellerProductsWorkflowInput
+      products: CreateProductDTO[]
+      seller_id: string
+    },
+    unknown
+  >,
+  Hook<
+    "sellerProductsSubmitted",
+    {
+      products: ProductDTO[]
+      seller_id: string
+      additional_data: Record<string, unknown> | undefined
+    },
+    unknown
+  >,
+]
+
+export const submitSellerProductsWorkflow: ReturnWorkflow<
+  SubmitSellerProductsWorkflowInput,
+  ProductDTO[],
+  SubmitSellerProductsWorkflowHooks
+> = createWorkflow(
   submitSellerProductsWorkflowId,
   function (input: SubmitSellerProductsWorkflowInput) {
     const permissionData = transform(input, ({ products, seller_id }) => {

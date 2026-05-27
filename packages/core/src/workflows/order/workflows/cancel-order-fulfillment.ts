@@ -15,6 +15,7 @@ import {
   Modules,
 } from "@medusajs/framework/utils"
 import {
+  createWorkflow,
   createHook,
   createStep,
   parallelize,
@@ -32,7 +33,6 @@ import {
   useQueryGraphStep,
   useRemoteQueryStep,
 } from "@medusajs/medusa/core-flows"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
 type OfferInventoryLink = {
   inventory_item_id: string
@@ -247,9 +247,9 @@ function prepareInventoryUpdate({
 export type CancelOrderFulfillmentWorkflowInput =
   OrderWorkflow.CancelOrderFulfillmentWorkflowInput & AdditionalData
 
-export const cancelOrderFulfillmentWorkflowId = "cancel-order-fulfillment"
+export const cancelOrderFulfillmentWorkflowId = "mercur-cancel-order-fulfillment"
 
-export const cancelOrderFulfillmentWorkflow = overrideWorkflow(
+export const cancelOrderFulfillmentWorkflow = createWorkflow(
   cancelOrderFulfillmentWorkflowId,
   (input: WorkflowData<CancelOrderFulfillmentWorkflowInput>) => {
     const { data: order } = useQueryGraphStep({

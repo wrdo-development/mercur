@@ -1,6 +1,7 @@
 import {
   AdditionalData,
   BigNumberInput,
+  FulfillmentDTO,
   FulfillmentWorkflow,
   OrderDTO,
   OrderLineItemDTO,
@@ -16,12 +17,15 @@ import {
   OrderWorkflowEvents,
 } from "@medusajs/framework/utils"
 import {
+  createWorkflow,
   createHook,
   createStep,
   parallelize,
   transform,
   WorkflowData,
   WorkflowResponse,
+  type Hook,
+  type ReturnWorkflow,
 } from "@medusajs/framework/workflows-sdk"
 import {
   adjustInventoryLevelsStep,
@@ -34,7 +38,6 @@ import {
   useQueryGraphStep,
   useRemoteQueryStep,
 } from "@medusajs/medusa/core-flows"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
 type OfferInventoryLink = {
   inventory_item_id: string
@@ -398,9 +401,24 @@ function prepareInventoryUpdate({
 export type CreateOrderFulfillmentWorkflowInput =
   OrderWorkflow.CreateOrderFulfillmentWorkflowInput & AdditionalData
 
-export const createOrderFulfillmentWorkflowId = "create-order-fulfillment"
+export type CreateOrderFulfillmentWorkflowHooks = [
+  Hook<
+    "fulfillmentCreated",
+    {
+      fulfillment: FulfillmentDTO
+      additional_data: Record<string, unknown> | undefined
+    },
+    unknown
+  >,
+]
 
-export const createOrderFulfillmentWorkflow = overrideWorkflow(
+export const createOrderFulfillmentWorkflowId = "mercur-create-order-fulfillment"
+
+export const createOrderFulfillmentWorkflow: ReturnWorkflow<
+  CreateOrderFulfillmentWorkflowInput,
+  FulfillmentDTO,
+  CreateOrderFulfillmentWorkflowHooks
+> = createWorkflow(
   createOrderFulfillmentWorkflowId,
   (input: WorkflowData<CreateOrderFulfillmentWorkflowInput>) => {
     const { data: order } = useQueryGraphStep({

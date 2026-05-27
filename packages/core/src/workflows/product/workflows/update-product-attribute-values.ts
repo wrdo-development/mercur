@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
@@ -7,17 +8,16 @@ import { UpdateProductAttributeValueDTO } from "@mercurjs/types"
 
 import { ProductAttributeValueWorkflowEvents } from "../events"
 import { updateProductAttributeValuesStep } from "../steps/update-product-attribute-values"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const updateProductAttributeValuesWorkflowId =
-  "update-product-attribute-values"
+  "mercur-update-product-attribute-values"
 
 type UpdateProductAttributeValuesWorkflowInput = {
   selector: Record<string, unknown>
   update: UpdateProductAttributeValueDTO
 }
 
-export const updateProductAttributeValuesWorkflow = overrideWorkflow(
+export const updateProductAttributeValuesWorkflow = createWorkflow(
   updateProductAttributeValuesWorkflowId,
   function (input: UpdateProductAttributeValuesWorkflowInput) {
     const values = updateProductAttributeValuesStep(input)

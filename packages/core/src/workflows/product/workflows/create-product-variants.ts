@@ -1,23 +1,40 @@
 import {
+  createWorkflow,
   createHook,
   WorkflowResponse,
   transform,
+  type Hook,
+  type ReturnWorkflow,
 } from "@medusajs/framework/workflows-sdk"
 import { AdditionalData } from "@medusajs/framework/types"
 import { emitEventStep } from "@medusajs/medusa/core-flows"
-import { CreateProductVariantDTO } from "@mercurjs/types"
+import { CreateProductVariantDTO, ProductVariantDTO } from "@mercurjs/types"
 
 import { ProductVariantWorkflowEvents } from "../events"
 import { createProductVariantsStep } from "../steps/create-product-variants"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const createProductVariantsWorkflowId = "create-product-variants"
+export const createProductVariantsWorkflowId = "mercur-create-product-variants"
 
-type CreateProductVariantsWorkflowInput = {
+export type CreateProductVariantsWorkflowInput = {
   product_variants: CreateProductVariantDTO[]
 } & AdditionalData
 
-export const createProductVariantsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
+export type CreateProductVariantsWorkflowHooks = [
+  Hook<
+    "productVariantsCreated",
+    {
+      product_variants: ProductVariantDTO[]
+      additional_data: Record<string, unknown> | undefined
+    },
+    unknown
+  >,
+]
+
+export const createProductVariantsWorkflow: ReturnWorkflow<
+  CreateProductVariantsWorkflowInput,
+  ProductVariantDTO[],
+  CreateProductVariantsWorkflowHooks
+> = createWorkflow(
   createProductVariantsWorkflowId,
   function (input: CreateProductVariantsWorkflowInput) {
     const variants = createProductVariantsStep(input.product_variants)

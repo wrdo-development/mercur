@@ -16,6 +16,7 @@ import {
   ReturnStatus,
 } from "@medusajs/framework/utils"
 import {
+  createWorkflow,
   createStep,
   parallelize,
   StepResponse,
@@ -31,7 +32,6 @@ import {
   updateReturnsStep,
   useRemoteQueryStep,
 } from "@medusajs/medusa/core-flows"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
 type ConfirmOrderChangesInput = {
   orderId: string
@@ -181,12 +181,12 @@ export type ConfirmReceiveReturnRequestWorkflowInput = {
   confirmed_by?: string
 }
 
-export const confirmReturnReceiveWorkflowId = "confirm-return-receive"
+export const confirmReturnReceiveWorkflowId = "mercur-confirm-return-receive"
 
 // Same-id replacement for Medusa's confirmReturnReceiveWorkflow. Mercur
 // resolves restock quantities by the order line's linked offer (not by
 // variant), since marketplace inventory ownership lives on the offer.
-export const confirmReturnReceiveWorkflow = overrideWorkflow(
+export const confirmReturnReceiveWorkflow = createWorkflow(
   confirmReturnReceiveWorkflowId,
   function (
     input: ConfirmReceiveReturnRequestWorkflowInput,

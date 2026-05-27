@@ -1,11 +1,11 @@
 import {
+  createWorkflow,
   transform,
   WorkflowData,
 } from "@medusajs/framework/workflows-sdk"
 
 import { associateSellersWithProductStep } from "../steps/associate-sellers-with-product"
 import { detachSellersFromProductStep } from "../steps/detach-sellers-from-product"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
 /**
  * Manages which sellers are authorized to sell a product
@@ -20,9 +20,9 @@ export type LinkSellersToProductWorkflowInput = {
   remove?: string[]
 }
 
-export const linkSellersToProductWorkflowId = "link-sellers-to-product"
+export const linkSellersToProductWorkflowId = "mercur-link-sellers-to-product"
 
-export const linkSellersToProductWorkflow = overrideWorkflow(
+export const linkSellersToProductWorkflow = createWorkflow(
   linkSellersToProductWorkflowId,
   (
     input: WorkflowData<LinkSellersToProductWorkflowInput>

@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   createHook,
   WorkflowResponse,
   transform,
@@ -12,15 +13,14 @@ import {
   createProductChangesStep,
   createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const resubmitProductWorkflowId = "resubmit-product"
+export const resubmitProductWorkflowId = "mercur-resubmit-product"
 
 type ResubmitProductWorkflowInput = {
   product_id: string
 }
 
-export const resubmitProductWorkflow = overrideWorkflow(
+export const resubmitProductWorkflow = createWorkflow(
   resubmitProductWorkflowId,
   function (input: ResubmitProductWorkflowInput) {
     const { data: products } = useQueryGraphStep({

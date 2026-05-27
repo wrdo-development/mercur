@@ -1,24 +1,37 @@
 import {
+  createWorkflow,
   createHook,
   transform,
   when,
   WorkflowResponse,
+  type Hook,
+  type ReturnWorkflow,
 } from "@medusajs/framework/workflows-sdk"
 import { AdditionalData } from "@medusajs/framework/types"
 import { emitEventStep, useQueryGraphStep } from "@medusajs/medusa/core-flows"
-import { UpdateProductDTO, ProductStatus } from "@mercurjs/types"
+import { ProductDTO, UpdateProductDTO, ProductStatus } from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
 import { updateProductsStep } from "../steps"
 import { deleteProductsWorkflow } from "./delete-products"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const batchProductsWorkflowId = "batch-products"
+export const batchProductsWorkflowId = "mercur-batch-products"
 
-type BatchProductsWorkflowInput = {
+export type BatchProductsWorkflowInput = {
   update?: (UpdateProductDTO & { id: string })[]
   delete?: string[]
 } & AdditionalData
+
+export type BatchProductsWorkflowHooks = [
+  Hook<
+    "productsUpdated",
+    {
+      products: ProductDTO[]
+      additional_data: Record<string, unknown> | undefined
+    },
+    unknown
+  >,
+]
 
 const STATUS_EVENT_MAP: Record<ProductStatus, string | undefined> = {
   [ProductStatus.PROPOSED]: ProductWorkflowEvents.PROPOSED,
@@ -28,7 +41,11 @@ const STATUS_EVENT_MAP: Record<ProductStatus, string | undefined> = {
   [ProductStatus.DRAFT]: undefined,
 }
 
-export const batchProductsWorkflow: ReturnType<typeof overrideWorkflow> = overrideWorkflow(
+export const batchProductsWorkflow: ReturnWorkflow<
+  BatchProductsWorkflowInput,
+  ProductDTO[],
+  BatchProductsWorkflowHooks
+> = createWorkflow(
   batchProductsWorkflowId,
   function (input: BatchProductsWorkflowInput) {
     const updateProducts = transform(
@@ -83,7 +100,7 @@ export const batchProductsWorkflow: ReturnType<typeof overrideWorkflow> = overri
           if (!eventName) {
             continue
           }
-          ;(grouped[eventName] ??= []).push({ id: product.id })
+          ; (grouped[eventName] ??= []).push({ id: product.id })
         }
 
         return {

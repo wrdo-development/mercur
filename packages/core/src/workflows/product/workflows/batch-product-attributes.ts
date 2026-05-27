@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
@@ -6,9 +7,8 @@ import { emitEventStep } from "@medusajs/medusa/core-flows"
 
 import { ProductAttributeWorkflowEvents } from "../events"
 import { batchProductAttributesStep } from "../steps/batch-product-attributes"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const batchProductAttributesWorkflowId = "batch-product-attributes"
+export const batchProductAttributesWorkflowId = "mercur-batch-product-attributes"
 
 type BatchProductAttributesWorkflowInput = {
   product_id: string
@@ -20,7 +20,7 @@ type BatchProductAttributesWorkflowInput = {
   delete?: string[]
 }
 
-export const batchProductAttributesWorkflow = overrideWorkflow(
+export const batchProductAttributesWorkflow = createWorkflow(
   batchProductAttributesWorkflowId,
   function (input: BatchProductAttributesWorkflowInput) {
     batchProductAttributesStep(input)

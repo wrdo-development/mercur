@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   createHook,
   WorkflowResponse,
   transform,
@@ -12,9 +13,8 @@ import {
     createProductChangesStep,
     createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const confirmProductsWorkflowId = "confirm-products"
+export const confirmProductsWorkflowId = "mercur-confirm-products"
 
 type ConfirmProductsWorkflowInput = {
     product_ids: string[]
@@ -26,7 +26,7 @@ type ConfirmProductsWorkflowInput = {
     internal_note?: string
 }
 
-export const confirmProductsWorkflow = overrideWorkflow(
+export const confirmProductsWorkflow = createWorkflow(
     confirmProductsWorkflowId,
     function (input: ConfirmProductsWorkflowInput) {
         const { data: products } = useQueryGraphStep({

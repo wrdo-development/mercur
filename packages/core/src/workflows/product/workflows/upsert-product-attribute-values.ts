@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
@@ -8,17 +9,16 @@ import { UpsertProductAttributeValueDTO } from "@mercurjs/types"
 import { ProductAttributeValueWorkflowEvents } from "../events"
 import { upsertProductAttributeValuesStep } from "../steps/upsert-product-attribute-values"
 import { validateAttributeAcceptsValuesStep } from "../steps/validate-attribute-accepts-values"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const upsertProductAttributeValuesWorkflowId =
-  "upsert-product-attribute-values"
+  "mercur-upsert-product-attribute-values"
 
 type UpsertProductAttributeValuesWorkflowInput = {
   attribute_id: string
   values: UpsertProductAttributeValueDTO[]
 }
 
-export const upsertProductAttributeValuesWorkflow = overrideWorkflow(
+export const upsertProductAttributeValuesWorkflow = createWorkflow(
   upsertProductAttributeValuesWorkflowId,
   function (input: UpsertProductAttributeValuesWorkflowInput) {
     validateAttributeAcceptsValuesStep({ attribute_id: input.attribute_id })

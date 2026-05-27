@@ -1,12 +1,12 @@
 import {
+  createWorkflow,
   WorkflowData,
 } from "@medusajs/framework/workflows-sdk"
 
 import { batchLinkProductsToCategoryStep } from "../steps/batch-link-products-in-category"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
 export const batchLinkProductsToCategoryWorkflowId =
-  "batch-link-products-to-category"
+  "mercur-batch-link-products-to-category"
 
 type BatchLinkProductsToCategoryWorkflowInput = {
   id: string
@@ -14,7 +14,7 @@ type BatchLinkProductsToCategoryWorkflowInput = {
   remove?: string[]
 }
 
-export const batchLinkProductsToCategoryWorkflow = overrideWorkflow(
+export const batchLinkProductsToCategoryWorkflow = createWorkflow(
   batchLinkProductsToCategoryWorkflowId,
   (
     input: WorkflowData<BatchLinkProductsToCategoryWorkflowInput>

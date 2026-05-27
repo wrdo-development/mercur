@@ -4,6 +4,8 @@ import {
   createWorkflow,
   transform,
   WorkflowResponse,
+  type Hook,
+  type ReturnWorkflow,
 } from "@medusajs/framework/workflows-sdk"
 import { MedusaError, Modules } from "@medusajs/framework/utils"
 import {
@@ -18,9 +20,36 @@ import { OfferWorkflowEvents } from "../../events"
 export type BatchOfferInventoryItemsWorkflowInput =
   BatchOfferInventoryItemsDTO & AdditionalData
 
+export type BatchOfferInventoryItemsWorkflowResult = {
+  created: LinkDefinition[]
+  updated: LinkDefinition[]
+  deleted: string[]
+}
+
+export type BatchOfferInventoryItemsWorkflowHooks = [
+  Hook<
+    "validate",
+    { input: BatchOfferInventoryItemsWorkflowInput },
+    unknown
+  >,
+  Hook<
+    "offerInventoryItemsBatched",
+    {
+      offer_id: string
+      result: BatchOfferInventoryItemsWorkflowResult
+      additional_data: Record<string, unknown> | undefined
+    },
+    unknown
+  >,
+]
+
 export const batchOfferInventoryItemsWorkflowId = "batch-offer-inventory-items"
 
-export const batchOfferInventoryItemsWorkflow = createWorkflow(
+export const batchOfferInventoryItemsWorkflow: ReturnWorkflow<
+  BatchOfferInventoryItemsWorkflowInput,
+  BatchOfferInventoryItemsWorkflowResult,
+  BatchOfferInventoryItemsWorkflowHooks
+> = createWorkflow(
   batchOfferInventoryItemsWorkflowId,
   function (input: BatchOfferInventoryItemsWorkflowInput) {
     const validate = createHook("validate", { input })

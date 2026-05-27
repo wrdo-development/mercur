@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   createHook,
   WorkflowResponse,
   transform,
@@ -12,9 +13,8 @@ import {
   createProductChangesStep,
   createProductChangeActionsStep,
 } from "../../product-edit/steps"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const rejectProductWorkflowId = "reject-product"
+export const rejectProductWorkflowId = "mercur-reject-product"
 
 type RejectProductWorkflowInput = {
   product_id: string
@@ -22,7 +22,7 @@ type RejectProductWorkflowInput = {
   actor_id?: string
 }
 
-export const rejectProductWorkflow = overrideWorkflow(
+export const rejectProductWorkflow = createWorkflow(
   rejectProductWorkflowId,
   function (input: RejectProductWorkflowInput) {
     const { data: products } = useQueryGraphStep({

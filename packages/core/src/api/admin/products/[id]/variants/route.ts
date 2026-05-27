@@ -43,7 +43,25 @@ export const POST = async (
 
   await createProductVariantsWorkflow(req.scope).run({
     input: {
-      product_variants: [{ ...rest, product_id: productId }],
+      product_variants: [
+        {
+          ...rest,
+          sku: rest.sku ?? undefined,
+          ean: rest.ean ?? undefined,
+          upc: rest.upc ?? undefined,
+          barcode: rest.barcode ?? undefined,
+          hs_code: rest.hs_code ?? undefined,
+          mid_code: rest.mid_code ?? undefined,
+          material: rest.material ?? undefined,
+          length: rest.length ?? undefined,
+          height: rest.height ?? undefined,
+          width: rest.width ?? undefined,
+          weight: rest.weight ?? undefined,
+          origin_country: rest.origin_country ?? undefined,
+          metadata: rest.metadata ?? undefined,
+          product_id: productId,
+        },
+      ],
       additional_data,
     },
   })

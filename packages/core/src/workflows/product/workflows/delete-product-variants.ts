@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   createHook,
   WorkflowResponse,
   transform,
@@ -7,15 +8,14 @@ import { emitEventStep } from "@medusajs/medusa/core-flows"
 
 import { ProductVariantWorkflowEvents } from "../events"
 import { deleteProductVariantsStep } from "../steps/delete-product-variants"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const deleteProductVariantsWorkflowId = "delete-product-variants"
+export const deleteProductVariantsWorkflowId = "mercur-delete-product-variants"
 
 type DeleteProductVariantsWorkflowInput = {
   ids: string[]
 }
 
-export const deleteProductVariantsWorkflow = overrideWorkflow(
+export const deleteProductVariantsWorkflow = createWorkflow(
   deleteProductVariantsWorkflowId,
   function (input: DeleteProductVariantsWorkflowInput) {
     const deleted = deleteProductVariantsStep(input.ids)

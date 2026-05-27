@@ -1,4 +1,5 @@
 import {
+  createWorkflow,
   transform,
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
@@ -7,15 +8,14 @@ import { emitEventStep } from "@medusajs/medusa/core-flows"
 import { ProductAttributeWorkflowEvents } from "../events"
 import { deleteProductAttributesStep } from "../steps/delete-product-attributes"
 import { validateDeleteProductAttributesStep } from "../steps/validate-delete-product-attributes"
-import { overrideWorkflow } from "../../utils/override-workflow"
 
-export const deleteProductAttributesWorkflowId = "delete-product-attributes"
+export const deleteProductAttributesWorkflowId = "mercur-delete-product-attributes"
 
 type DeleteProductAttributesWorkflowInput = {
   ids: string[]
 }
 
-export const deleteProductAttributesWorkflow = overrideWorkflow(
+export const deleteProductAttributesWorkflow = createWorkflow(
   deleteProductAttributesWorkflowId,
   function (input: DeleteProductAttributesWorkflowInput) {
     validateDeleteProductAttributesStep(input)
