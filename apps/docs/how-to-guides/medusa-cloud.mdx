@@ -23,7 +23,7 @@ Head to the [Medusa Cloud signup page](https://cloud.medusajs.com/signup) to get
 
 ## Prepare the template for Medusa Cloud
 
-Medusa Cloud **does not support Bun**. The Mercur basic template ships configured for Bun, so before pushing the project to GitHub you need to switch it to a package manager Medusa Cloud supports (for example, Yarn):
+Medusa Cloud supports **`npm`, `yarn` (v1, v3, v4), and `pnpm`** as package managers ([reference](https://docs.medusajs.com/cloud/projects/prerequisites#prerequisites-for-medusa-application-with-storefront)). Bun is **not** on that list, but the Mercur basic template ships configured for Bun — so before pushing to GitHub you need to switch it to one of the supported managers. The example below uses Yarn:
 
 1. Delete `bun.lock` from the project root.
 2. Open the root `package.json` and remove the `"packageManager"` field.
@@ -41,7 +41,7 @@ yarn install
 Commit `yarn.lock` (and the updated `package.json`) and push to GitHub before continuing.
 
 <Warning>
-  Leaving `bun.lock` or the `"packageManager": "bun@..."` field in place will cause the Medusa Cloud install step to fail, because Bun is not available in the build environment.
+  Leaving `bun.lock` or the `"packageManager": "bun@..."` field in place will cause the Medusa Cloud install step to fail, because Bun isn't one of the supported package managers.
 </Warning>
 
 ## Setup
