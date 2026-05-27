@@ -1,6 +1,6 @@
 {
   "name": "@mercurjs/vendor",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "repository": {
     "type": "git",
     "url": "https://github.com/mercurjs/mercur",
@@ -29,8 +29,8 @@
     "lint": "oxlint --max-warnings 0"
   },
   "dependencies": {
-    "@mercurjs/dashboard-shared": "2.1.2-canary.0",
-    "@mercurjs/client": "2.1.2-canary.0",
+    "@mercurjs/dashboard-shared": "2.1.3",
+    "@mercurjs/client": "2.1.3",
     "@ariakit/react": "^0.4.15",
     "@babel/runtime": "^7.26.10",
     "@dnd-kit/core": "^6.1.0",
