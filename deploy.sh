@@ -5,11 +5,11 @@
 # Usage:
 #   ./deploy.sh                       # default host
 #   MERCUR_HOST=root@1.2.3.4 ./deploy.sh
-#   MERCUR_BRANCH=canary ./deploy.sh
+#   MERCUR_BRANCH=main ./deploy.sh
 set -euo pipefail
 
 HOST="${MERCUR_HOST:-root@167.233.17.178}"
-BRANCH="${MERCUR_BRANCH:-main}"
+BRANCH="${MERCUR_BRANCH:-canary}"
 BACKEND_URL="${MERCUR_BACKEND_URL:-https://new.mercur.dev}"
 
 echo "→ Deploying $BRANCH to $HOST (backend: $BACKEND_URL)"
