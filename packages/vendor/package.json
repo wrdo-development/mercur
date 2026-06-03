@@ -1,6 +1,6 @@
 {
   "name": "@mercurjs/vendor",
-  "version": "2.2.0-canary.4",
+  "version": "2.2.0-canary.5",
   "repository": {
     "type": "git",
     "url": "https://github.com/mercurjs/mercur",
@@ -85,6 +85,6 @@
     "@medusajs/types": "2.13.4",
     "@mercurjs/core": "2.2.0-canary.2",
     "@mercurjs/dashboard-sdk": "2.2.0-canary.2",
-    "@mercurjs/types": "2.2.0-canary.2"
+    "@mercurjs/types": "workspace:*"
   }
 }

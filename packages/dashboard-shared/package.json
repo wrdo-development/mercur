@@ -1,6 +1,6 @@
 {
   "name": "@mercurjs/dashboard-shared",
-  "version": "2.2.0-canary.4",
+  "version": "2.2.0-canary.5",
   "repository": {
     "type": "git",
     "url": "https://github.com/mercurjs/mercur",
@@ -63,7 +63,7 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@mercurjs/types": "2.2.0-canary.2",
+    "@mercurjs/types": "workspace:*",
     "@mercurjs/core": "2.2.0-canary.2",
     "@mercurjs/dashboard-sdk": "2.2.0-canary.2",
     "tsup": "^8.0.2",
