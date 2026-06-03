@@ -8,17 +8,6 @@ import { SellerDTO } from "../seller/common"
 
 // --- Enums ---
 
-/**
- * Mercur product acceptance workflow. Adds `REQUIRES_ACTION` to the
- * upstream `draft / proposed / published / rejected` set.
- */
-export enum ProductStatus {
-  DRAFT = "draft",
-  PROPOSED = "proposed",
-  PUBLISHED = "published",
-  REQUIRES_ACTION = "requires_action",
-  REJECTED = "rejected",
-}
 
 /**
  * Data types for product attributes. Determines validation rules and UI
@@ -32,7 +21,12 @@ export enum AttributeType {
   TEXT = "text",
 }
 
-/** Product change lifecycle statuses. */
+/**
+ * Product change lifecycle statuses. Vendor edits land as `PENDING`
+ * (awaiting admin action) and resolve to `CONFIRMED` / `DECLINED` /
+ * `CANCELED`. Audit-trail rows (publish approval, change requests)
+ * are created already `CONFIRMED`.
+ */
 export enum ProductChangeStatus {
   PENDING = "pending",
   CONFIRMED = "confirmed",
@@ -54,6 +48,13 @@ export enum ProductChangeActionType {
   ATTRIBUTE_ADD = "ATTRIBUTE_ADD",
   ATTRIBUTE_REMOVE = "ATTRIBUTE_REMOVE",
   PRODUCT_DELETE = "PRODUCT_DELETE",
+  /**
+   * Operator asked the vendor to revise a submission. Auto-applied
+   * (no product mutation) — the parent `ProductChange.external_note`
+   * carries the operator's message and the action's existence in the
+   * audit trail is the durable signal.
+   */
+  CHANGE_REQUESTED = "CHANGE_REQUESTED",
 }
 
 // --- Mercur-only DTOs ---
@@ -98,9 +99,23 @@ export interface ProductAttributeDTO {
   rank: number
   is_active: boolean
   created_by: string | null
-  product_id: string | null
+  /**
+   * Legacy override-only column on the fused Mercur product module. Optional
+   * because the new standalone `product-attribute` module (SPEC-008) drops
+   * this field — product-scoped attributes are migrated to stock
+   * `ProductOption` / `ProductOptionValue` instead. The legacy fused module
+   * still populates the column until step 5 retires it.
+   */
+  product_id?: string | null
   metadata: Record<string, unknown> | null
   values?: ProductAttributeValueDTO[]
+  /**
+   * Legacy entity-level M:N relations populated by the fused Mercur product
+   * module. The new `product-attribute` module exposes these via Module
+   * Links instead (`product_attribute_category_link`,
+   * `product_variant_attribute`) and the link aliases resolve through
+   * Query Graph rather than the service.
+   */
   categories?: ProductCategoryDTO[]
   variant_products?: ProductDTO[]
   created_at: string | Date
@@ -169,14 +184,8 @@ export type ProductVariantDTO = UpstreamProductVariantDTO & {
  * Mercur's `ProductDTO`. Replaces `status` (Mercur enum includes
  * `REQUIRES_ACTION`) and drops `options`. Adds marketplace-only fields.
  */
-export type ProductDTO = Omit<UpstreamProductDTO, "status" | "options"> & {
-  status: ProductStatus
-  is_restricted: boolean
-  created_by: string | null
-  created_by_actor: string | null
+export type ProductDTO = UpstreamProductDTO & {
   variants?: ProductVariantDTO[]
-  brand?: ProductBrandDTO | null
-  brand_id?: string | null
   categories?: ProductCategoryDTO[]
   variant_attributes?: ProductAttributeDTO[]
   custom_attributes?: ProductAttributeDTO[]
@@ -185,10 +194,3 @@ export type ProductDTO = Omit<UpstreamProductDTO, "status" | "options"> & {
   sellers?: SellerDTO[]
   changes?: ProductChangeDTO[]
 }
-
-/**
- * Internal alias of `ProductDTO`. Used by the `.mercur/types.d.ts` shim so
- * consumers writing `import { ProductDTO } from "@medusajs/types"` resolve
- * to the Mercur shape.
- */
-export type MercurProductDTO = ProductDTO

@@ -6,11 +6,13 @@ import {
   ContainerRegistrationKeys,
   MedusaError,
 } from "@medusajs/framework/utils"
-import { HttpTypes } from "@mercurjs/types"
+import { AdditionalData } from "@medusajs/framework/types"
+import { HttpTypes, ProductChangeDTO } from "@mercurjs/types"
 
 import { productEditDeleteProductWorkflow } from "../../../../workflows/product-edit/workflows/product-edit-delete-product"
 import { productEditUpdateFieldsWorkflow } from "../../../../workflows/product-edit/workflows/product-edit-update-fields"
-import { formatProductAttributes } from "../../../utils"
+import { enrichProductAttributes } from "../../../utils"
+import { ensureSellerOwnsProduct } from "../helpers"
 import { VendorUpdateProductType } from "../validators"
 
 export const GET = async (
@@ -34,55 +36,77 @@ export const GET = async (
     )
   }
 
-  formatProductAttributes(product)
+  await enrichProductAttributes(req.scope, [product])
 
   res.json({ product })
 }
 
 /**
- * Stages top-level Product field changes through `product-edit-update-fields`.
- * Returns the created `ProductChange` — the product itself is NOT mutated
- * until an operator confirms the change.
+ * Stages a vendor product edit as a pending `ProductChange`. Each
+ * changed field becomes a `ProductChangeAction` (`STATUS_CHANGE` for
+ * status, `UPDATE { field, value }` otherwise). When the
+ * `PRODUCT_REQUEST` feature flag is disabled the staged change is
+ * confirmed inline and applied to the underlying product before the
+ * response returns. Returns 202 with `{ product_change }` so the
+ * vendor UI can show pending state regardless of flag.
  */
 export const POST = async (
-  req: AuthenticatedMedusaRequest<VendorUpdateProductType>,
-  res: MedusaResponse
+  req: AuthenticatedMedusaRequest<VendorUpdateProductType & AdditionalData>,
+  res: MedusaResponse<{ product_change: ProductChangeDTO }>
 ) => {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const sellerId = req.seller_context!.seller_id
-  const { additional_data: _additional_data, ...updates } = req.validatedBody
 
-  const { result: change } = await productEditUpdateFieldsWorkflow(
-    req.scope
-  ).run({
+  await ensureSellerOwnsProduct(req.scope, sellerId, req.params.id)
+
+  const { additional_data: _ad, ...update } = req.validatedBody
+
+  const { result } = await productEditUpdateFieldsWorkflow(req.scope).run({
     input: {
       product_id: req.params.id,
-      updates: updates as Record<string, unknown>,
-      actor_id: sellerId,
+      created_by: sellerId,
+      update: update as Record<string, unknown>,
     },
   })
 
-  res.status(202).json({ product_change: change })
+  const {
+    data: [product_change],
+  } = await query.graph({
+    entity: "product_change",
+    fields: ["*", "actions.*"],
+    filters: { id: result.id },
+  })
+
+  res.status(202).json({ product_change: product_change ?? result })
 }
 
 /**
- * Stages a `PRODUCT_DELETE` action via `product-edit-delete-product`.
- * Returns the created `ProductChange` — the product is soft-deleted only
- * after an operator confirms the change.
+ * Stages a vendor-initiated delete as a `PRODUCT_DELETE` action on a
+ * fresh `ProductChange`. Auto-confirm applies it inline when the
+ * `PRODUCT_REQUEST` feature flag is disabled.
  */
 export const DELETE = async (
   req: AuthenticatedMedusaRequest,
-  res: MedusaResponse
+  res: MedusaResponse<{ product_change: ProductChangeDTO }>
 ) => {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const sellerId = req.seller_context!.seller_id
+  await ensureSellerOwnsProduct(req.scope, sellerId, req.params.id)
 
-  const { result: change } = await productEditDeleteProductWorkflow(
-    req.scope
-  ).run({
+  const { result } = await productEditDeleteProductWorkflow(req.scope).run({
     input: {
       product_id: req.params.id,
-      actor_id: sellerId,
+      created_by: sellerId,
     },
   })
 
-  res.status(202).json({ product_change: change })
+  const {
+    data: [product_change],
+  } = await query.graph({
+    entity: "product_change",
+    fields: ["*", "actions.*"],
+    filters: { id: result.id },
+  })
+
+  res.status(202).json({ product_change: product_change ?? result })
 }

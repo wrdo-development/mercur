@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next"
 import { z } from "zod"
 
 import { HttpTypes } from "@medusajs/types"
-import { ProductAttributeValueDTO, ProductDTO, AttributeType } from "@mercurjs/types"
+import { ProductDTO, AttributeType } from "@mercurjs/types"
 
 import { Form } from "@components/common/form"
 import { AttributeValueInput } from "@components/inputs/attribute-value-input"
@@ -38,9 +38,7 @@ const ProductEditVariantSchema = z.object({
   mid_code: z.string().optional(),
   hs_code: z.string().optional(),
   origin_country: z.string().optional(),
-  attribute_values: z
-    .record(z.union([z.string(), z.array(z.string())]))
-    .optional(),
+  options: z.record(z.string()).optional(),
 })
 
 export const ProductEditVariantForm = ({
@@ -54,23 +52,22 @@ export const ProductEditVariantForm = ({
     (product as HttpTypes.AdminProduct & Pick<ProductDTO, "attributes">)
       .attributes?.filter((a) => a.is_variant_axis) ?? []
 
-  const variantAttrValues =
-    (
-      variant as HttpTypes.AdminProductVariant & {
-        attribute_values?: ProductAttributeValueDTO[]
-      }
-    ).attribute_values ?? []
-
-  const defaultAttributeValues = variantAttributes.reduce<
-    Record<string, string>
-  >((acc, attribute) => {
-    const key = attribute.handle ?? attribute.id
-    const matched = variantAttrValues.find(
-      (v) => v.attribute?.id === attribute.id,
-    )
-    acc[key] = matched?.name ?? ""
-    return acc
-  }, {})
+  // Form fields are keyed by attribute handle/id; the submit payload
+  // translates them to option titles (= attribute names) — the shape
+  // the stock Medusa variant route expects under `options`. Prefill
+  // from the existing variant.options[] (Medusa-side option-value
+  // pairing, matched to the attribute by option title = attribute name).
+  const defaultOptions = variantAttributes.reduce<Record<string, string>>(
+    (acc, attribute) => {
+      const key = attribute.handle ?? attribute.id
+      const matched = variant.options?.find(
+        (o) => o.option?.title === attribute.name,
+      )
+      acc[key] = matched?.value ?? ""
+      return acc
+    },
+    {},
+  )
 
   const form = useForm<z.infer<typeof ProductEditVariantSchema>>({
     defaultValues: {
@@ -87,7 +84,7 @@ export const ProductEditVariantForm = ({
       mid_code: variant.mid_code || "",
       hs_code: variant.hs_code || "",
       origin_country: variant.origin_country || "",
-      attribute_values: defaultAttributeValues,
+      options: defaultOptions,
     },
     resolver: zodResolver(ProductEditVariantSchema),
   })
@@ -104,17 +101,23 @@ export const ProductEditVariantForm = ({
       height,
       width,
       length,
-      attribute_values,
+      options,
       ...optional
     } = data
 
     const nullableData = transformNullableFormData(optional)
 
-    const cleanedAttributeValues = Object.fromEntries(
-      Object.entries(attribute_values ?? {}).filter(([, v]) =>
-        Array.isArray(v) ? v.length > 0 : !!v,
-      ),
-    ) as Record<string, string | string[]>
+    // Backend keys options by option title (= attribute name). Form
+    // keys by handle/id; remap and drop empties.
+    const cleanedOptions = variantAttributes.reduce<Record<string, string>>(
+      (acc, attr) => {
+        const fieldKey = attr.handle ?? attr.id
+        const v = options?.[fieldKey]
+        if (v && attr.name) acc[attr.name] = v
+        return acc
+      },
+      {},
+    )
 
     await mutateAsync(
       {
@@ -123,8 +126,8 @@ export const ProductEditVariantForm = ({
         width: transformNullableFormNumber(width),
         length: transformNullableFormNumber(length),
         title,
-        attribute_values: Object.keys(cleanedAttributeValues).length
-          ? cleanedAttributeValues
+        options: Object.keys(cleanedOptions).length
+          ? cleanedOptions
           : undefined,
         ...nullableData,
       },
@@ -184,7 +187,7 @@ export const ProductEditVariantForm = ({
                 <Form.Field
                   key={attribute.id}
                   control={form.control}
-                  name={`attribute_values.${fieldKey}`}
+                  name={`options.${fieldKey}`}
                   render={({ field: { value, onChange } }) => {
                     return (
                       <Form.Item>

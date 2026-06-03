@@ -34,11 +34,9 @@ import { vendorShippingOptionTypesMiddlewares } from "./shipping-option-types/mi
 import { vendorShippingProfilesMiddlewares } from "./shipping-profiles/middlewares"
 import { vendorStockLocationsMiddlewares } from "./stock-locations/middlewares"
 import { vendorStoresMiddlewares } from "./stores/middlewares"
-import { vendorSubscriptionMiddlewares } from "./subscription/middlewares"
 import { vendorUploadsMiddlewares } from "./uploads/middlewares"
 import { ensureSellerMiddleware, scanUnauthenticatedRoutes, unlessBaseUrl, vendorCorsMiddleware } from "../utils"
 import { vendorProductAttributesMiddlewares } from "./product-attributes/middlewares"
-import { vendorProductBrandsMiddlewares } from "./product-brands/middlewares"
 import { vendorProductTagsMiddlewares } from "./product-tags/middlewares"
 
 const unauthenticatedRoutes = [
@@ -102,7 +100,6 @@ export const vendorMiddlewares: MiddlewareRoute[] = [
   ...vendorPricePreferencesMiddlewares,
   ...vendorProductCategoriesMiddlewares,
   ...vendorProductAttributesMiddlewares,
-  ...vendorProductBrandsMiddlewares,
   ...vendorProductsMiddlewares,
   ...vendorProductTypesMiddlewares,
   ...vendorProductVariantsMiddlewares,
@@ -120,5 +117,4 @@ export const vendorMiddlewares: MiddlewareRoute[] = [
   ...vendorStoresMiddlewares,
   ...vendorUploadsMiddlewares,
   ...vendorProductTagsMiddlewares,
-  ...vendorSubscriptionMiddlewares,
 ]

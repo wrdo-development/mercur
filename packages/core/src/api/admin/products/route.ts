@@ -4,10 +4,10 @@ import {
 } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { AdditionalData } from "@medusajs/framework/types"
-import { CreateProductDTO, HttpTypes } from "@mercurjs/types"
+import { HttpTypes } from "@mercurjs/types"
 
 import { createProductsWorkflow } from "../../../workflows/product/workflows/create-products"
-import { formatProductAttributes } from "../../utils"
+import { enrichProductAttributes } from "../../utils"
 import { AdminCreateProductType, AdminGetProductsParamsType } from "./validators"
 
 export const GET = async (
@@ -23,9 +23,7 @@ export const GET = async (
     pagination: req.queryConfig.pagination,
   })
 
-  for (const product of products) {
-    formatProductAttributes(product)
-  }
+  await enrichProductAttributes(req.scope, products as any[])
 
   res.json({
     products,
@@ -41,18 +39,15 @@ export const POST = async (
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
-  const { additional_data, seller_ids, ...productData } = req.validatedBody
+  const { additional_data, ...productData } = req.validatedBody
 
   const { result } = await createProductsWorkflow(req.scope).run({
     input: {
       products: [{
         ...productData,
-        created_by_actor: 'admin',
-        created_by: req.auth_context.actor_id
-      } as unknown as CreateProductDTO],
-      seller_ids,
+      }],
       additional_data,
-    },
+    } as any,
   })
 
   const createdId = (result as { id: string }[])[0].id
@@ -65,7 +60,7 @@ export const POST = async (
     filters: { id: createdId },
   })
 
-  formatProductAttributes(product)
+  await enrichProductAttributes(req.scope, [product])
 
   res.status(200).json({ product })
 }

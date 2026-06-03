@@ -2,12 +2,15 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { AdditionalData } from "@medusajs/framework/types"
-import { HttpTypes } from "@mercurjs/types"
+import {
+  ContainerRegistrationKeys,
+  MedusaError,
+} from "@medusajs/framework/utils"
+import { AttributeType, HttpTypes } from "@mercurjs/types"
 
-import { createProductAttributesWorkflow } from "../../../../../workflows/product/workflows/create-product-attributes"
-import { AdminCreateProductAttributeType } from "../../../product-attributes/validators"
+import { addProductAttributeWorkflow } from "../../../../../workflows/product-attribute/workflows"
+import { groupProductAttributeValues } from "../../../../utils/format-product-attributes"
+import { AdminAddProductAttributeType } from "../../validators"
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
@@ -16,53 +19,73 @@ export const GET = async (
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const productId = req.params.id
 
-  const { data: product_attributes, metadata } = await query.graph({
-    entity: "product_attribute",
-    fields: req.queryConfig.fields,
-    filters: {
-      ...req.filterableFields,
-      product_id: productId,
-    },
-    pagination: req.queryConfig.pagination,
+  const {
+    data: [product],
+  } = await query.graph({
+    entity: "product",
+    fields: [
+      "id",
+      "attribute_values.id",
+      "attribute_values.name",
+      "attribute_values.attribute.id",
+      "attribute_values.attribute.name",
+      "attribute_values.attribute.handle",
+      "attribute_values.attribute.type",
+      "attribute_values.attribute.is_variant_axis",
+    ],
+    filters: { id: productId },
   })
+
+  if (!product) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Product with id ${productId} was not found`
+    )
+  }
+
+  const product_attributes = groupProductAttributeValues(
+    product.attribute_values
+  )
 
   res.json({
     product_attributes,
-    count: metadata?.count ?? 0,
-    offset: metadata?.skip ?? 0,
-    limit: metadata?.take ?? 0,
-  })
+    count: product_attributes.length,
+    offset: 0,
+    limit: product_attributes.length,
+  } as HttpTypes.AdminProductAttributeListResponse)
 }
 
 export const POST = async (
-  req: AuthenticatedMedusaRequest<
-    AdminCreateProductAttributeType & AdditionalData
-  >,
-  res: MedusaResponse<HttpTypes.AdminProductAttributeResponse>
+  req: AuthenticatedMedusaRequest<AdminAddProductAttributeType>,
+  res: MedusaResponse<HttpTypes.AdminProductResponse>
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const productId = req.params.id
+  const body = req.validatedBody
 
-  const { additional_data, ...payload } = req.validatedBody
-
-  const { result } = await createProductAttributesWorkflow(req.scope).run({
+  await addProductAttributeWorkflow(req.scope).run({
     input: {
-      attributes: [
-        {
-          ...payload,
-          product_id: productId,
-        },
-      ],
+      product_id: productId,
+      attribute_id: body.attribute_id,
+      value_ids: body.attribute_value_ids,
+      name: body.name,
+      type: body.type as AttributeType | undefined,
+      values: body.values,
+      is_variant_axis: body.is_variant_axis,
+      is_filterable: body.is_filterable,
+      is_required: body.is_required,
+      description: body.description ?? null,
+      metadata: body.metadata ?? null,
     },
   })
 
   const {
-    data: [product_attribute],
+    data: [product],
   } = await query.graph({
-    entity: "product_attribute",
+    entity: "product",
     fields: req.queryConfig.fields,
-    filters: { id: result[0].id },
+    filters: { id: productId },
   })
 
-  res.status(200).json({ product_attribute })
+  res.status(201).json({ product })
 }

@@ -1,7 +1,12 @@
 import { Fragment, useMemo, useState } from "react";
 import { ExclamationCircleSolid } from "@medusajs/icons";
 import { Button, Container, Heading, Text, toast } from "@medusajs/ui";
-import { ProductChangeActionDTO, SellerDTO, ProductChangeStatus } from "@mercurjs/types";
+import {
+  ProductChangeActionDTO,
+  ProductChangeActionType,
+  SellerDTO,
+  ProductChangeStatus,
+} from "@mercurjs/types";
 import {
   type FieldDiff,
   type ReferenceField,
@@ -14,19 +19,24 @@ import {
   partitionProductChangeActions,
 } from "@mercurjs/dashboard-shared";
 import { HttpTypes } from "@medusajs/types";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { ConfirmPrompt } from "../../../../../components/common/confirm-prompt";
 import { Thumbnail } from "../../../../../components/common/thumbnail";
 import { useProductCategory } from "../../../../../hooks/api/categories";
 import { useCollection } from "../../../../../hooks/api/collections";
+import {
+  productAttributesQueryKeys,
+  useProductAttribute,
+} from "../../../../../hooks/api/product-attributes";
 import { useProductTag } from "../../../../../hooks/api/tags";
 import { useProductType } from "../../../../../hooks/api/product-types";
 import {
   useCancelProductChange,
   useConfirmProductChange,
   useProductChange,
+  variantsQueryKeys,
 } from "../../../../../hooks/api/products";
 import { useSeller } from "../../../../../hooks/api/sellers";
 import { sdk } from "../../../../../lib/client";
@@ -38,6 +48,15 @@ type ProductWithSellers = HttpTypes.AdminProduct & {
 type ProductActiveEditSectionProps = {
   product: ProductWithSellers;
 };
+
+type VariantInfo = {
+  id: string;
+  title?: string | null;
+  sku?: string | null;
+  images?: { url: string }[] | null;
+};
+
+const VARIANT_LOOKUP_FIELDS = "id,title,sku,*images";
 
 const ImageStrip = ({
   images,
@@ -226,15 +245,148 @@ const FieldRow = ({ diff }: { diff: FieldDiff }) => {
   );
 };
 
-const ActionLine = ({ action }: { action: ProductChangeActionDTO }) => {
+const AttributeActionLine = ({
+  attributeId,
+  valueIds,
+}: {
+  attributeId: string;
+  valueIds?: string[];
+}) => {
+  const { product_attribute } = useProductAttribute(attributeId);
+
+  const name = product_attribute?.name ?? attributeId;
+  const values = product_attribute?.values ?? [];
+  const selectedNames =
+    valueIds && valueIds.length
+      ? valueIds.map((id) => {
+          const match = values.find((v) => v.id === id);
+          return match?.name ?? id;
+        })
+      : [];
+
+  return (
+    <Text size="small" leading="compact" className="text-ui-fg-subtle">
+      <span className="font-medium text-ui-fg-base">{name}</span>
+      {selectedNames.length > 0 && `: ${selectedNames.join(", ")}`}
+    </Text>
+  );
+};
+
+const VariantActionLine = ({
+  title,
+  images,
+}: {
+  title: string;
+  images?: { url: string }[];
+}) => (
+  <div className="flex items-center gap-3">
+    {images && images.length > 0 && <ImageStrip images={images} />}
+    <Text size="small" leading="compact" className="text-ui-fg-subtle">
+      <span className="font-medium text-ui-fg-base">{title}</span>
+    </Text>
+  </div>
+);
+
+const ActionLine = ({
+  action,
+  variantsById,
+}: {
+  action: ProductChangeActionDTO;
+  variantsById: Map<string, VariantInfo>;
+}) => {
   const { t } = useTranslation();
+  const details = (action.details ?? {}) as {
+    attribute_id?: string;
+    attribute_value_ids?: string[];
+    variant_id?: string;
+    variant?: { title?: string; sku?: string };
+  };
+
+  if (
+    action.action === ProductChangeActionType.ATTRIBUTE_ADD ||
+    action.action === ProductChangeActionType.ATTRIBUTE_REMOVE
+  ) {
+    if (!details.attribute_id) return null;
+    return (
+      <AttributeActionLine
+        attributeId={details.attribute_id}
+        valueIds={
+          action.action === ProductChangeActionType.ATTRIBUTE_ADD
+            ? details.attribute_value_ids
+            : undefined
+        }
+      />
+    );
+  }
+
+  const variantFallback = t("fields.variant", { defaultValue: "Variant" });
+
+  if (action.action === ProductChangeActionType.VARIANT_ADD) {
+    const title =
+      details.variant?.title || details.variant?.sku || variantFallback;
+    return <VariantActionLine title={title} />;
+  }
+
+  if (action.action === ProductChangeActionType.VARIANT_REMOVE) {
+    const variantId = details.variant_id ?? "";
+    const found = variantId ? variantsById.get(variantId) : undefined;
+    const title =
+      found?.title || found?.sku || variantId || variantFallback;
+    const images = isImageList(found?.images) ? found?.images : undefined;
+    return <VariantActionLine title={title} images={images} />;
+  }
+
   const label = describeProductChangeAction(action, {
-    variant: t("fields.variant", { defaultValue: "Variant" }),
+    variant: variantFallback,
   });
   return (
     <Text size="small" leading="compact" className="text-ui-fg-subtle">
       {label}
     </Text>
+  );
+};
+
+const VariantUpdateBlock = ({
+  variantId,
+  diffs,
+  variantsById,
+}: {
+  variantId: string;
+  diffs: FieldDiff[];
+  variantsById: Map<string, VariantInfo>;
+}) => {
+  const { t } = useTranslation();
+  const found = variantsById.get(variantId);
+  const title =
+    found?.title ||
+    found?.sku ||
+    variantId ||
+    t("fields.variant", { defaultValue: "Variant" });
+  const images = isImageList(found?.images) ? found?.images : undefined;
+
+  return (
+    <div
+      className="flex flex-col gap-y-3"
+      data-testid={`product-active-edit-variant-${variantId}`}
+    >
+      <div className="flex items-center gap-3">
+        {images && images.length > 0 && <ImageStrip images={images} />}
+        <Text size="small" leading="compact" className="text-ui-fg-subtle">
+          <span className="font-medium text-ui-fg-base">
+            {t("products.edits.panel.variantUpdated", {
+              defaultValue: "Variant updated",
+            })}
+          </span>
+          {": "}
+          {title}
+        </Text>
+      </div>
+      <div className="flex flex-col gap-y-4 pl-1">
+        {diffs.map((diff, idx) => (
+          <FieldRow key={`${variantId}-${diff.field}-${idx}`} diff={diff} />
+        ))}
+      </div>
+    </div>
   );
 };
 
@@ -265,6 +417,86 @@ export const ProductActiveEditSection = ({
     [product_change],
   );
 
+  const productUpdated = useMemo(
+    () => updated.filter((d) => !d.variant_id),
+    [updated],
+  );
+
+  const variantsUpdated = useMemo(() => {
+    const groups = new Map<string, FieldDiff[]>();
+    for (const diff of updated) {
+      if (!diff.variant_id) continue;
+      const bucket = groups.get(diff.variant_id) ?? [];
+      bucket.push(diff);
+      groups.set(diff.variant_id, bucket);
+    }
+    return groups;
+  }, [updated]);
+
+  const attributeIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const action of [...added, ...removed]) {
+      if (
+        action.action === ProductChangeActionType.ATTRIBUTE_ADD ||
+        action.action === ProductChangeActionType.ATTRIBUTE_REMOVE
+      ) {
+        const details = (action.details ?? {}) as { attribute_id?: string };
+        if (details.attribute_id) ids.add(details.attribute_id);
+      }
+    }
+    return Array.from(ids);
+  }, [added, removed]);
+
+  const attributeQueries = useQueries({
+    queries: attributeIds.map((id) => ({
+      queryKey: productAttributesQueryKeys.detail(id),
+      queryFn: () => sdk.admin.productAttributes.$id.query({ $id: id }),
+    })),
+  });
+
+  const isLoadingAttributes = attributeQueries.some((q) => q.isPending);
+
+  const variantIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const action of removed) {
+      if (action.action === ProductChangeActionType.VARIANT_REMOVE) {
+        const details = (action.details ?? {}) as { variant_id?: string };
+        if (details.variant_id) ids.add(details.variant_id);
+      }
+    }
+    for (const diff of updated) {
+      if (diff.variant_id) ids.add(diff.variant_id);
+    }
+    return Array.from(ids);
+  }, [removed, updated]);
+
+  const variantQueryInput = { fields: VARIANT_LOOKUP_FIELDS } as const;
+
+  const variantQueries = useQueries({
+    queries: variantIds.map((variantId) => ({
+      queryKey: variantsQueryKeys.detail(variantId, variantQueryInput),
+      queryFn: () =>
+        sdk.admin.products.$id.variants.$variantId.query({
+          $id: product.id,
+          $variantId: variantId,
+          ...variantQueryInput,
+        }),
+    })),
+  });
+
+  const isLoadingVariants = variantQueries.some((q) => q.isPending);
+
+  const variantsById = useMemo(() => {
+    const map = new Map<string, VariantInfo>();
+    for (const query of variantQueries) {
+      const variant = (
+        query.data as { variant?: VariantInfo } | undefined
+      )?.variant;
+      if (variant?.id) map.set(variant.id, variant);
+    }
+    return map;
+  }, [variantQueries]);
+
   if (isError || !product_change) {
     return null;
   }
@@ -273,8 +505,13 @@ export const ProductActiveEditSection = ({
     return null;
   }
 
+  if (isLoadingAttributes || isLoadingVariants) {
+    return null;
+  }
+
   const hasContent =
-    updated.length > 0 ||
+    productUpdated.length > 0 ||
+    variantsUpdated.size > 0 ||
     added.length > 0 ||
     removed.length > 0 ||
     deleteRequested;
@@ -321,7 +558,7 @@ export const ProductActiveEditSection = ({
 
       {hasContent && (
         <>
-          {updated.length > 0 && (
+          {productUpdated.length > 0 && (
             <div className="flex items-start gap-4 px-6 py-4">
               <Text
                 size="small"
@@ -332,9 +569,34 @@ export const ProductActiveEditSection = ({
                 {t("labels.updated")}
               </Text>
               <div className="flex flex-1 flex-col gap-y-4">
-                {updated.map((diff, idx) => (
+                {productUpdated.map((diff, idx) => (
                   <FieldRow key={`${diff.field}-${idx}`} diff={diff} />
                 ))}
+              </div>
+            </div>
+          )}
+
+          {variantsUpdated.size > 0 && (
+            <div className="flex items-start gap-4 px-6 py-4">
+              <Text
+                size="small"
+                weight="plus"
+                leading="compact"
+                className="text-ui-fg-subtle w-[160px] shrink-0"
+              >
+                {t("labels.updated")}
+              </Text>
+              <div className="flex flex-1 flex-col gap-y-6">
+                {Array.from(variantsUpdated.entries()).map(
+                  ([variantId, diffs]) => (
+                    <VariantUpdateBlock
+                      key={variantId}
+                      variantId={variantId}
+                      diffs={diffs}
+                      variantsById={variantsById}
+                    />
+                  ),
+                )}
               </div>
             </div>
           )}
@@ -351,7 +613,11 @@ export const ProductActiveEditSection = ({
               </Text>
               <div className="flex flex-1 flex-col gap-y-2">
                 {added.map((action) => (
-                  <ActionLine key={action.id} action={action} />
+                  <ActionLine
+                    key={action.id}
+                    action={action}
+                    variantsById={variantsById}
+                  />
                 ))}
               </div>
             </div>
@@ -369,7 +635,11 @@ export const ProductActiveEditSection = ({
               </Text>
               <div className="flex flex-1 flex-col gap-y-2">
                 {removed.map((action) => (
-                  <ActionLine key={action.id} action={action} />
+                  <ActionLine
+                    key={action.id}
+                    action={action}
+                    variantsById={variantsById}
+                  />
                 ))}
               </div>
             </div>

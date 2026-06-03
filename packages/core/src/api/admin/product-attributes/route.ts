@@ -6,7 +6,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { AdditionalData } from "@medusajs/framework/types"
 import { HttpTypes } from "@mercurjs/types"
 
-import { createProductAttributesWorkflow } from "../../../workflows/product/workflows/create-product-attributes"
+import { createProductAttributesWorkflow } from "../../../workflows/product-attribute/workflows/create-product-attributes"
 import { AdminCreateProductAttributeType } from "./validators"
 
 export const GET = async (
@@ -15,10 +15,13 @@ export const GET = async (
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
+  // Hide product-scoped (inline-custom) attributes from the global
+  // catalogue. They live on a specific product via `product_id` and
+  // surface only on that product's attribute endpoints.
   const { data: product_attributes, metadata } = await query.graph({
     entity: "product_attribute",
     fields: req.queryConfig.fields,
-    filters: req.filterableFields,
+    filters: { ...req.filterableFields, product_id: null },
     pagination: req.queryConfig.pagination,
   })
 

@@ -6,80 +6,91 @@ import {
   ContainerRegistrationKeys,
   MedusaError,
 } from "@medusajs/framework/utils"
-import { AdditionalData } from "@medusajs/framework/types"
 import { HttpTypes } from "@mercurjs/types"
 
-import { removeAttributeFromProductWorkflow } from "../../../../../../workflows/product/workflows/remove-attribute-from-product"
-import { updateProductAttributesWorkflow } from "../../../../../../workflows/product/workflows/update-product-attributes"
-import { AdminUpdateProductAttributeType } from "../../../../product-attributes/validators"
+import {
+  deleteProductAttributesWorkflow,
+  detachProductAttributeWorkflow,
+} from "../../../../../../workflows/product-attribute"
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse<HttpTypes.AdminProductAttributeResponse>
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const productId = req.params.id
   const attributeId = req.params.attribute_id
 
   const {
-    data: [product_attribute],
+    data: [product],
   } = await query.graph({
-    entity: "product_attribute",
-    fields: req.queryConfig.fields,
-    filters: { id: attributeId, product_id: req.params.id },
+    entity: "product",
+    fields: [
+      "attribute_values.id",
+      "attribute_values.name",
+      "attribute_values.attribute.id",
+      "attribute_values.attribute.name",
+      "attribute_values.attribute.type",
+    ],
+    filters: { id: productId },
   })
 
-  if (!product_attribute) {
+  if (!product) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
-      `Product attribute with id ${attributeId} was not found for product ${req.params.id}`
+      `Product with id ${productId} was not found`
     )
+  }
+
+  const values = ((product as any).attribute_values ?? []).filter(
+    (v: any) => v.attribute?.id === attributeId
+  )
+
+  if (!values.length) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Attribute with id ${attributeId} was not found on product ${productId}`
+    )
+  }
+
+  const product_attribute = {
+    ...values[0].attribute,
+    values: values.map((v: any) => ({ id: v.id, name: v.name })),
   }
 
   res.json({ product_attribute })
 }
 
-export const POST = async (
-  req: AuthenticatedMedusaRequest<
-    AdminUpdateProductAttributeType & AdditionalData
-  >,
-  res: MedusaResponse<HttpTypes.AdminProductAttributeResponse>
-) => {
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const attributeId = req.params.attribute_id
-  const productId = req.params.id
-
-  const { additional_data, ...update } = req.validatedBody
-
-  await updateProductAttributesWorkflow(req.scope).run({
-    input: {
-      selector: { id: attributeId, product_id: productId },
-      update,
-    },
-  })
-
-  const {
-    data: [product_attribute],
-  } = await query.graph({
-    entity: "product_attribute",
-    fields: req.queryConfig.fields,
-    filters: { id: attributeId },
-  })
-
-  res.status(200).json({ product_attribute })
-}
-
 export const DELETE = async (
   req: AuthenticatedMedusaRequest,
-  res: MedusaResponse<HttpTypes.AdminProductAttributeDeleteResponse>
+  res: MedusaResponse
 ) => {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const productId = req.params.id
   const attributeId = req.params.attribute_id
 
-  await removeAttributeFromProductWorkflow(req.scope).run({
+  await detachProductAttributeWorkflow(req.scope).run({
     input: { product_id: productId, attribute_id: attributeId },
   })
 
-  res.status(200).json({
+  // Product-scoped (inline-created) attributes have `product_id` pinned
+  // to this product. They're hidden from the global catalogue and have
+  // no other consumer, so the only sensible delete is full removal —
+  // otherwise the attribute lingers on `product.attributes` with an
+  // empty value set after every value is detached.
+  const { data: attrs } = await query.graph({
+    entity: "product_attribute",
+    fields: ["id", "product_id"],
+    filters: { id: attributeId },
+  })
+  const attr = attrs?.[0] as { product_id?: string | null } | undefined
+  if (attr?.product_id === productId) {
+    await deleteProductAttributesWorkflow(req.scope).run({
+      input: { ids: [attributeId] },
+    })
+  }
+
+  res.json({
     id: attributeId,
     object: "product_attribute",
     deleted: true,

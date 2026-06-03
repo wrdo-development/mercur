@@ -264,7 +264,7 @@ export type Routes = {
                 reject: typeof import("../../src/api/admin/products/[id]/reject/route");
                 requestChanges: typeof import("../../src/api/admin/products/[id]/request-changes/route");
             };
-            batch: typeof import("../../src/api/admin/products/batch/route");
+            batch: typeof import("@mercurjs/core/api/admin/products/batch/route");
             export: typeof import("@medusajs/medusa/api/admin/products/export/route");
             import: typeof import("@medusajs/medusa/api/admin/products/import/route") & {
                 $transactionId: {
@@ -447,9 +447,9 @@ export type Routes = {
                 };
             };
         };
-        productBrands: typeof import("../../src/api/admin/product-brands/route") & {
-            $id: typeof import("../../src/api/admin/product-brands/[id]/route") & {
-                sellers: typeof import("../../src/api/admin/product-brands/[id]/sellers/route");
+        productBrands: typeof import("@mercurjs/core/api/admin/product-brands/route") & {
+            $id: typeof import("@mercurjs/core/api/admin/product-brands/[id]/route") & {
+                sellers: typeof import("@mercurjs/core/api/admin/product-brands/[id]/sellers/route");
             };
         };
         productChanges: {
@@ -478,13 +478,6 @@ export type Routes = {
                 terminate: typeof import("../../src/api/admin/sellers/[id]/terminate/route");
                 unsuspend: typeof import("../../src/api/admin/sellers/[id]/unsuspend/route");
                 unterminate: typeof import("../../src/api/admin/sellers/[id]/unterminate/route");
-            };
-        };
-        subscriptionPlans: typeof import("../../src/api/admin/subscription-plans/route") & {
-            $id: typeof import("../../src/api/admin/subscription-plans/[id]/route") & {
-                overrides: typeof import("../../src/api/admin/subscription-plans/[id]/overrides/route") & {
-                    $overrideId: typeof import("../../src/api/admin/subscription-plans/[id]/overrides/[override_id]/route");
-                };
             };
         };
     };
@@ -578,8 +571,8 @@ export type Routes = {
         productAttributes: typeof import("../../src/api/store/product-attributes/route") & {
             $id: typeof import("../../src/api/store/product-attributes/[id]/route");
         };
-        productBrands: typeof import("../../src/api/store/product-brands/route") & {
-            $id: typeof import("../../src/api/store/product-brands/[id]/route");
+        productBrands: typeof import("@mercurjs/core/api/store/product-brands/route") & {
+            $id: typeof import("@mercurjs/core/api/store/product-brands/[id]/route");
         };
         sellers: typeof import("../../src/api/store/sellers/route") & {
             $id: typeof import("../../src/api/store/sellers/[id]/route");
@@ -683,8 +676,8 @@ export type Routes = {
         productAttributes: typeof import("../../src/api/vendor/product-attributes/route") & {
             $id: typeof import("../../src/api/vendor/product-attributes/[id]/route");
         };
-        productBrands: typeof import("../../src/api/vendor/product-brands/route") & {
-            $id: typeof import("../../src/api/vendor/product-brands/[id]/route");
+        productBrands: typeof import("@mercurjs/core/api/vendor/product-brands/route") & {
+            $id: typeof import("@mercurjs/core/api/vendor/product-brands/[id]/route");
         };
         productCategories: typeof import("../../src/api/vendor/product-categories/route") & {
             $id: typeof import("../../src/api/vendor/product-categories/[id]/route");
@@ -800,7 +793,6 @@ export type Routes = {
             };
         };
         stores: typeof import("../../src/api/vendor/stores/route");
-        subscription: typeof import("../../src/api/vendor/subscription/route");
         uploads: typeof import("../../src/api/vendor/uploads/route");
     };
 };

@@ -3,9 +3,10 @@ import {
   MedusaResponse,
 } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { CreateProductVariantDTO, HttpTypes } from "@mercurjs/types"
+import { HttpTypes, ProductChangeDTO } from "@mercurjs/types"
 
-import { productEditAddVariantWorkflow } from "../../../../../workflows/product-edit/workflows/product-edit-add-variant"
+import { productEditUpdateVariantsWorkflow } from "../../../../../workflows/product-edit/workflows/product-edit-update-variants"
+import { ensureSellerOwnsProduct } from "../../helpers"
 import { VendorAddProductVariantType } from "../../validators"
 
 export const GET = async (
@@ -31,25 +32,47 @@ export const GET = async (
 }
 
 /**
- * Stages a `VARIANT_ADD` action via `product-edit-add-variant`. Returns
- * the created `ProductChange` — the variant is created on the product
- * only after an operator confirms the change.
+ * Stages a `VARIANT_ADD` action on a fresh `ProductChange`. Auto-
+ * confirm applies it inline when the `PRODUCT_REQUEST` feature flag
+ * is disabled (the variant is created in the same request via
+ * `createProductVariantsWorkflow` invoked by
+ * `applyProductChangeActionsWorkflow`).
  */
 export const POST = async (
   req: AuthenticatedMedusaRequest<VendorAddProductVariantType>,
-  res: MedusaResponse
+  res: MedusaResponse<{ product_change: ProductChangeDTO }>
 ) => {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const sellerId = req.seller_context!.seller_id
+  const productId = req.params.id
 
-  const { result: change } = await productEditAddVariantWorkflow(
-    req.scope
-  ).run({
+  await ensureSellerOwnsProduct(req.scope, sellerId, productId)
+
+  const { attribute_values: _av, ...variant } = req.validatedBody
+
+  const { result } = await productEditUpdateVariantsWorkflow(req.scope).run({
     input: {
-      product_id: req.params.id,
-      variant: req.validatedBody as unknown as CreateProductVariantDTO,
-      actor_id: sellerId,
+      product_id: productId,
+      created_by: sellerId,
+      operations: [
+        {
+          type: "add",
+          variant: {
+            ...(variant as Record<string, unknown>),
+            manage_inventory: false,
+          },
+        },
+      ],
     },
   })
 
-  res.status(202).json({ product_change: change })
+  const {
+    data: [product_change],
+  } = await query.graph({
+    entity: "product_change",
+    fields: ["*", "actions.*"],
+    filters: { id: result.id },
+  })
+
+  res.status(202).json({ product_change: product_change ?? result })
 }

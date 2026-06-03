@@ -1,39 +1,38 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import { Modules } from "@medusajs/framework/utils"
-import ProductModuleService from "../../../modules/product/service"
+import { CreateProductChangeActionDTO, MercurModules } from "@mercurjs/types"
 
-type CreateProductChangeActionsStepInput = {
-  product_change_id: string
-  product_id: string
-  action: string
-  details?: Record<string, unknown>
-  internal_note?: string
-  /**
-   * Records the action as already-applied. Used by admin workflows that
-   * apply product mutations directly (e.g. reject/request-changes) and
-   * create the audit-trail action in its final state without going
-   * through `applyProductChangeActions_`.
-   */
-  applied?: boolean
-}
+import type ProductChangeModuleService from "../../../modules/product-edit/service"
 
+export const createProductChangeActionsStepId =
+  "pc-create-product-change-actions"
+
+/**
+ * Batch sibling of `addProductChangeActionStep`. Persists a full
+ * `ProductChangeAction` set in one round-trip — used by the vendor
+ * "edit" orchestrators that compute many actions per submission.
+ */
 export const createProductChangeActionsStep = createStep(
-  "create-product-change-actions",
-  async (data: CreateProductChangeActionsStepInput[], { container }) => {
-    const service = container.resolve<ProductModuleService>(Modules.PRODUCT)
-    const actions = await service.addProductAction(data)
-
+  createProductChangeActionsStepId,
+  async (data: CreateProductChangeActionDTO[], { container }) => {
+    if (!data.length) {
+      return new StepResponse([], [])
+    }
+    const service = container.resolve<ProductChangeModuleService>(
+      MercurModules.PRODUCT_EDIT,
+    )
+    const created = await service.createProductChangeActions(data)
     return new StepResponse(
-      actions,
-      actions.map((a) => a.id)
+      created,
+      created.map((a) => a.id),
     )
   },
-  async (actionIds: string[], { container }) => {
-    if (!actionIds?.length) {
+  async (ids: string[] | undefined, { container }) => {
+    if (!ids?.length) {
       return
     }
-
-    const service = container.resolve<ProductModuleService>(Modules.PRODUCT)
-    await service.deleteProductChangeActions(actionIds)
-  }
+    const service = container.resolve<ProductChangeModuleService>(
+      MercurModules.PRODUCT_EDIT,
+    )
+    await service.deleteProductChangeActions(ids)
+  },
 )

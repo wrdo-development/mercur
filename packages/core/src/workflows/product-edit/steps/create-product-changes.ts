@@ -1,51 +1,45 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import { Modules } from "@medusajs/framework/utils"
-import { ProductChangeStatus } from "@mercurjs/types"
-import ProductModuleService from "../../../modules/product/service"
+import {
+  CreateProductChangeDTO,
+  MercurModules,
+  ProductChangeStatus,
+} from "@mercurjs/types"
 
-type CreateProductChangesStepInput = {
-  product_id: string
-  created_by?: string
-  internal_note?: string
-  external_note?: string
-  /**
-   * Optional initial status. Admin workflows that confirm inline (e.g.
-   * reject/request-changes) pass `CONFIRMED` together with `confirmed_by`
-   * + `confirmed_at` so the change is born already-closed.
-   */
-  status?: ProductChangeStatus
-  confirmed_by?: string
-  confirmed_at?: Date
-}
+import type ProductChangeModuleService from "../../../modules/product-edit/service"
+
+export const createProductChangesStepId = "pc-create-product-changes"
+
+/**
+ * Scalar create input. `product_id` is a real column on the
+ * `ProductChange` model (read-only link to `Product`), so it gets
+ * inserted directly with each change row. `status` is narrowed to the
+ * enum.
+ */
+export type CreateProductChangesStepInput = Array<
+  Omit<CreateProductChangeDTO, "status"> & {
+    status?: ProductChangeStatus
+  }
+>
 
 export const createProductChangesStep = createStep(
-  "create-product-changes",
-  async (data: CreateProductChangesStepInput[], { container }) => {
-    const service = container.resolve<ProductModuleService>(Modules.PRODUCT)
-
-    const changes = await service.createProductChanges(
-      data.map((item) => ({
-        product_id: item.product_id,
-        created_by: item.created_by,
-        internal_note: item.internal_note,
-        external_note: item.external_note,
-        status: item.status,
-        confirmed_by: item.confirmed_by,
-        confirmed_at: item.confirmed_at,
-      }))
+  createProductChangesStepId,
+  async (data: CreateProductChangesStepInput, { container }) => {
+    const service = container.resolve<ProductChangeModuleService>(
+      MercurModules.PRODUCT_EDIT,
     )
-
+    const changes = await service.createProductChanges(data)
     return new StepResponse(
       changes,
-      changes.map((c) => c.id)
+      changes.map((c) => c.id),
     )
   },
-  async (changeIds: string[], { container }) => {
-    if (!changeIds?.length) {
+  async (ids: string[] | undefined, { container }) => {
+    if (!ids?.length) {
       return
     }
-
-    const service = container.resolve<ProductModuleService>(Modules.PRODUCT)
-    await service.deleteProductChanges(changeIds)
-  }
+    const service = container.resolve<ProductChangeModuleService>(
+      MercurModules.PRODUCT_EDIT,
+    )
+    await service.deleteProductChanges(ids)
+  },
 )

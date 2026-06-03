@@ -1,18 +1,20 @@
 import {
-  createWorkflow,
   createHook,
-  WorkflowResponse,
+  createWorkflow,
   transform,
+  WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
-import { useQueryGraphStep, emitEventStep } from "@medusajs/medusa/core-flows"
-import { ProductStatus, ProductChangeStatus, ProductChangeActionType } from "@mercurjs/types"
+import { ProductStatus } from "@medusajs/framework/utils"
+import {
+  emitEventStep,
+  updateProductsStep,
+  useQueryGraphStep,
+} from "@medusajs/medusa/core-flows"
+import { ProductChangeActionType } from "@mercurjs/types"
 
 import { ProductWorkflowEvents } from "../events"
-import { validateRejectProductStep, updateProductsStep } from "../steps"
-import {
-  createProductChangesStep,
-  createProductChangeActionsStep,
-} from "../../product-edit/steps"
+import { validateProductsStatusStep } from "../steps/validate-products-status"
+import { recordProductAuditChangeWorkflow } from "../../product-edit/workflows/record-product-audit-change"
 
 export const rejectProductWorkflowId = "mercur-reject-product"
 
@@ -22,6 +24,13 @@ type RejectProductWorkflowInput = {
   actor_id?: string
 }
 
+/**
+ * Admin-side "reject a vendor submission". Same audit-trail shape as
+ * `confirmProductsWorkflow`, ending in `status: rejected`. The
+ * operator's optional `message` is mirrored onto the change's
+ * `external_note` so the seller sees it on their product detail
+ * panel.
+ */
 export const rejectProductWorkflow = createWorkflow(
   rejectProductWorkflowId,
   function (input: RejectProductWorkflowInput) {
@@ -32,56 +41,43 @@ export const rejectProductWorkflow = createWorkflow(
       options: { throwIfKeyNotFound: true },
     }).config({ name: "get-product" })
 
-    const product = transform({ products }, ({ products }) => products[0])
+    validateProductsStatusStep({
+      products,
+      expected_status: ProductStatus.PROPOSED,
+    })
 
-    validateRejectProductStep({ product })
+    recordProductAuditChangeWorkflow.runAsStep({
+      input: transform({ input }, ({ input }) => ({
+        actor_id: input.actor_id,
+        changes: [
+          {
+            product_id: input.product_id,
+            external_note: input.message,
+            actions: [
+              {
+                product_id: input.product_id,
+                action: ProductChangeActionType.STATUS_CHANGE,
+                details: { status: ProductStatus.REJECTED },
+              },
+            ],
+          },
+        ],
+      })),
+    })
 
-    const changeData = transform(
-      { product, input },
-      ({ product, input }) => [
-        {
-          product_id: product.id,
-          created_by: input.actor_id,
-          status: ProductChangeStatus.CONFIRMED,
-          confirmed_by: input.actor_id,
-          confirmed_at: new Date(),
-          external_note: input.message,
-        },
-      ]
+    updateProductsStep(
+      transform({ input }, ({ input }) => ({
+        selector: { id: input.product_id },
+        update: { status: ProductStatus.REJECTED },
+      })),
     )
-
-    const changes = createProductChangesStep(changeData)
-
-    const actionData = transform(
-      { changes, product },
-      ({ changes, product }) => [
-        {
-          product_change_id: changes[0].id,
-          product_id: product.id,
-          action: ProductChangeActionType.STATUS_CHANGE,
-          details: { status: ProductStatus.REJECTED },
-          applied: true,
-        },
-      ]
-    )
-
-    createProductChangeActionsStep(actionData)
-
-    const updateInput = transform({ input }, ({ input }) => ({
-      selector: { id: input.product_id },
-      data: { status: ProductStatus.REJECTED },
-    }))
-
-    updateProductsStep(updateInput)
-
-    const eventData = transform({ input }, ({ input }) => ({
-      id: input.product_id,
-      message: input.message,
-    }))
 
     emitEventStep({
       eventName: ProductWorkflowEvents.REJECTED,
-      data: eventData,
+      data: transform({ input }, ({ input }) => ({
+        id: input.product_id,
+        message: input.message,
+      })),
     })
 
     const productRejected = createHook("productRejected", {
@@ -90,5 +86,5 @@ export const rejectProductWorkflow = createWorkflow(
     })
 
     return new WorkflowResponse(void 0, { hooks: [productRejected] })
-  }
+  },
 )

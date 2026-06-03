@@ -7,6 +7,8 @@ import {
   MedusaError,
 } from "@medusajs/framework/utils"
 
+import { enrichProductAttributes } from "../../../utils"
+
 export const GET = async (req: MedusaStoreRequest, res: MedusaResponse) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
@@ -45,6 +47,8 @@ export const GET = async (req: MedusaStoreRequest, res: MedusaResponse) => {
       `Product with id ${req.params.id} was not found`,
     )
   }
+
+  await enrichProductAttributes(req.scope, [product])
 
   res.json({ product })
 }

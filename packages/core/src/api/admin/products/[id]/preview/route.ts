@@ -2,25 +2,31 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http"
-import { MedusaError, Modules } from "@medusajs/framework/utils"
-import { ProductChangeDTO } from "@mercurjs/types"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ProductChangeDTO, ProductChangeStatus } from "@mercurjs/types"
 
-import ProductModuleService from "../../../../../modules/product/service"
-
+/**
+ * Returns the active pending `ProductChange` for a product on the admin
+ * surface. Unlike the vendor variant, there is no seller-scope filter —
+ * the operator can see any pending change. If nothing is pending the
+ * endpoint returns `product_change: null` so the UI can render the
+ * confirmed product without a 404.
+ */
 export const GET = async (
   req: AuthenticatedMedusaRequest,
-  res: MedusaResponse<{ product_change: ProductChangeDTO }>
+  res: MedusaResponse<{ product_change: ProductChangeDTO | null }>,
 ) => {
-  const service = req.scope.resolve<ProductModuleService>(Modules.PRODUCT)
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const productId = req.params.id
 
-  const product = await service.retrieveProduct(req.params.id)
+  const { data: changes } = await query.graph({
+    entity: "product_change",
+    fields: ["*", "actions.*"],
+    filters: {
+      product_id: productId,
+      status: ProductChangeStatus.PENDING,
+    },
+  })
 
-  if (!product.product_change) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      `Product '${req.params.id}' has no pending change`
-    )
-  }
-
-  res.json({ product_change: product.product_change })
+  res.json({ product_change: (changes[0] as ProductChangeDTO) ?? null })
 }
