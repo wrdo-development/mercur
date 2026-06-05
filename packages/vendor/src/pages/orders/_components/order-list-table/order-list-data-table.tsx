@@ -54,6 +54,7 @@ export const OrderListDataTable = () => {
       columns={columns}
       table={table}
       pagination
+      search
       filters={filters}
       navigateTo={(row) => `/orders/${row.original.id}`}
       count={count}

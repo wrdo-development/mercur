@@ -233,6 +233,13 @@ export function getRouteMap({
                               import("./pages/orders/[id]/shipment"),
                           },
                           {
+                            path: "returns/create",
+                            lazy: () =>
+                              import(
+                                "./pages/orders/[id]/returns/create"
+                              ),
+                          },
+                          {
                             path: "returns/:return_id/receive",
                             lazy: () =>
                               import(

@@ -794,6 +794,21 @@ export type Routes = {
         };
         stores: typeof import("../../src/api/vendor/stores/route");
         uploads: typeof import("../../src/api/vendor/uploads/route");
+        orderEdits: typeof import("../../src/api/vendor/order-edits/route") & {
+            $id: typeof import("../../src/api/vendor/order-edits/[id]/route") & {
+                confirm: typeof import("../../src/api/vendor/order-edits/[id]/confirm/route");
+                items: typeof import("../../src/api/vendor/order-edits/[id]/items/route") & {
+                    $actionId: typeof import("../../src/api/vendor/order-edits/[id]/items/[action_id]/route");
+                    item: {
+                        $itemId: typeof import("../../src/api/vendor/order-edits/[id]/items/item/[item_id]/route");
+                    };
+                };
+                request: typeof import("../../src/api/vendor/order-edits/[id]/request/route");
+                shippingMethod: typeof import("../../src/api/vendor/order-edits/[id]/shipping-method/route") & {
+                    $actionId: typeof import("../../src/api/vendor/order-edits/[id]/shipping-method/[action_id]/route");
+                };
+            };
+        };
         paymentCollections: {
             $id: {
                 markAsPaid: typeof import("../../src/api/vendor/payment-collections/[id]/mark-as-paid/route");

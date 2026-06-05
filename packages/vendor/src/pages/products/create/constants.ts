@@ -43,7 +43,9 @@ export const ProductCreateSchema = z
     discountable: z.boolean(),
     type_id: z.string().optional(),
     collection_id: z.string().optional(),
-    category_id: z.string().min(1),
+    category_id: z.string().min(1, {
+      message: i18n.t("products.create.errors.categoryRequired"),
+    }),
     tags: z.array(z.string()).optional(),
     origin_country: z.string().optional(),
     material: z.string().optional(),

@@ -62,7 +62,10 @@ export const ProductCreateOrganizationSection = () => {
           render={({ field }) => {
             return (
               <Form.Item data-testid="product-create-organize-section-category-item">
-                <Form.Label data-testid="product-create-organize-section-category-label">
+                <Form.Label
+                  tooltip={t("products.fields.primaryCategory.tooltip")}
+                  data-testid="product-create-organize-section-category-label"
+                >
                   {t("fields.category")}
                 </Form.Label>
                 <Form.Control data-testid="product-create-organize-section-category-control">

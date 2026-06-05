@@ -499,6 +499,7 @@
         "options": "Please create at least one option.",
         "uniqueSku": "SKU must be unique across variants",
         "primaryCategoryRequired": "Primary category is required",
+        "categoryRequired": "Please select category",
         "titleRequired": "Title is required",
         "handleInvalidFormat": "Handle must contain only lowercase letters, numbers, and hyphens",
         "handleMustContainLetter": "Handle must contain at least one letter",
@@ -1454,6 +1455,7 @@
     },
     "returns": {
       "create": "Create Return",
+      "noItemsSelected": "Select at least one item to return.",
       "confirm": "Confirm Return",
       "confirmText": "You are about to confirm a Return. This action cannot be undone.",
       "inbound": "Inbound",

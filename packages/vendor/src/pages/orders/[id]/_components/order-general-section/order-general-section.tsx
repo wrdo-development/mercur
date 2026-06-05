@@ -1,4 +1,4 @@
-import { CheckCircle, XCircle } from "@medusajs/icons"
+import { ArrowUturnLeft, CheckCircle, XCircle } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import {
   Container,
@@ -99,6 +99,17 @@ export const OrderGeneralSection = ({ order }: OrderGeneralSectionProps) => {
                   disabled: order.status !== "pending",
                   icon: <CheckCircle />,
                 },
+                {
+                  label: t("orders.returns.create"),
+                  to: "returns/create",
+                  //@ts-ignore
+                  disabled: !!order.canceled_at,
+                  icon: <ArrowUturnLeft />,
+                },
+              ],
+            },
+            {
+              actions: [
                 {
                   label: t("actions.cancel"),
                   onClick: handleCancel,

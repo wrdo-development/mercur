@@ -47,46 +47,26 @@ export const useActivityItems = (order: ExtendedAdminOrder): Activity[] => {
     )
   }, [order.items])
 
-  const returns: AdminReturn[] = []
+  const returns: AdminReturn[] = (order.returns as AdminReturn[] | undefined) ?? []
+  // SPEC-008: claims and exchanges are not yet reachable on `order.*` —
+  // they live on OrderClaim / OrderExchange and need either a query-config
+  // join via `order_change` or dedicated `useClaims` / `useExchanges` hooks
+  // backed by `/vendor/claims` / `/vendor/exchanges` routes that don't
+  // exist yet. Activity rules below are still wired so they light up
+  // automatically once those sources land.
   const claims: AdminClaim[] = []
   const exchanges: AdminExchange[] = []
 
-  // const { returns = [] } = useReturns({
-  //   order_id: order.id,
-  //   fields: '+received_at,*items',
-  // });
 
-  // const { claims = [] } = useClaims({
-  //   order_id: order.id,
-  //   fields: '*additional_items',
-  // });
-
-  // const { exchanges = [] } = useExchanges({
-  //   order_id: order.id,
-  //   fields: '*additional_items',
-  // });
-
-
-  const _notes: any[] = []
   const isLoading = false
-  // const { notes, isLoading, isError, error } = useNotes(
-  //   {
-  //     resource_id: order.id,
-  //     limit: NOTE_LIMIT,
-  //     offset: 0,
-  //   },
-  //   {
-  //     keepPreviousData: true,
-  //   }
-  // )
-  //
-  // if (isError) {
-  //   throw error
-  // }
 
-
-  // TODO: uncomment and fix payment related logic when backend returns data about payment cancel/capture/refund dates
-  const _payments = order.payment_collections
+  const payments = useMemo(
+    () =>
+      (order.payment_collections ?? []).flatMap(
+        (pc) => pc.payments ?? []
+      ),
+    [order.payment_collections]
+  )
 
   return useMemo(() => {
     if (isLoading) {
@@ -95,58 +75,60 @@ export const useActivityItems = (order: ExtendedAdminOrder): Activity[] => {
 
     const items: Activity[] = []
 
-    // if (payment) {
-    //   const amount = payment.authorized_amount
+    for (const payment of payments) {
+      const amount = payment.amount ?? payment.authorized_amount ?? 0
 
-    //   items.push({
-    //     title: t("orders.activity.events.payment.awaiting"),
-    //     timestamp: payment?.created_at,
-    //     children: (
-    //       <Text size="small" className="text-ui-fg-subtle">
-    //         {getStylizedAmount(amount, payment.currency_code)}
-    //       </Text>
-    //     ),
-    //   })
+      if (!payment.captured_at && !payment.canceled_at && payment.created_at) {
+        items.push({
+          title: t("orders.activity.events.payment.awaiting"),
+          timestamp: payment.created_at,
+          children: (
+            <Text size="small" className="text-ui-fg-subtle">
+              {getStylizedAmount(amount, payment.currency_code)}
+            </Text>
+          ),
+        })
+      }
 
-    //   if (payment.canceled_at) {
-    //     items.push({
-    //       title: t("orders.activity.events.payment.canceled"),
-    //       timestamp: payment.canceled_at,
-    //       children: (
-    //         <Text size="small" className="text-ui-fg-subtle">
-    //           {getStylizedAmount(amount, payment.currency_code)}
-    //         </Text>
-    //       ),
-    //     })
-    //   }
+      if (payment.captured_at) {
+        items.push({
+          title: t("orders.activity.events.payment.captured"),
+          timestamp: payment.captured_at,
+          children: (
+            <Text size="small" className="text-ui-fg-subtle">
+              {getStylizedAmount(amount, payment.currency_code)}
+            </Text>
+          ),
+        })
+      }
 
-    //   if (payment.captured_at) {
-    //     items.push({
-    //       title: t("orders.activity.events.payment.captured"),
-    //       timestamp: payment.captured_at,
-    //       children: (
-    //         <Text size="small" className="text-ui-fg-subtle">
-    //           {getStylizedAmount(amount, payment.currency_code)}
-    //         </Text>
-    //       ),
-    //     })
-    //   }
+      if (payment.canceled_at) {
+        items.push({
+          title: t("orders.activity.events.payment.canceled"),
+          timestamp: payment.canceled_at,
+          children: (
+            <Text size="small" className="text-ui-fg-subtle">
+              {getStylizedAmount(amount, payment.currency_code)}
+            </Text>
+          ),
+        })
+      }
 
-    //   for (const refund of payment.refunds || []) {
-    //     items.push({
-    //       title: t("orders.activity.events.payment.refunded"),
-    //       timestamp: refund.created_at,
-    //       children: (
-    //         <Text size="small" className="text-ui-fg-subtle">
-    //           {getStylizedAmount(
-    //             refund.amount as number,
-    //             payment.currency_code
-    //           )}
-    //         </Text>
-    //       ),
-    //     })
-    //   }
-    // }
+      for (const refund of payment.refunds ?? []) {
+        items.push({
+          title: t("orders.activity.events.payment.refunded"),
+          timestamp: refund.created_at,
+          children: (
+            <Text size="small" className="text-ui-fg-subtle">
+              {getStylizedAmount(
+                refund.amount as number,
+                payment.currency_code
+              )}
+            </Text>
+          ),
+        })
+      }
+    }
 
     for (const fulfillment of order.fulfillments || []) {
       items.push({
@@ -435,6 +417,7 @@ export const useActivityItems = (order: ExtendedAdminOrder): Activity[] => {
 	order,
 	exchanges,
 	orderChanges,
+	payments,
 	isLoading,
 	itemsMap
 ])

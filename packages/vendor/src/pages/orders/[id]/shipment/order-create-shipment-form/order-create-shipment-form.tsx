@@ -54,9 +54,11 @@ export function OrderCreateShipmentForm({
           .filter((l) => !!l.tracking_number)
           .map((l) => ({
             tracking_number: l.tracking_number,
-            tracking_url: "#",
-            label_url: "#"
-            ,
+            // Backend validator treats these as non-optional; pass
+            // empty strings rather than the literal "#" placeholder
+            // when the user didn't supply a URL.
+            tracking_url: l.tracking_url ?? "",
+            label_url: l.label_url ?? "",
           })),
       },
       {
@@ -99,40 +101,87 @@ export function OrderCreateShipmentForm({
                   </Heading>
 
                   {labels.map((label, index) => (
-                    <Form.Field
+                    <div
                       key={label.id}
-                      control={form.control}
-                      name={`labels.${index}.tracking_number`}
-                      render={({ field }) => {
-                        return (
-                          <Form.Item className="mb-4">
-                            {index === 0 && (
-                              <Form.Label>
-                                {t("orders.shipment.trackingUrl")}
-                              </Form.Label>
-                            )}
+                      className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3"
+                    >
+                      <Form.Field
+                        control={form.control}
+                        name={`labels.${index}.tracking_number`}
+                        render={({ field }) => (
+                          <Form.Item>
+                            <Form.Label>
+                              {t("orders.shipment.trackingNumber")}
+                            </Form.Label>
                             <Form.Control>
                               <Input
                                 {...field}
-                                placeholder={t(
-                                  "orders.shipment.trackingUrlPlaceholder"
-                                )}
+                                data-testid={`shipment-tracking-number-${index}`}
                               />
                             </Form.Control>
                             <Form.ErrorMessage />
                           </Form.Item>
-                        )
-                      }}
-                    />
+                        )}
+                      />
+                      <Form.Field
+                        control={form.control}
+                        name={`labels.${index}.tracking_url`}
+                        render={({ field }) => (
+                          <Form.Item>
+                            <Form.Label optional>
+                              {t("orders.shipment.trackingUrl")}
+                            </Form.Label>
+                            <Form.Control>
+                              <Input
+                                {...field}
+                                value={field.value ?? ""}
+                                placeholder={t(
+                                  "orders.shipment.trackingUrlPlaceholder"
+                                )}
+                                data-testid={`shipment-tracking-url-${index}`}
+                              />
+                            </Form.Control>
+                            <Form.ErrorMessage />
+                          </Form.Item>
+                        )}
+                      />
+                      <Form.Field
+                        control={form.control}
+                        name={`labels.${index}.label_url`}
+                        render={({ field }) => (
+                          <Form.Item>
+                            <Form.Label optional>
+                              {t("orders.shipment.labelUrl")}
+                            </Form.Label>
+                            <Form.Control>
+                              <Input
+                                {...field}
+                                value={field.value ?? ""}
+                                data-testid={`shipment-label-url-${index}`}
+                              />
+                            </Form.Control>
+                            <Form.ErrorMessage />
+                          </Form.Item>
+                        )}
+                      />
+                    </div>
                   ))}
 
                   <Button
                     type="button"
-                    onClick={() => append({ tracking_number: "" })}
+                    size="small"
+                    onClick={() =>
+                      append({
+                        tracking_number: "",
+                        tracking_url: "",
+                        label_url: "",
+                      })
+                    }
                     className="self-end"
                     variant="secondary"
+                    data-testid="shipment-add-tracking"
                   >
-                    {t("orders.shipment.addTrackingUrl")}
+                    {t("orders.shipment.addTracking")}
                   </Button>
                 </div>
               </div>

@@ -191,7 +191,7 @@ const UnfulfilledItemDisplay = ({
         <Link
           to={`/orders/${order.id}/fulfillment?requires_shipping=${requiresShipping}`}
         >
-          <Button>{t("orders.fulfillment.fulfillItems")}</Button>
+          <Button size="small">{t("orders.fulfillment.fulfillItems")}</Button>
         </Link>
       </div>
     </Container>
@@ -444,7 +444,11 @@ const Fulfillment = ({
       {(showShippingButton || showDeliveryButton) && (
         <div className="bg-ui-bg-subtle flex items-center justify-end gap-x-2 rounded-b-xl px-4 py-4">
           {showDeliveryButton && (
-            <Button onClick={handleMarkAsDelivered} variant="secondary">
+            <Button
+              size="small"
+              onClick={handleMarkAsDelivered}
+              variant="secondary"
+            >
               {t(
                 isPickUpFulfillment
                   ? "orders.fulfillment.markAsPickedUp"
@@ -455,6 +459,7 @@ const Fulfillment = ({
 
           {showShippingButton && (
             <Button
+              size="small"
               onClick={() => navigate(`./${fulfillment.id}/create-shipment`)}
               variant="secondary"
             >
