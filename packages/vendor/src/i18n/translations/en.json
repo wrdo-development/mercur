@@ -1311,6 +1311,11 @@
     "claim": "Claim",
     "exchange": "Exchange",
     "return": "Return",
+    "filters": {
+      "request": "Request",
+      "hasOpenRequest": "Has open request",
+      "noOpenRequest": "No open request"
+    },
     "cancelWarning": "You are about to cancel the order {{id}}. This action cannot be undone.",
     "orderCanceled": "Order canceled successfully",
     "onDateFromSalesChannel": "{{date}} from {{salesChannel}}",
@@ -1396,6 +1401,11 @@
       "createRefundWrongQuantity": "Quantity should be a number between 1 and {{number}}",
       "refundAmount": "Refund {{ amount }}",
       "paymentLink": "Copy payment link for {{ amount }}",
+      "copyPaymentLink": "Copy payment link for {{ amount }}",
+      "copyLinkSuccess": "Payment link copied to clipboard",
+      "copyLinkError": "Failed to copy payment link",
+      "copyLinkMissing": "No payment link available for this order",
+      "markAsPaidSuccess": "Payment collection marked as paid",
       "selectPaymentToRefund": "Select payment to refund"
     },
     "edits": {

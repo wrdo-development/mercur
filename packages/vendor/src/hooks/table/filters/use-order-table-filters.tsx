@@ -60,6 +60,18 @@ export const useOrderTableFilters = (): Filter[] => {
 
     
 
+    const requestFilter: Filter = {
+      key: "has_open_request",
+      label: t("orders.filters.request"),
+      type: "select",
+      options: [
+        { label: t("orders.filters.hasOpenRequest"), value: "true" },
+        { label: t("orders.filters.noOpenRequest"), value: "false" },
+      ],
+    };
+
+    filters.push(requestFilter);
+
     const dateFilters: Filter[] = [
       { label: t("fields.createdAt"), key: "created_at" },
       { label: t("fields.updatedAt"), key: "updated_at" },
@@ -71,9 +83,10 @@ export const useOrderTableFilters = (): Filter[] => {
 
     filters.push(...dateFilters);
 
-    // TODO: enable when Payment, Fulfillments <> Orders are linked
-    // filters.push(paymentStatusFilter)
-    // filters.push(fulfillmentStatusFilter)
+    // Payment / fulfillment status filters were prototyped but
+    // reverted — see docs/specs/SPEC-008-vendor-orders-figma-gap.md
+    // ("Filter gap — partial revert"). Re-enable here once the
+    // backend aggregation approach is settled.
 
     return filters;
   }, [regions, sales_channels, t]);

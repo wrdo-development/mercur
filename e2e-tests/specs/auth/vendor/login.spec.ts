@@ -14,6 +14,6 @@ test.describe("vendor login page", () => {
     await page.goto("/login")
     await page.getByRole("button", { name: /sign in|log in|continue/i }).click()
 
-    await expect(page.getByText(/required|invalid/i).first()).toBeVisible()
+    await expect(page.getByText(/please enter/i).first()).toBeVisible()
   })
 })

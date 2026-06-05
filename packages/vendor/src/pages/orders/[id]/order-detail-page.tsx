@@ -5,6 +5,7 @@ import { TwoColumnPageSkeleton } from "@components/common/skeleton";
 import { TwoColumnPage } from "@components/layout/pages";
 import { useOrder } from "@hooks/api/orders";
 
+import { OrderActivitySection } from "./_components/order-activity-section";
 import { OrderCustomerSection } from "./_components/order-customer-section";
 import { OrderFulfillmentSection } from "./_components/order-fulfillment-section";
 import { OrderGeneralSection } from "./_components/order-general-section";
@@ -57,7 +58,7 @@ const Root = ({ children }: { children?: ReactNode }) => {
       {Children.count(children) > 0 ? (
         children
       ) : (
-        <TwoColumnPage data={order} hasOutlet>
+        <TwoColumnPage data={order} hasOutlet showMetadata showJSON>
           <TwoColumnPage.Main>
             <OrderGeneralSection order={order} />
             <OrderSummarySection order={order} />
@@ -66,6 +67,7 @@ const Root = ({ children }: { children?: ReactNode }) => {
           </TwoColumnPage.Main>
           <TwoColumnPage.Sidebar>
             <OrderCustomerSection order={order} />
+            <OrderActivitySection order={order} />
           </TwoColumnPage.Sidebar>
         </TwoColumnPage>
       )}
@@ -81,4 +83,5 @@ export const OrderDetailPage = Object.assign(Root, {
   MainPaymentSection: OrderPaymentSection,
   MainFulfillmentSection: OrderFulfillmentSection,
   SidebarCustomerSection: OrderCustomerSection,
+  SidebarActivitySection: OrderActivitySection,
 });

@@ -6,8 +6,7 @@
     "dev": "turbo run dev",
     "lint": "oxlint --quiet",
     "test:integration:http": "cd integration-tests && bun run test:integration:http",
-    "test:e2e": "cd e2e-tests && bun run test",
-    "test:e2e:ui": "cd e2e-tests && bun run test:ui"
+    "test:e2e": "cd e2e-tests && bun run test"
   },
   "dependencies": {
     "@mercurjs/core": "workspace:*"

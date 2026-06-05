@@ -10,6 +10,7 @@ import {
   validateAndTransformQuery,
 } from "@medusajs/framework"
 
+import { applyHasOpenRequestFilter } from "./apply-has-open-request-filter"
 import {
   vendorOrderChangesQueryConfig,
   vendorOrderQueryConfig,
@@ -46,6 +47,7 @@ export const vendorOrdersMiddlewares: MiddlewareRoute[] = [
         vendorOrderQueryConfig.list
       ),
       applySellerLinkFilter,
+      applyHasOpenRequestFilter,
     ],
   },
   {
