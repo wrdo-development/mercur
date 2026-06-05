@@ -42,10 +42,15 @@ export const AttributeCreateForm = ({ children }: AttributeCreateFormProps) => {
   const { mutateAsync, isPending } = useCreateProductAttribute();
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    const cleanedValues = (values.values ?? [])
+      .filter((value) => value.name.trim().length > 0)
+      .map((value, index) => ({ ...value, rank: index }));
+
     await mutateAsync(
       {
         ...values,
         handle: values.handle ? values.handle : undefined,
+        values: cleanedValues,
       },
       {
         onSuccess: () => {

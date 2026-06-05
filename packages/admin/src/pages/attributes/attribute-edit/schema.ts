@@ -29,7 +29,7 @@ export const CreateAttributeSchema = z
     values: z
       .array(
         z.object({
-          name: z.string().min(1),
+          name: z.string(),
           rank: z.number(),
           metadata: z.record(z.string()).optional(),
         })
@@ -43,11 +43,11 @@ export const CreateAttributeSchema = z
       [AttributeType.SINGLE_SELECT, AttributeType.MULTI_SELECT].includes(
         data.type
       ) &&
-      (!data.values || data.values.length === 0)
+      !(data.values ?? []).some((value) => value.name.trim().length > 0)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "At least one value is required for this type.",
+        message: "attributes.create.possibleValuesRequired",
         path: ["values"],
       })
     }
