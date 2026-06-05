@@ -116,7 +116,7 @@ export const AttributeGeneralSection = ({
       <SectionRow
         title={t("attributes.fields.filterable")}
         value={
-          attribute.is_filterable ? t("fields.true") : t("fields.false")
+          attribute.is_filterable ? t("fields.yes") : t("fields.no")
         }
         data-testid="attribute-general-section-filterable"
       />
@@ -124,7 +124,7 @@ export const AttributeGeneralSection = ({
       <SectionRow
         title={t("attributes.fields.required")}
         value={
-          attribute.is_required ? t("fields.true") : t("fields.false")
+          attribute.is_required ? t("fields.yes") : t("fields.no")
         }
         data-testid="attribute-general-section-required"
       />

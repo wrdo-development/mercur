@@ -2,6 +2,8 @@ import { useTranslation } from "react-i18next"
 import { ProductStatus } from "@mercurjs/types"
 import { Filter } from "../../../components/table/data-table"
 import { useProductTags } from "../../api"
+import { useCollections } from "../../api/collections"
+import { useProductCategories } from "../../api/categories"
 import { useProductTypes } from "../../api/product-types"
 
 const excludeableFields = [
@@ -37,26 +39,29 @@ export const useProductTableFilters = (
 
   const isCategoryExcluded = exclude?.includes("categories")
 
-  // const { product_categories } = useAdminProductCategories({
-  //   limit: 1000,
-  //   offset: 0,
-  //   fields: "id,name",
-  //   expand: "",
-  // }, {
-  //  enabled: !isCategoryExcluded,
-  // })
+  const { product_categories } = useProductCategories(
+    {
+      limit: 1000,
+      offset: 0,
+      fields: "id,name",
+    },
+    {
+      enabled: !isCategoryExcluded,
+    }
+  )
 
-  
+  const isCollectionExcluded = exclude?.includes("collections")
 
-  // const { collections } = useAdminCollections(
-  //   {
-  //     limit: 1000,
-  //     offset: 0,
-  //   },
-  //   {
-  //     enabled: !isCollectionExcluded,
-  //   }
-  // )
+  const { collections } = useCollections(
+    {
+      limit: 1000,
+      offset: 0,
+      fields: "id,title",
+    },
+    {
+      enabled: !isCollectionExcluded,
+    }
+  )
 
   let filters: Filter[] = []
 
@@ -92,51 +97,37 @@ export const useProductTableFilters = (
     filters = [...filters, tagFilter]
   }
 
-  // if (product_categories) {
-  //   const categoryFilter: Filter = {
-  //     key: "category_id",
-  //     label: t("fields.category"),
-  //     type: "select",
-  //     multiple: true,
-  //     options: product_categories.map((c) => ({
-  //       label: c.name,
-  //       value: c.id,
-  //     })),
-  //   }
+  if (product_categories && !isCategoryExcluded) {
+    const categoryFilter: Filter = {
+      key: "category_id",
+      label: t("fields.category"),
+      type: "select",
+      multiple: true,
+      searchable: true,
+      options: product_categories.map((c) => ({
+        label: c.name,
+        value: c.id,
+      })),
+    }
 
-  //   filters = [...filters, categoryFilter]
-  // }
+    filters = [...filters, categoryFilter]
+  }
 
-  // if (collections) {
-  //   const collectionFilter: Filter = {
-  //     key: "collection_id",
-  //     label: t("fields.collection"),
-  //     type: "select",
-  //     multiple: true,
-  //     options: collections.map((c) => ({
-  //       label: c.title,
-  //       value: c.id,
-  //     })),
-  //   }
+  if (collections && !isCollectionExcluded) {
+    const collectionFilter: Filter = {
+      key: "collection_id",
+      label: t("fields.collection"),
+      type: "select",
+      multiple: true,
+      searchable: true,
+      options: collections.map((c) => ({
+        label: c.title,
+        value: c.id,
+      })),
+    }
 
-  //   filters = [...filters, collectionFilter]
-  // }
-
-  // const giftCardFilter: Filter = {
-  //   key: "is_giftcard",
-  //   label: t("fields.giftCard"),
-  //   type: "select",
-  //   options: [
-  //     {
-  //       label: t("fields.true"),
-  //       value: "true",
-  //     },
-  //     {
-  //       label: t("fields.false"),
-  //       value: "false",
-  //     },
-  //   ],
-  // }
+    filters = [...filters, collectionFilter]
+  }
 
   const statusFilter: Filter = {
     key: "status",

@@ -490,12 +490,6 @@ export const ProductActiveEditSection = ({
         </Heading>
       </div>
 
-      <div className="px-6 py-4">
-        <Text size="small" leading="compact" className="text-ui-fg-subtle">
-          {t("products.edits.panel.description")}
-        </Text>
-      </div>
-
       {hasContent && (
         <>
           {productUpdated.length > 0 && (

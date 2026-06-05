@@ -78,9 +78,12 @@ const normalizeFormAttributes = (
 
   for (const attr of attributes) {
     if (attr.use_for_variants) {
-      // Variant axis attribute
+      // Variant axis attribute. A variant axis without any chosen values
+      // is meaningless: stock Medusa will synthesise an option with no
+      // values and then reject the default variant for not providing one.
+      // Skip the ref entirely in that case so the product falls through
+      // to the no-axes path.
       if (attr.attribute_id) {
-        // Global attribute reference — resolve value names to IDs
         const valueNames = Array.isArray(attr.values)
           ? attr.values
           : attr.values
@@ -93,20 +96,25 @@ const normalizeFormAttributes = (
           .map((name) => nameToId.get(name))
           .filter(Boolean) as string[]
 
+        if (!valueIds.length) continue
+
         variantAttributes.push({
           attribute_id: attr.attribute_id,
-          value_ids: valueIds.length ? valueIds : undefined,
+          value_ids: valueIds,
         })
       } else if (attr.is_custom && attr.title) {
-        // Inline custom attribute
+        const vals = Array.isArray(attr.values)
+          ? attr.values
+          : attr.values
+            ? [attr.values]
+            : []
+
+        if (!vals.length) continue
+
         variantAttributes.push({
           name: attr.title,
           type: attr.type ?? "multi_select",
-          values: Array.isArray(attr.values)
-            ? attr.values
-            : attr.values
-              ? [attr.values]
-              : [],
+          values: vals,
           is_variant_axis: true,
         })
       }

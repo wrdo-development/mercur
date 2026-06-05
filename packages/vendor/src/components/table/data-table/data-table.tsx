@@ -11,7 +11,7 @@ interface DataTableProps<TData>
   isLoading?: boolean
   pageSize: number
   queryObject?: Record<string, any>
-  noRecords?: Pick<NoRecordsProps, "title" | "message" | "action">
+  noRecords?: Pick<NoRecordsProps, "title" | "message" | "action" | "icon">
 }
 
 // Maybe we should use the memoized version of DataTableRoot
@@ -30,6 +30,7 @@ export const _DataTable = <TData,>({
   count = 0,
   search = false,
   orderBy,
+  defaultOrderBy,
   filters,
   prefix,
   queryObject = {},
@@ -77,6 +78,7 @@ export const _DataTable = <TData,>({
       <MemoizedDataTableQuery
         search={search}
         orderBy={orderBy}
+        defaultOrderBy={defaultOrderBy}
         filters={filters}
         prefix={prefix}
       />

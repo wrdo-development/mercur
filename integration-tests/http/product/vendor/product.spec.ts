@@ -77,6 +77,53 @@ medusaIntegrationTestRunner({
           }
         })
 
+        // MER-112: the dashboard always renders (and submits) a single
+        // pre-populated default variant for products with no axes. The
+        // wrapper has to attach a default option to that variant or stock
+        // Medusa rejects it for not providing one.
+        it("creates a simple product when the payload carries a pre-populated default variant", async () => {
+          const res = await api.post(
+            `/vendor/products`,
+            {
+              title: "Pre-populated default",
+              variants: [{ title: "Default variant", sku: "VEN-DEF-1" }],
+            },
+            seller1Headers,
+          )
+          expect(res.status).toBe(201)
+          expect(res.data.product.variants).toHaveLength(1)
+          expect(res.data.product.variants[0].sku).toBe("VEN-DEF-1")
+          expect(res.data.product.options).toHaveLength(1)
+        })
+
+        // MER-112: an inline variant-axis attribute with no values used to
+        // synthesize an option (e.g. "Book") whose default variant carried
+        // no matching value, surfacing as "Product options are not provided
+        // for: [Book]." The frontend must skip such empty refs entirely.
+        it("creates a simple product when an inline variant-axis attribute carries no values", async () => {
+          const res = await api.post(
+            `/vendor/products`,
+            {
+              title: "Empty axis",
+              variants: [{ title: "Default variant" }],
+              variant_attributes: [
+                {
+                  name: "Book",
+                  type: "multi_select",
+                  values: [],
+                  is_variant_axis: true,
+                },
+              ],
+            },
+            seller1Headers,
+          )
+          expect(res.status).toBe(201)
+          expect(res.data.product.options).toHaveLength(1)
+          expect(
+            res.data.product.options.some((o: any) => o.title === "Book"),
+          ).toBe(false)
+        })
+
         // --- Case A: existing variant-axis attribute ---
         it("(A) existing variant-axis: synthesizes stock options + links the chosen values", async () => {
           const size = await createGlobalAttribute({

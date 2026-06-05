@@ -1808,11 +1808,15 @@
         "list": {
           "type": "object",
           "properties": {
+            "noRecordsTitle": {
+              "type": "string"
+            },
             "noRecordsMessage": {
               "type": "string"
             }
           },
           "required": [
+            "noRecordsTitle",
             "noRecordsMessage"
           ],
           "additionalProperties": false
@@ -1916,9 +1920,6 @@
                 "title": {
                   "type": "string"
                 },
-                "description": {
-                  "type": "string"
-                },
                 "deleteRequested": {
                   "type": "string"
                 },
@@ -1931,7 +1932,6 @@
               },
               "required": [
                 "title",
-                "description",
                 "deleteRequested",
                 "cancelTitle",
                 "cancelDescription"
@@ -2039,6 +2039,18 @@
                 },
                 "requiredAttribute": {
                   "type": "string"
+                },
+                "categoryRequired": {
+                  "type": "string"
+                },
+                "requiredAttributeSelect": {
+                  "type": "string"
+                },
+                "requiredAttributeEnter": {
+                  "type": "string"
+                },
+                "requiredAttributeMultiSelect": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -2049,7 +2061,11 @@
                 "titleRequired",
                 "handleInvalidFormat",
                 "handleMustContainLetter",
-                "requiredAttribute"
+                "requiredAttribute",
+                "categoryRequired",
+                "requiredAttributeSelect",
+                "requiredAttributeEnter",
+                "requiredAttributeMultiSelect"
               ],
               "additionalProperties": false
             },
@@ -2228,6 +2244,21 @@
                 },
                 "valuePlaceholder": {
                   "type": "string"
+                },
+                "enterValuePlaceholder": {
+                  "type": "string"
+                },
+                "selectValuePlaceholder": {
+                  "type": "string"
+                },
+                "requiredTooltip": {
+                  "type": "string"
+                },
+                "noAttributesTitle": {
+                  "type": "string"
+                },
+                "noAttributesDescription": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -2248,7 +2279,12 @@
                 "useForVariantsDescription",
                 "variantAxisTip",
                 "titlePlaceholder",
-                "valuePlaceholder"
+                "valuePlaceholder",
+                "enterValuePlaceholder",
+                "selectValuePlaceholder",
+                "requiredTooltip",
+                "noAttributesTitle",
+                "noAttributesDescription"
               ],
               "additionalProperties": false
             }

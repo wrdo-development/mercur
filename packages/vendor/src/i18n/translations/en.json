@@ -443,7 +443,8 @@
       "error": "Failed to delete products."
     },
     "list": {
-      "noRecordsMessage": "Create your first product to start selling."
+      "noRecordsTitle": "No products yet",
+      "noRecordsMessage": "Create products to start selling on the marketplace"
     },
     "edit": {
       "header": "Edit Product",
@@ -470,7 +471,6 @@
     "edits": {
       "panel": {
         "title": "Product update request",
-        "description": "Product update request has been submitted successfully. Once the Admin reviews it, you'll receive a notification in your panel. Confirmed updates will appear on the storefront.",
         "deleteRequested": "Product deletion is pending approval.",
         "cancelTitle": "Cancel update request",
         "cancelDescription": "Are you sure you want to cancel this product update request? This action cannot be undone."
@@ -499,10 +499,14 @@
         "options": "Please create at least one option.",
         "uniqueSku": "SKU must be unique across variants",
         "primaryCategoryRequired": "Primary category is required",
+        "categoryRequired": "Please select category",
         "titleRequired": "Title is required",
         "handleInvalidFormat": "Handle must contain only lowercase letters, numbers, and hyphens",
         "handleMustContainLetter": "Handle must contain at least one letter",
-        "requiredAttribute": "This attribute is required."
+        "requiredAttribute": "This attribute is required.",
+        "requiredAttributeSelect": "This attribute is required by the marketplace. Please select value.",
+        "requiredAttributeEnter": "This attribute is required by the marketplace. Please enter value.",
+        "requiredAttributeMultiSelect": "This attribute is required by the marketplace. Please select at least one value."
       },
       "variants": {
         "header": "Variants",
@@ -529,9 +533,9 @@
         }
       },
       "successToast": "Product {{title}} was successfully created.",
-      "requestSuccessToast": "Product was successfully requested. Once confirmed by the admin, they will appear on the storefront. Only products with stock levels and prices set will be visible.",
+      "requestSuccessToast": "Product was successfully requested. You can now create offers for this product. Once the product is approved by the admin, your offers will appear on the storefront. Only offers with stock levels and prices set will be visible.",
       "attributes": {
-        "description": "Add attributes to your product. Select from admin-defined attributes or create your own.",
+        "description": "Manage attributes and variations for your product, e.g. color, size, brand etc. Select from attributes defined by the Marketplace or create your own.",
         "requiredHeading": "Required Attributes",
         "requiredDescription": "These attributes are required for products in this category.",
         "buttonLabel": "Attribute",
@@ -547,11 +551,16 @@
         "requiredAttributesHint": "These attributes are required by the Marketplace. Select them before proceeding.",
         "selectValues": "Select values",
         "tip": "Tip",
-        "useForVariants": "Use for Variations",
-        "useForVariantsDescription": "If checked, you will be able to create variants using this attribute. If not, the attribute will be used for informational purposes only.",
+        "useForVariants": "Use for variants",
+        "useForVariantsDescription": "If checked, we will create variants with this attribute. You can define them in the next step. If not, the attribute will be used for informational purposes only.",
         "variantAxisTip": "This attribute will create variants. You can define them in the next step.",
         "titlePlaceholder": "e.g. Color",
-        "valuePlaceholder": "Enter values"
+        "valuePlaceholder": "Enter values",
+        "enterValuePlaceholder": "Enter value",
+        "selectValuePlaceholder": "Select value",
+        "requiredTooltip": "This attribute is required by the Marketplace and can't be deselected.",
+        "noAttributesTitle": "No product attributes yet",
+        "noAttributesDescription": "There are no attributes defined by the Marketplace."
       }
     },
     "export": {

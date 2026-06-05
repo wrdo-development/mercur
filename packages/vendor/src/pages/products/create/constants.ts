@@ -36,14 +36,18 @@ export type ProductCreateVariantSchema = z.infer<
 
 export const ProductCreateSchema = z
   .object({
-    title: z.string().min(1),
+    title: z.string().min(1, {
+      message: i18n.t("products.fields.title.required"),
+    }),
     subtitle: z.string().optional(),
     handle: z.string().optional(),
     description: z.string().optional(),
     discountable: z.boolean(),
     type_id: z.string().optional(),
     collection_id: z.string().optional(),
-    category_id: z.string().min(1),
+    category_id: z.string().min(1, {
+      message: i18n.t("products.create.errors.categoryRequired"),
+    }),
     tags: z.array(z.string()).optional(),
     origin_country: z.string().optional(),
     material: z.string().optional(),
@@ -65,28 +69,37 @@ export const ProductCreateSchema = z
         id: z.string(),
         name: z.string(),
       })).optional(),
-    })).optional(),
+    })).optional()
+      .superRefine((attributes, ctx) => {
+        attributes?.forEach((attr, index) => {
+          if (!attr.is_required) return
+
+          const isEmpty = attr.values === undefined ||
+            attr.values === "" ||
+            (Array.isArray(attr.values) && attr.values.length === 0)
+
+          if (!isEmpty) return
+
+          let messageKey = "products.create.errors.requiredAttribute"
+          if (attr.type === "single_select" || attr.type === "toggle") {
+            messageKey = "products.create.errors.requiredAttributeSelect"
+          } else if (attr.type === "multi_select") {
+            messageKey = "products.create.errors.requiredAttributeMultiSelect"
+          } else if (attr.type === "text" || attr.type === "unit") {
+            messageKey = "products.create.errors.requiredAttributeEnter"
+          }
+
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [index, "values"],
+            message: i18n.t(messageKey),
+          })
+        })
+      }),
     variants: z.array(ProductCreateVariantSchema).min(1),
     media: z.array(MediaSchema).optional(),
   })
   .superRefine((data, ctx) => {
-    // Validate required attributes have values
-    data.attributes?.forEach((attr, index) => {
-      if (!attr.is_required) return
-
-      const isEmpty = attr.values === undefined ||
-        attr.values === "" ||
-        (Array.isArray(attr.values) && attr.values.length === 0)
-
-      if (isEmpty) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [`attributes.${index}.values`],
-          message: i18n.t("products.create.errors.requiredAttribute"),
-        })
-      }
-    })
-
     if (data.variants.every((v) => !v.should_create)) {
       return ctx.addIssue({
         code: z.ZodIssueCode.custom,

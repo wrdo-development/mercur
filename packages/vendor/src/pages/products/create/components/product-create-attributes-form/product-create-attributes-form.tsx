@@ -1,4 +1,4 @@
-import { XMarkMini } from "@medusajs/icons";
+import { CircleMiniFilledSolid, XMarkMini } from "@medusajs/icons";
 import {
   Button,
   Heading,
@@ -11,9 +11,11 @@ import {
   Switch,
   Text,
   Textarea,
+  clx,
 } from "@medusajs/ui";
 import { AttributeType, ProductAttributeDTO } from "@mercurjs/types";
-import { useEffect } from "react";
+import { Select as RadixSelect } from "radix-ui";
+import { ComponentPropsWithoutRef, forwardRef, useEffect } from "react";
 import {
   Controller,
   FieldArrayWithId,
@@ -457,6 +459,7 @@ const RequiredAttributes = () => {
         is_custom: false,
         is_required: true,
         use_for_variants: attr.is_variant_axis,
+        type: attr.type,
       };
     });
 
@@ -502,6 +505,34 @@ const RequiredAttributes = () => {
   );
 };
 
+const RadioSelectItem = forwardRef<
+  HTMLDivElement,
+  ComponentPropsWithoutRef<typeof RadixSelect.Item>
+>(({ className, children, ...props }, ref) => (
+  <RadixSelect.Item
+    ref={ref}
+    className={clx(
+      "bg-ui-bg-component txt-compact-small grid cursor-pointer grid-cols-[15px_1fr] items-center gap-x-2 rounded-[4px] px-2 py-1.5 outline-none transition-colors",
+      "focus-visible:bg-ui-bg-component-hover",
+      "active:bg-ui-bg-component-pressed",
+      "data-[state=checked]:txt-compact-small-plus",
+      "disabled:text-ui-fg-disabled",
+      className,
+    )}
+    {...props}
+  >
+    <span className="flex h-[15px] w-[15px] items-center justify-center">
+      <RadixSelect.ItemIndicator className="flex items-center justify-center">
+        <CircleMiniFilledSolid />
+      </RadixSelect.ItemIndicator>
+    </span>
+    <RadixSelect.ItemText className="flex-1 truncate">
+      {children}
+    </RadixSelect.ItemText>
+  </RadixSelect.Item>
+));
+RadioSelectItem.displayName = "RadioSelectItem";
+
 const RequiredAttributeField = ({
   attribute,
   index,
@@ -530,15 +561,15 @@ const RequiredAttributeField = ({
                 <Select.Trigger ref={ref}>
                   <Select.Value
                     placeholder={t(
-                      "products.create.attributes.valuePlaceholder",
+                      "products.create.attributes.selectValuePlaceholder",
                     )}
                   />
                 </Select.Trigger>
                 <Select.Content>
                   {attribute.values?.map((v) => (
-                    <Select.Item key={v.id} value={v.name}>
+                    <RadioSelectItem key={v.id} value={v.name}>
                       {v.name}
-                    </Select.Item>
+                    </RadioSelectItem>
                   ))}
                 </Select.Content>
               </Select>
@@ -557,27 +588,46 @@ const RequiredAttributeField = ({
                 placeholder={t("products.create.attributes.selectValues")}
               />
             ) : attribute.type === AttributeType.TEXT ? (
-              <Input
+              <Textarea
                 {...field}
                 ref={ref}
                 value={typeof value === "string" ? value : (value?.[0] ?? "")}
                 onChange={(e) => onChange(e.target.value)}
-                placeholder={t("products.create.attributes.valuePlaceholder")}
+                placeholder={t(
+                  "products.create.attributes.enterValuePlaceholder",
+                )}
               />
             ) : attribute.type === AttributeType.TOGGLE ? (
-              <Switch
+              <Select
                 {...field}
-                className="rtl:rotate-180"
-                checked={value === "true" || (value as unknown) === true}
-                onCheckedChange={(checked) => onChange(String(checked))}
-              />
+                value={typeof value === "string" ? value : (value?.[0] ?? "")}
+                onValueChange={onChange}
+              >
+                <Select.Trigger ref={ref}>
+                  <Select.Value
+                    placeholder={t(
+                      "products.create.attributes.selectValuePlaceholder",
+                    )}
+                  />
+                </Select.Trigger>
+                <Select.Content>
+                  <RadioSelectItem value="true">
+                    {t("filters.radio.yes")}
+                  </RadioSelectItem>
+                  <RadioSelectItem value="false">
+                    {t("filters.radio.no")}
+                  </RadioSelectItem>
+                </Select.Content>
+              </Select>
             ) : (
               <Input
                 {...field}
                 ref={ref}
                 value={typeof value === "string" ? value : (value?.[0] ?? "")}
                 onChange={(e) => onChange(e.target.value)}
-                placeholder={t("products.create.attributes.valuePlaceholder")}
+                placeholder={t(
+                  "products.create.attributes.enterValuePlaceholder",
+                )}
               />
             )}
           </Form.Control>
@@ -594,7 +644,10 @@ const VariantAxisTip = () => {
   const { t } = useTranslation();
 
   return (
-    <InlineTip label={t("products.create.attributes.tip")}>
+    <InlineTip
+      label={t("products.create.attributes.tip")}
+      className="border-none"
+    >
       {t("products.create.attributes.variantAxisTip")}
     </InlineTip>
   );
