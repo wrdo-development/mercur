@@ -10,8 +10,8 @@ import {
   applyAndAndOrOperators,
   booleanString,
 } from "@medusajs/medusa/api/utils/common-validators/common"
-import { AdditionalData } from "@medusajs/framework/types"
-import { FeatureFlag } from "@medusajs/framework/utils"
+import { AdditionalData, OperatorMap } from "@medusajs/framework/types"
+import { FeatureFlag, isPresent } from "@medusajs/framework/utils"
 
 const statusEnum = z.nativeEnum(ProductStatus)
 
@@ -43,6 +43,21 @@ export const VendorGetProductsParams = createFindParams({
 })
   .merge(VendorGetProductsParamsFields)
   .merge(applyAndAndOrOperators(VendorGetProductsParamsFields))
+  .transform((data) => {
+    const res = { ...data } as Record<string, unknown>
+
+    if (isPresent(data.tag_id)) {
+      res.tags = { id: data.tag_id as string[] }
+      delete res.tag_id
+    }
+
+    if (isPresent(data.category_id)) {
+      res.categories = { id: data.category_id as OperatorMap<string> }
+      delete res.category_id
+    }
+
+    return res
+  })
 
 export type VendorGetProductParamsType = z.infer<typeof VendorGetProductParams>
 export const VendorGetProductParams = createSelectParams()
