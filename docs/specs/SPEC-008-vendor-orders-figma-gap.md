@@ -1450,6 +1450,122 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (u) — Create Claim UI v1 (kebab + route + modal + hooks + ClaimType selector)
+
+Slice 5 first cut. Mirrors slice-4 cadence — hooks + kebab + route +
+minimal RouteFocusModal walking begin → claim-items qty stepper →
+confirm — plus the claim-specific `ClaimType` selector (refund vs
+replace) at the top of the modal. Outbound variant picker + inbound
+items + shipping deferred to follow-up (hooks already exist in tree).
+
+#### Files added
+
+- `packages/vendor/src/hooks/api/claims.tsx` — 9 mutation hooks
+  against `sdk.vendor.claims.*` mirroring the slice-4 exchange shape:
+  - `useCreateClaim(orderId, opts?)` — `POST /vendor/claims`
+    (takes `{ type: ClaimType, order_id, ... }`).
+  - `useCancelClaimBegin(claimId, orderId, opts?)` —
+    `DELETE /vendor/claims/:id/request` (cancel a begun claim).
+  - `useRequestClaim(claimId, orderId, opts?)` —
+    `POST /vendor/claims/:id/request` (confirm).
+  - `useCancelClaim(claimId, orderId, opts?)` —
+    `POST /vendor/claims/:id/cancel` (cancel a confirmed claim).
+  - `useAddClaimItems` / `useUpdateClaimItem` /
+    `useRemoveClaimItem` — claim-items subtree (the
+    claim-specific path that exchanges don't have). The typed SDK
+    exposes the kebab-cased `claim-items` URL as `claimItems`
+    property on the route map.
+  - `useAddClaimInboundItems` / `useAddClaimOutboundItems` —
+    inbound + outbound subtrees (update/remove variants deferred to
+    a follow-up sub-slice; same shape as the exchange hooks, no
+    new surface needed).
+  All onSuccess paths invalidate `ordersQueryKeys.details()` +
+  `preview(orderId)` + `changes(orderId)` via the shared
+  `invalidateOrder` helper.
+- `packages/vendor/src/pages/orders/[id]/claims/create/index.tsx`
+  (~290 lines) — Create Claim `RouteFocusModal` scaffold.
+  - **ClaimType selector** at the top using `RadioGroup` —
+    `refund` (no replacement shipment) vs `replace` (with outbound
+    shipment). Locked once `claimId` is set (the workflow doesn't
+    accept type changes mid-draft); footer note explains.
+  - On mount: if `preview.order_change.change_type !== "claim"`,
+    redirects with `orders.claims.activeChangeError`. Otherwise
+    creates a draft via `useCreateClaim({ type, order_id })`.
+    Guarded by module-scoped `IS_REQUEST_RUNNING` + `claimId` state
+    for StrictMode safety (matches Create Return / Edit Order /
+    Create Exchange patterns).
+  - Claim-items list: filters `order.items` to rows where
+    `fulfilled_quantity - return_requested_quantity - returned_quantity > 0`.
+    Each row renders product/variant title + an `Input[type=number]`
+    qty stepper bounded `[0, remaining]`. Per-row `data-testid`.
+  - Internal note `<Textarea>` (read-only for now — threading into
+    `useUpdateOrderChange` deferred).
+  - Confirm: collects selected items into the claim-items payload,
+    calls `useAddClaimItems({ items })` once, then `useRequestClaim()`.
+    Disabled when no items selected (`!hasSelection`).
+  - Cancel: calls `useCancelClaimBegin()` then navigates back;
+    swallows errors so a stuck network call doesn't trap the user.
+
+#### Files modified
+
+- `packages/vendor/src/pages/orders/[id]/_components/order-general-section/order-general-section.tsx`:
+  - Imported `ExclamationCircle` from `@medusajs/icons`.
+  - Added a fourth kebab action `Create Claim` in the same group as
+    Complete / Edit order / Create Return / Create Exchange,
+    targets `to: "claims/create"`, disabled when `order.canceled_at`
+    is set.
+- `packages/vendor/src/get-route-map.tsx` — added a `claims/create`
+  route after `exchanges/create`. Lazy-loads
+  `./pages/orders/[id]/claims/create`.
+- `packages/vendor/src/i18n/translations/en.json` — added 10 keys
+  under the existing `orders.claims` namespace:
+  - `title` ("Create Claim"),
+  - `description` ("Choose claim type and select items the customer
+    wants to claim."),
+  - `typeLabel` ("Claim type"),
+  - `typeRefund` ("Refund — no replacement shipment"),
+  - `typeReplace` ("Replace — ship replacement items"),
+  - `typeLockedAfterStart` ("Claim type is locked once a draft is
+    started. Cancel and reopen to switch."),
+  - `claimItems` ("Items to claim"),
+  - `noClaimableItems` ("No claimable items on this order."),
+  - `remainingQty` ("{{count}} claimable"),
+  - `noteHint` ("Add an internal note for this claim (visible only
+    to your team).").
+  Pre-existing keys reused: `create`, `confirm`, `activeChangeError`,
+  `toast.confirmedSuccessfully`, `toast.canceledSuccessfully`.
+
+#### What's NOT in this slice (deferred to slice 5b)
+
+- **Outbound variant picker** — admin's
+  `add-claim-outbound-items-table/` (5 files). When `claimType ===
+  "replace"`, the user needs to pick replacement variants. Hooks
+  (`useAddClaimOutboundItems`) already exist; picker mirrors
+  session-(q)'s `add-order-edit-items-table` port.
+- **Inbound items + shipping** dropdowns (location +
+  return-shipping). Backend already accepts via
+  `claims/:id/inbound/items` + `claims/:id/inbound/shipping-method`.
+- **Per-row reason dropdown** (`ClaimReason` enum: `missing_item`,
+  `wrong_item`, `production_failure`, `other`). Backend
+  `VendorPostClaimItemsReq` accepts `reason` per item.
+- **Outbound shipping** dropdown (only when `claimType === "replace"`).
+- **Claim totals / estimated difference** — computed client-side
+  from inbound + outbound prices.
+
+#### Verification
+
+- `bun run build` from repo root — **9 / 9 packages pass** in
+  60.0s (`@mercurjs/vendor` recompiled; route map regenerated via
+  `@mercurjs/core` codegen pass; DTS emission clean).
+- `bunx oxlint packages/vendor/src/hooks/api/claims.tsx
+  packages/vendor/src/pages/orders/[id]/claims/create/index.tsx
+  packages/vendor/src/pages/orders/[id]/_components/order-general-section/order-general-section.tsx`
+  — exit 0, no warnings, no errors.
+- No headless UI run this session — kebab navigation path is
+  `RouteFocusModal` (proven by the sibling Create Return / Edit
+  Order / Create Exchange siblings) and the hook contracts are
+  unchanged from slice 4.
+
 ### Session 2026-06-08 (t) — Create Exchange UI v1 (kebab + route + modal scaffold + hooks)
 
 Slice 4 first cut. Mirrors the Edit Order session-(p) cadence —

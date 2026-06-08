@@ -270,6 +270,13 @@ export function getRouteMap({
                                 "./pages/orders/[id]/exchanges/create"
                               ),
                           },
+                          {
+                            path: "claims/create",
+                            lazy: () =>
+                              import(
+                                "./pages/orders/[id]/claims/create"
+                              ),
+                          },
                         ],
                       },
                     ],

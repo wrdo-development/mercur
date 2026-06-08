@@ -2,6 +2,7 @@ import {
   ArrowPath,
   ArrowUturnLeft,
   CheckCircle,
+  ExclamationCircle,
   PencilSquare,
   XCircle,
 } from "@medusajs/icons"
@@ -125,6 +126,13 @@ export const OrderGeneralSection = ({ order }: OrderGeneralSectionProps) => {
                   //@ts-ignore
                   disabled: !!order.canceled_at,
                   icon: <ArrowPath />,
+                },
+                {
+                  label: t("orders.claims.create"),
+                  to: "claims/create",
+                  //@ts-ignore
+                  disabled: !!order.canceled_at,
+                  icon: <ExclamationCircle />,
                 },
               ],
             },
