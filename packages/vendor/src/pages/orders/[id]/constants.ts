@@ -49,13 +49,6 @@ const DEFAULT_RELATIONS = [
   "*payment_collections.payments",
   "payment_status",
   "*returns",
-  "*exchanges",
-  "*exchanges.return",
-  "*exchanges.additional_items",
-  "*claims",
-  "*claims.return",
-  "*claims.additional_items",
-  "*claims.claim_items",
 ]
 
 export const DEFAULT_FIELDS = `${DEFAULT_PROPERTIES.join(

@@ -48,17 +48,16 @@ export const useActivityItems = (order: ExtendedAdminOrder): Activity[] => {
   }, [order.items])
 
   const returns: AdminReturn[] = (order.returns as AdminReturn[] | undefined) ?? []
-  // SPEC-008 slice 7 exposes order.claims / order.exchanges directly via
-  // vendor query-config. The claim/exchange activity rules light up
-  // automatically — the legacy admin shape (additional_items + return_id)
-  // is already what we read here.
-  const claims: AdminClaim[] =
-    ((order as { claims?: AdminClaim[] }).claims as AdminClaim[] | undefined) ??
-    []
-  const exchanges: AdminExchange[] =
-    ((order as { exchanges?: AdminExchange[] }).exchanges as
-      | AdminExchange[]
-      | undefined) ?? []
+  // SPEC-008: claim/exchange data lives on OrderClaim / OrderExchange,
+  // not on Order directly — see admin's order query-config which also
+  // omits them. Surfacing them via `*claims.*` / `*exchanges.*` field
+  // expansion on the order tree triggers MikroORM populate-path errors
+  // (session y revert). Dedicated `useClaims(orderId)` / `useExchanges(orderId)`
+  // hooks against `/vendor/claims?order_id=` / `/vendor/exchanges?order_id=`
+  // are the right shape — slated for a follow-up session. Activity rules
+  // below stay wired so they light up once those hooks land.
+  const claims: AdminClaim[] = []
+  const exchanges: AdminExchange[] = []
 
 
   const isLoading = false
