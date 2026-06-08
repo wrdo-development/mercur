@@ -413,6 +413,22 @@ export const VendorAddProductAttribute = z
       path: ["type"],
     },
   )
+  // Inline-create select-type attributes carry their values as their
+  // entire identity — an empty `values` array would create an orphan
+  // attribute scope that the apply-actions dispatcher silently skips
+  // (it short-circuits on empty `attribute_value_ids`), leaving the
+  // product with a visible attribute and no linked values.
+  .refine(
+    (data) =>
+      !data.name ||
+      (data.type !== "single_select" && data.type !== "multi_select") ||
+      (data.values?.length ?? 0) > 0,
+    {
+      message:
+        "Inline-create with `single_select` or `multi_select` requires at least one entry in `values`.",
+      path: ["values"],
+    },
+  )
 
 export type VendorCancelProductChangeType = z.infer<
   typeof VendorCancelProductChange
