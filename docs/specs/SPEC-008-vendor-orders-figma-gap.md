@@ -1276,15 +1276,17 @@ panel **and** the running API.
      equivalent) filter — landed session (a), kept session (c)
      (`apply-has-open-request-filter.ts` middleware; 3/3
      integration tests pass).
-   - [~] `GET /vendor/orders/:id` response includes
+   - [x] `GET /vendor/orders/:id` response includes
      `payment_collections.payments`,
      `payment_collections.payments.refunds`,
      `payment_collections.payment_sessions`, `returns`,
      `returns.items.reason`, `returns.shipping_methods` — all
-     landed across sessions (a) + (d). **`exchanges` and `claims`
-     still deferred** — those relations don't live on `Order`
-     directly; need either a query-config join via `order_change`
-     or dedicated routes (see lines below).
+     landed across sessions (a) + (d). **Slice 7 (session w)**
+     adds `*exchanges`, `*exchanges.return`,
+     `*exchanges.additional_items`, `*claims`, `*claims.return`,
+     `*claims.additional_items`, `*claims.claim_items` to
+     `vendorOrderFields` + the vendor dashboard
+     `DEFAULT_RELATIONS`.
    - [x] `POST /vendor/order-edits` (top-level, mirrors
      `/admin/order-edits`) + sub-resources (`:id/items`,
      `:id/items/:action_id` POST/DELETE,
@@ -1383,9 +1385,13 @@ panel **and** the running API.
      Create Refund — session (b).
    - [x] Activity timeline mounted in the sidebar — session (b).
      **Plus**: return lifecycle rows wired session (f); payment
-     awaiting/captured/canceled/refunded rows wired session (g).
-     Claim / exchange / edit-request generator rules queued for
-     slice 6 (mount + generators) now that backends are live.
+     awaiting/captured/canceled/refunded rows wired session (g);
+     edit-request generator rule (`orders.activity.events.edit.requested`)
+     was already in tree at `use-activity-items.tsx:250-275` from
+     session (b) — status-aware (requested/confirmed/declined/canceled),
+     skipping `pending` drafts. Slice 6 (session v) wired the
+     claim/exchange rules by reading from `order.claims` /
+     `order.exchanges` (exposed by slice 7).
    - [x] Metadata + JSON sections at the bottom of the main column
      — session (b).
 3. **Edit Order**
@@ -1449,6 +1455,58 @@ panel **and** the running API.
      row — session (e).
 
 ## Evidence
+
+### Session 2026-06-08 (v + w) — Slices 6 + 7 (query-config + activity-rule wiring)
+
+Closes the two cross-cutting slices in one commit since slice 6 (wire
+claim/exchange activity rules) is a 6-line follow-on to slice 7 (add
+exchanges/claims to vendor query-config) — they can't ship separately
+because slice 6 reads from the fields slice 7 surfaces.
+
+#### Files modified
+
+- `packages/core/src/api/vendor/orders/query-config.ts` — added 7
+  fields to `vendorOrderFields` between `*returns.shipping_methods`
+  and `*summary`:
+  - `*exchanges`, `*exchanges.return`, `*exchanges.additional_items`,
+  - `*claims`, `*claims.return`, `*claims.additional_items`,
+  - `*claims.claim_items`.
+- `packages/vendor/src/pages/orders/[id]/constants.ts` — added the
+  same 7 fields to `DEFAULT_RELATIONS` so the dashboard query at
+  `GET /vendor/orders/:id?fields=...` requests them.
+- `packages/vendor/src/pages/orders/[id]/_components/order-activity-section/hooks/use-activity-items.tsx`
+  — replaced the `const claims: AdminClaim[] = []` /
+  `const exchanges: AdminExchange[] = []` stubs (added in session b
+  with a SPEC-008 TODO) with reads from `order.claims` /
+  `order.exchanges`. The downstream rules at lines 208-248 were
+  already wired in session (b) — they light up automatically now
+  that the source arrays are populated. The legacy admin shape
+  (`return_id`, `additional_items`, `canceled_at`, `created_at`,
+  `slice(-7)`) is exactly what the new vendor data carries since
+  the typed `AdminClaim` / `AdminExchange` interfaces are inherited
+  from Medusa's order module.
+
+#### What slice 6 was actually missing vs what was already there
+
+The spec's §2 "edit-request generator rule" was actually shipped
+back in session (b) at `use-activity-items.tsx:250-275` — the rule
+is status-aware (`requested` / `confirmed` / `declined` /
+`canceled`) and uses the `orders.activity.events.edit.requested`
+translation key already present in `en.json:1793`. The carry-over
+"queued for slice 6" framing in session (s)'s checklist hygiene
+sweep was incorrect — corrected here.
+
+The actual slice-6 deliverable is the 6-line stub-removal above,
+which makes claim/exchange rows render now that backends and
+query-config are live.
+
+#### Verification
+
+- `bun run build` from repo root — 9/9 packages green.
+- `bunx oxlint` on the touched files — exit 0, no warnings, no
+  errors.
+- No headless UI run — activity rules are pure transforms over
+  array inputs; no new render paths or hooks added.
 
 ### Session 2026-06-08 (u) — Create Claim UI v1 (kebab + route + modal + hooks + ClaimType selector)
 

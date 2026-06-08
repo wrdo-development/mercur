@@ -26,6 +26,13 @@ export const vendorOrderFields = [
   "*returns.items",
   "*returns.items.reason",
   "*returns.shipping_methods",
+  "*exchanges",
+  "*exchanges.return",
+  "*exchanges.additional_items",
+  "*claims",
+  "*claims.return",
+  "*claims.additional_items",
+  "*claims.claim_items",
   "*summary",
 ]
 

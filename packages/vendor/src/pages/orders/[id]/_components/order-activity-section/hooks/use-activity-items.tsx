@@ -48,14 +48,17 @@ export const useActivityItems = (order: ExtendedAdminOrder): Activity[] => {
   }, [order.items])
 
   const returns: AdminReturn[] = (order.returns as AdminReturn[] | undefined) ?? []
-  // SPEC-008: claims and exchanges are not yet reachable on `order.*` —
-  // they live on OrderClaim / OrderExchange and need either a query-config
-  // join via `order_change` or dedicated `useClaims` / `useExchanges` hooks
-  // backed by `/vendor/claims` / `/vendor/exchanges` routes that don't
-  // exist yet. Activity rules below are still wired so they light up
-  // automatically once those sources land.
-  const claims: AdminClaim[] = []
-  const exchanges: AdminExchange[] = []
+  // SPEC-008 slice 7 exposes order.claims / order.exchanges directly via
+  // vendor query-config. The claim/exchange activity rules light up
+  // automatically — the legacy admin shape (additional_items + return_id)
+  // is already what we read here.
+  const claims: AdminClaim[] =
+    ((order as { claims?: AdminClaim[] }).claims as AdminClaim[] | undefined) ??
+    []
+  const exchanges: AdminExchange[] =
+    ((order as { exchanges?: AdminExchange[] }).exchanges as
+      | AdminExchange[]
+      | undefined) ?? []
 
 
   const isLoading = false
