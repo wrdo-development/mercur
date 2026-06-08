@@ -7,6 +7,7 @@ type AttrAccum = {
   handle?: string | null
   type?: string
   is_variant_axis?: boolean
+  is_required?: boolean
   rank?: number
   all_values: { id: string; name: string; rank?: number }[]
   values: { id: string; name: string; rank?: number }[]
@@ -115,6 +116,7 @@ export async function enrichProductAttributes(
       "handle",
       "type",
       "is_variant_axis",
+      "is_required",
       "rank",
       "product_id",
     ],
@@ -136,6 +138,7 @@ export async function enrichProductAttributes(
     handle?: string | null
     type?: string
     is_variant_axis?: boolean
+    is_required?: boolean
     rank?: number
   }>) {
     attrTemplateById.set(attr.id, {
@@ -144,6 +147,7 @@ export async function enrichProductAttributes(
       handle: attr.handle ?? null,
       type: attr.type,
       is_variant_axis: !!attr.is_variant_axis,
+      is_required: !!attr.is_required,
       rank: attr.rank,
       all_values: [],
     })

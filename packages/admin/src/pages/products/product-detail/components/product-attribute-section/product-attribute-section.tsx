@@ -5,6 +5,7 @@ import {
   Swatch,
   DropCap,
   InformationCircleSolid,
+  PencilSquare,
 } from "@medusajs/icons";
 import {
   Badge,
@@ -60,9 +61,22 @@ const AttributeActions = ({
         {
           actions: [
             {
+              label: t("actions.edit"),
+              to: `attributes/${attribute.id}/edit`,
+              icon: <PencilSquare />,
+            },
+          ],
+        },
+        {
+          actions: [
+            {
               label: t("actions.delete"),
               onClick: handleDelete,
               icon: <Trash />,
+              disabled: attribute.is_required,
+              disabledTooltip: attribute.is_required
+                ? t("products.attributeRequiredDeleteDisabledTooltip")
+                : undefined,
             },
           ],
         },

@@ -475,6 +475,45 @@ export const useAddProductAttribute = (
 };
 
 /**
+ * Stages `ATTRIBUTE_REMOVE + ATTRIBUTE_ADD` for the same attribute on
+ * one product-change so the value set replaces atomically.
+ */
+export const useUpdateProductAttribute = (
+  productId: string,
+  attributeId: string,
+  options?: UseMutationOptions<
+    ProductChangeResponse,
+    ClientError,
+    Omit<
+      InferClientInput<typeof sdk.vendor.products.$id.attributes.$attributeId.mutate>,
+      "$id" | "$attributeId"
+    >
+  >
+) => {
+  return useMutation({
+    mutationFn: (payload) =>
+      sdk.vendor.products.$id.attributes.$attributeId.mutate({
+        $id: productId,
+        $attributeId: attributeId,
+        ...payload,
+      }) as Promise<ProductChangeResponse>,
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: productChangeQueryKeys.detail(productId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: productAttributesQueryKeys.lists(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: productsQueryKeys.detail(productId),
+      });
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};
+
+/**
  * Stages an `ATTRIBUTE_REMOVE` action via
  * `productEditRemoveAttributeWorkflow`.
  */

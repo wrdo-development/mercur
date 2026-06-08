@@ -6,7 +6,6 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { HttpTypes, ProductChangeDTO } from "@mercurjs/types"
 
 import { productEditUpdateVariantsWorkflow } from "../../../../../workflows/product-edit/workflows/product-edit-update-variants"
-import { ensureSellerOwnsProduct } from "../../helpers"
 import { VendorAddProductVariantType } from "../../validators"
 
 export const GET = async (
@@ -45,8 +44,6 @@ export const POST = async (
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const sellerId = req.seller_context!.seller_id
   const productId = req.params.id
-
-  await ensureSellerOwnsProduct(req.scope, sellerId, productId)
 
   const { attribute_values: _av, ...variant } = req.validatedBody
 

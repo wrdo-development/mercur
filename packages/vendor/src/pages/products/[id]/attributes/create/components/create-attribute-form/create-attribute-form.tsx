@@ -8,7 +8,7 @@ import {
   Textarea,
   toast,
 } from "@medusajs/ui"
-import { Controller, useForm } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import * as zod from "zod"
 
@@ -18,13 +18,11 @@ import { RouteDrawer, useRouteModal } from "@components/modals"
 import { KeyboundForm } from "@components/utilities/keybound-form"
 import { useAddProductAttribute } from "@hooks/api/products"
 
-const CreateAttributeSchema = zod.object({
-  title: zod.string().min(1),
-  values: zod.union([zod.string(), zod.array(zod.string())]),
-  use_for_variants: zod.boolean(),
-})
-
-type CreateAttributeFormValues = zod.infer<typeof CreateAttributeSchema>
+type CreateAttributeFormValues = {
+  title: string
+  values: string | string[]
+  use_for_variants: boolean
+}
 
 type CreateAttributeFormProps = {
   productId: string
@@ -36,13 +34,27 @@ export const CreateAttributeForm = ({
   const { t } = useTranslation()
   const { handleSuccess } = useRouteModal()
 
+  const schema = zod.object({
+    title: zod
+      .string()
+      .trim()
+      .min(1, { message: t("products.create.attributes.errors.titleRequired") }),
+    values: zod
+      .union([zod.string(), zod.array(zod.string())])
+      .refine(
+        (v) => (Array.isArray(v) ? v.length > 0 : v.trim().length > 0),
+        { message: t("products.create.attributes.errors.valuesRequired") },
+      ),
+    use_for_variants: zod.boolean(),
+  })
+
   const form = useForm<CreateAttributeFormValues>({
     defaultValues: {
       title: "",
       values: "",
       use_for_variants: false,
     },
-    resolver: zodResolver(CreateAttributeSchema),
+    resolver: zodResolver(schema),
   })
 
   const useForVariants = form.watch("use_for_variants")
@@ -82,7 +94,7 @@ export const CreateAttributeForm = ({
         <RouteDrawer.Body>
           <div className="flex flex-col gap-y-4">
             <div className="bg-ui-bg-component shadow-elevation-card-rest rounded-xl p-1.5">
-              <div className="grid grid-cols-[min-content,1fr] items-center gap-1.5">
+              <div className="grid grid-cols-[min-content,1fr] items-start gap-1.5">
                 <div className="flex items-center px-2 py-1.5">
                   <Label
                     size="xsmall"
@@ -92,11 +104,28 @@ export const CreateAttributeForm = ({
                     {t("fields.title")}
                   </Label>
                 </div>
-                <Input
-                  className="bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
-                  {...form.register("title")}
-                  placeholder={t(
-                    "products.create.attributes.titlePlaceholder"
+                <Form.Field
+                  control={form.control}
+                  name="title"
+                  render={({ field, fieldState }) => (
+                    <Form.Item>
+                      <Form.Control>
+                        <Input
+                          {...field}
+                          aria-invalid={fieldState.invalid ? "true" : undefined}
+                          className={
+                            fieldState.invalid
+                              ? "bg-ui-bg-field-component shadow-borders-error focus:shadow-borders-error"
+                              : "bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
+                          }
+                          placeholder={t(
+                            "products.create.attributes.titlePlaceholder",
+                          )}
+                          data-testid="create-attribute-title-input"
+                        />
+                      </Form.Control>
+                      <Form.ErrorMessage />
+                    </Form.Item>
                   )}
                 />
                 <div className="flex items-center px-2 py-1.5">
@@ -108,36 +137,55 @@ export const CreateAttributeForm = ({
                     {t("fields.values")}
                   </Label>
                 </div>
-                <Controller
+                <Form.Field
                   control={form.control}
                   name="values"
-                  render={({ field: { onChange, value, ...field } }) =>
-                    useForVariants ? (
-                      <ChipInput
-                        {...field}
-                        variant="contrast"
-                        value={Array.isArray(value) ? value : []}
-                        onChange={onChange}
-                        placeholder={t(
-                          "products.create.attributes.valuePlaceholder"
+                  render={({ field: { onChange, value }, fieldState }) => (
+                    <Form.Item>
+                      <Form.Control>
+                        {useForVariants ? (
+                          <ChipInput
+                            variant="contrast"
+                            value={Array.isArray(value) ? value : []}
+                            onChange={onChange}
+                            aria-invalid={
+                              fieldState.invalid ? "true" : undefined
+                            }
+                            className={
+                              fieldState.invalid
+                                ? "shadow-borders-error focus-within:!shadow-borders-error"
+                                : undefined
+                            }
+                            placeholder={t(
+                              "products.create.attributes.valuePlaceholder",
+                            )}
+                          />
+                        ) : (
+                          <Textarea
+                            aria-invalid={
+                              fieldState.invalid ? "true" : undefined
+                            }
+                            className={
+                              fieldState.invalid
+                                ? "bg-ui-bg-field-component shadow-borders-error focus:shadow-borders-error"
+                                : "bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
+                            }
+                            value={
+                              Array.isArray(value)
+                                ? value.join(", ")
+                                : value ?? ""
+                            }
+                            onChange={(e) => onChange(e.target.value)}
+                            placeholder={t(
+                              "products.create.attributes.valuePlaceholder",
+                            )}
+                            data-testid="create-attribute-values-input"
+                          />
                         )}
-                      />
-                    ) : (
-                      <Textarea
-                        {...field}
-                        className="bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
-                        value={
-                          Array.isArray(value)
-                            ? value.join(", ")
-                            : value ?? ""
-                        }
-                        onChange={(e) => onChange(e.target.value)}
-                        placeholder={t(
-                          "products.create.attributes.valuePlaceholder"
-                        )}
-                      />
-                    )
-                  }
+                      </Form.Control>
+                      <Form.ErrorMessage />
+                    </Form.Item>
+                  )}
                 />
                 <div />
                 <Form.Field
@@ -155,7 +203,9 @@ export const CreateAttributeForm = ({
                             checked={value}
                             onCheckedChange={(checked) => {
                               fieldOnChange(checked)
-                              form.setValue("values", checked ? [] : "")
+                              form.setValue("values", checked ? [] : "", {
+                                shouldValidate: false,
+                              })
                             }}
                           />
                         </Form.Control>
@@ -184,7 +234,12 @@ export const CreateAttributeForm = ({
                 {t("actions.cancel")}
               </Button>
             </RouteDrawer.Close>
-            <Button size="small" type="submit" isLoading={isPending}>
+            <Button
+              size="small"
+              type="submit"
+              isLoading={isPending}
+              data-testid="create-attribute-submit-button"
+            >
               {t("actions.save")}
             </Button>
           </div>

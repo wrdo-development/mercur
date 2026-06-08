@@ -9,7 +9,6 @@ import {
 import { HttpTypes, ProductChangeDTO } from "@mercurjs/types"
 
 import { productEditUpdateVariantsWorkflow } from "../../../../../../workflows/product-edit/workflows/product-edit-update-variants"
-import { ensureSellerOwnsProduct } from "../../../helpers"
 import { VendorUpdateProductVariantType } from "../../../validators"
 
 export const GET = async (
@@ -48,8 +47,6 @@ export const POST = async (
   const sellerId = req.seller_context!.seller_id
   const productId = req.params.id
   const variantId = req.params.variant_id
-
-  await ensureSellerOwnsProduct(req.scope, sellerId, productId)
 
   const { attribute_values: _av, ...update } = req.validatedBody
 
@@ -90,8 +87,6 @@ export const DELETE = async (
   const sellerId = req.seller_context!.seller_id
   const productId = req.params.id
   const variantId = req.params.variant_id
-
-  await ensureSellerOwnsProduct(req.scope, sellerId, productId)
 
   const { result } = await productEditUpdateVariantsWorkflow(req.scope).run({
     input: {

@@ -27,6 +27,7 @@ import {
   VendorGetProductVariantParams,
   VendorGetProductVariantsParams,
   VendorUpdateProduct,
+  VendorUpdateProductAttribute,
   VendorUpdateProductVariant,
 } from "./validators"
 
@@ -211,6 +212,17 @@ export const vendorProductsMiddlewares: MiddlewareRoute[] = [
     middlewares: [
       validateAndTransformQuery(
         VendorGetProductAttributeParams,
+        vendorProductQueryConfig.retrieve
+      ),
+    ],
+  },
+  {
+    method: ["POST"],
+    matcher: "/vendor/products/:id/attributes/:attribute_id",
+    middlewares: [
+      validateAndTransformBody(VendorUpdateProductAttribute),
+      validateAndTransformQuery(
+        VendorGetProductParams,
         vendorProductQueryConfig.retrieve
       ),
     ],
