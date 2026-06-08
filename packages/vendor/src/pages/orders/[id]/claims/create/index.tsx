@@ -20,6 +20,7 @@ import {
   Input,
   Label,
   RadioGroup,
+  Select,
   Text,
   Textarea,
   toast,
@@ -47,6 +48,19 @@ let IS_REQUEST_RUNNING = false
 
 type ClaimType = "refund" | "replace"
 
+type ClaimReason =
+  | "missing_item"
+  | "wrong_item"
+  | "production_failure"
+  | "other"
+
+const CLAIM_REASONS: ClaimReason[] = [
+  "missing_item",
+  "wrong_item",
+  "production_failure",
+  "other",
+]
+
 export const Component = () => {
   const { id } = useParams()
   const { t } = useTranslation()
@@ -66,6 +80,10 @@ export const Component = () => {
   const [itemQuantities, setItemQuantities] = useState<
     Record<string, number>
   >({})
+  const [itemReasons, setItemReasons] = useState<Record<string, ClaimReason>>(
+    {}
+  )
+  const [itemNotes, setItemNotes] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [canceling, setCanceling] = useState(false)
 
@@ -178,7 +196,16 @@ export const Component = () => {
     try {
       const itemsPayload = Object.entries(itemQuantities)
         .filter(([, qty]) => qty > 0)
-        .map(([itemId, quantity]) => ({ id: itemId, quantity }))
+        .map(([itemId, quantity]) => ({
+          id: itemId,
+          quantity,
+          ...(itemReasons[itemId]
+            ? { reason: itemReasons[itemId] }
+            : {}),
+          ...(itemNotes[itemId]
+            ? { internal_note: itemNotes[itemId] }
+            : {}),
+        }))
 
       if (itemsPayload.length > 0) {
         await addClaimItems({ items: itemsPayload })
@@ -282,45 +309,95 @@ export const Component = () => {
                   const returned = detail.returned_quantity ?? 0
                   const remaining = fulfilled - requested - returned
                   const currentQty = itemQuantities[item.id] ?? 0
+                  const isSelected = currentQty > 0
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-x-4 px-4 py-3"
+                      className="flex flex-col gap-y-3 px-4 py-3"
                       data-testid={`claim-item-${item.id}`}
                     >
-                      <div className="flex flex-col">
-                        <Text size="small" weight="plus">
-                          {item.product_title ?? item.title ?? item.id}
-                        </Text>
-                        {item.variant?.title && (
-                          <Text
-                            size="xsmall"
-                            className="text-ui-fg-subtle"
-                          >
-                            {item.variant.title}
+                      <div className="flex items-center justify-between gap-x-4">
+                        <div className="flex flex-col">
+                          <Text size="small" weight="plus">
+                            {item.product_title ?? item.title ?? item.id}
                           </Text>
-                        )}
+                          {item.variant?.title && (
+                            <Text
+                              size="xsmall"
+                              className="text-ui-fg-subtle"
+                            >
+                              {item.variant.title}
+                            </Text>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-x-2">
+                          <Text size="xsmall" className="text-ui-fg-subtle">
+                            {t("orders.claims.remainingQty", {
+                              count: remaining,
+                            })}
+                          </Text>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={remaining}
+                            value={currentQty}
+                            onChange={(e) => {
+                              const raw = Number(e.target.value) || 0
+                              const next = Math.max(
+                                0,
+                                Math.min(remaining, raw)
+                              )
+                              handleQtyChange(item.id, next)
+                            }}
+                            className="w-20"
+                            data-testid={`claim-item-${item.id}-qty`}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-x-2">
-                        <Text size="xsmall" className="text-ui-fg-subtle">
-                          {t("orders.claims.remainingQty", {
-                            count: remaining,
-                          })}
-                        </Text>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={remaining}
-                          value={currentQty}
-                          onChange={(e) => {
-                            const raw = Number(e.target.value) || 0
-                            const next = Math.max(0, Math.min(remaining, raw))
-                            handleQtyChange(item.id, next)
-                          }}
-                          className="w-20"
-                          data-testid={`claim-item-${item.id}-qty`}
-                        />
-                      </div>
+                      {isSelected && (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <Select
+                            value={itemReasons[item.id] ?? ""}
+                            onValueChange={(value) =>
+                              setItemReasons((prev) => ({
+                                ...prev,
+                                [item.id]: value as ClaimReason,
+                              }))
+                            }
+                          >
+                            <Select.Trigger
+                              data-testid={`claim-item-${item.id}-reason`}
+                            >
+                              <Select.Value
+                                placeholder={t(
+                                  "orders.claims.reasonPlaceholder"
+                                )}
+                              />
+                            </Select.Trigger>
+                            <Select.Content>
+                              {CLAIM_REASONS.map((reason) => (
+                                <Select.Item key={reason} value={reason}>
+                                  {t(`orders.claims.reasons.${reason}`)}
+                                </Select.Item>
+                              ))}
+                            </Select.Content>
+                          </Select>
+                          <Input
+                            type="text"
+                            value={itemNotes[item.id] ?? ""}
+                            onChange={(e) =>
+                              setItemNotes((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={t(
+                              "orders.claims.itemNotePlaceholder"
+                            )}
+                            data-testid={`claim-item-${item.id}-note`}
+                          />
+                        </div>
+                      )}
                     </div>
                   )
                 })}

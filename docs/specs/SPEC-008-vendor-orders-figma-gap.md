@@ -1472,6 +1472,43 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (ee) — Slice 5c: Claim per-row reason + note
+
+Symmetric port of slice 4e to Create Claim. Uses the `ClaimReason`
+enum (`missing_item`, `wrong_item`, `production_failure`, `other`)
+instead of the `reason_id` foreign key — the backend validator
+`VendorPostClaimItemsReq` takes `reason: z.nativeEnum(ClaimReason)`
+per-item.
+
+#### Files modified
+
+- `packages/vendor/src/pages/orders/[id]/claims/create/index.tsx`:
+  - Imported `Select` from `@medusajs/ui`.
+  - Added local `ClaimReason` type + `CLAIM_REASONS` const array
+    (4 values matching `@medusajs/framework/utils` enum).
+  - Added per-row state: `itemReasons` (keyed by item id, valued
+    `ClaimReason`) and `itemNotes` (keyed by item id, free text).
+  - Claim-items section: when a row's qty > 0, an expandable
+    two-column grid renders below with a `Reason` `<Select>` of
+    the four ClaimReason values + a `Note` `<Input>`. Per-row
+    `data-testid`: `claim-item-${id}-reason`, `-note`.
+  - On Confirm: `itemsPayload` now includes `reason` (enum value)
+    and `internal_note` per row when set.
+
+- `packages/vendor/src/i18n/translations/en.json`:
+  - Added 7 keys under `orders.claims`:
+    - `reasonPlaceholder` ("Choose a reason")
+    - `itemNotePlaceholder` ("Add a note (optional)")
+    - `reasons.missing_item` ("Missing item")
+    - `reasons.wrong_item` ("Wrong item")
+    - `reasons.production_failure` ("Production failure")
+    - `reasons.other` ("Other")
+
+#### Verification
+
+- `bun run build` — 9/9 packages green in 31.4s.
+- `bunx oxlint` on touched file — exit 0, no warnings, no errors.
+
 ### Session 2026-06-08 (dd) — Slice 4e: Exchange per-row reason + note
 
 Closes the last Figma gap inside Create Exchange. Together with

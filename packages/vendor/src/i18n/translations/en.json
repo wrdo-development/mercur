@@ -1546,6 +1546,14 @@
       "addOutboundItems": "Add items",
       "addOutboundItemsDescription": "Pick variants to send as replacements for the claimed items.",
       "remainingQty": "{{count}} claimable",
+      "reasonPlaceholder": "Choose a reason",
+      "itemNotePlaceholder": "Add a note (optional)",
+      "reasons": {
+        "missing_item": "Missing item",
+        "wrong_item": "Wrong item",
+        "production_failure": "Production failure",
+        "other": "Other"
+      },
       "noteHint": "Add an internal note for this claim (visible only to your team).",
       "confirm": "Confirm Claim",
       "confirmText": "You are about to confirm a Claim. This action cannot be undone.",
