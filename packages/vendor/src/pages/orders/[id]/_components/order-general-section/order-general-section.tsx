@@ -1,4 +1,5 @@
 import {
+  ArrowPath,
   ArrowUturnLeft,
   CheckCircle,
   PencilSquare,
@@ -117,6 +118,13 @@ export const OrderGeneralSection = ({ order }: OrderGeneralSectionProps) => {
                   //@ts-ignore
                   disabled: !!order.canceled_at,
                   icon: <ArrowUturnLeft />,
+                },
+                {
+                  label: t("orders.exchanges.create"),
+                  to: "exchanges/create",
+                  //@ts-ignore
+                  disabled: !!order.canceled_at,
+                  icon: <ArrowPath />,
                 },
               ],
             },

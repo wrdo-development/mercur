@@ -1450,6 +1450,121 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (t) — Create Exchange UI v1 (kebab + route + modal scaffold + hooks)
+
+Slice 4 first cut. Mirrors the Edit Order session-(p) cadence —
+hooks + kebab + route + minimal RouteFocusModal walking begin →
+inbound qty stepper → confirm; outbound variant picker deferred to
+follow-up (hooks already exist in tree).
+
+#### Files added
+
+- `packages/vendor/src/hooks/api/exchanges.tsx` — 10 mutation
+  hooks against `sdk.vendor.exchanges.*`:
+  - `useCreateExchange(orderId, opts?)` — `POST /vendor/exchanges`.
+  - `useCancelExchangeBegin(exchangeId, orderId, opts?)` —
+    `DELETE /vendor/exchanges/:id/request` (cancel a begun exchange,
+    NOT a confirmed one). Spec §"Route convention" pattern.
+  - `useRequestExchange(exchangeId, orderId, opts?)` —
+    `POST /vendor/exchanges/:id/request` (move draft → requested,
+    confirms inbound + outbound).
+  - `useCancelExchange(exchangeId, orderId, opts?)` —
+    `POST /vendor/exchanges/:id/cancel` (cancel a confirmed exchange).
+  - `useAddExchangeInboundItems` / `useUpdateExchangeInboundItem` /
+    `useRemoveExchangeInboundItem` — inbound subtree.
+  - `useAddExchangeOutboundItems` / `useUpdateExchangeOutboundItem` /
+    `useRemoveExchangeOutboundItem` — outbound subtree.
+  All onSuccess paths invalidate `ordersQueryKeys.details()` +
+  `preview(orderId)` + `changes(orderId)` via the shared
+  `invalidateOrder` helper. Mirrors the `order-edits.tsx` shape.
+- `packages/vendor/src/pages/orders/[id]/exchanges/create/index.tsx`
+  (~250 lines) — Create Exchange `RouteFocusModal` scaffold.
+  - On mount: if `preview.order_change` exists and its
+    `change_type !== "exchange"`, redirects with
+    `orders.exchanges.activeChangeError`. Otherwise creates a draft
+    via `useCreateExchange({ order_id })` (guarded by module-scoped
+    `IS_REQUEST_RUNNING` flag + `exchangeId` state for StrictMode
+    safety, matching the Create Return + Edit Order patterns).
+  - Inbound items list: filters `order.items` to rows where
+    `fulfilled_quantity - return_requested_quantity - returned_quantity > 0`.
+    Each row renders product/variant title + an `Input[type=number]`
+    qty stepper bounded `[0, remaining]`. Per-row `data-testid` on
+    the stepper.
+  - Internal note `<Textarea>` (read-only for now; threading into
+    `useUpdateOrderChange` is deferred).
+  - Confirm: collects selected items into the inbound payload,
+    calls `useAddExchangeInboundItems({ items })` once, then
+    `useRequestExchange()`. Disabled when no items selected
+    (`!hasSelection`) — matches the Create Return session-(l)
+    `hasSelection` guard pattern.
+  - Cancel: calls `useCancelExchangeBegin()` then navigates back;
+    swallows errors so a stuck network call doesn't trap the user.
+
+#### Files modified
+
+- `packages/vendor/src/pages/orders/[id]/_components/order-general-section/order-general-section.tsx`:
+  - Imported `ArrowPath` from `@medusajs/icons`.
+  - Added a third kebab action `Create Exchange` in the same group
+    as Complete / Edit order / Create Return, between Create Return
+    and the destructive Cancel group. Targets `to: "exchanges/create"`
+    (relative — keeps routing inside the `/orders/:id` parent),
+    disabled when `order.canceled_at` is set.
+- `packages/vendor/src/get-route-map.tsx` — added an
+  `exchanges/create` route between `edit` and the closing children
+  array. Lazy-loads `./pages/orders/[id]/exchanges/create`.
+- `packages/vendor/src/i18n/translations/en.json` — inserted under
+  the existing `orders.exchanges` namespace (sibling to
+  `orders.exchanges.create`):
+  - `title` ("Create Exchange"),
+  - `description` ("Select returnable items and confirm to create
+    an exchange request."),
+  - `inboundItems` ("Items to return"),
+  - `noReturnableItems` ("No returnable items on this order."),
+  - `remainingQty` ("{{count}} returnable"),
+  - `noteHint` ("Add an internal note for this exchange (visible
+    only to your team)."),
+  - `toast.confirmedSuccessfully` / `toast.canceledSuccessfully`.
+  The pre-existing `orders.exchanges.activeChangeError`
+  ("There is an active order change on this order. Please finish or
+  discard the previous change.") is reused — no need to add a new
+  key.
+
+#### What's NOT in this slice (deferred to slice 4b)
+
+- **Outbound variant picker** — admin's
+  `add-exchange-outbound-items-table/` (5 files: table + columns +
+  filters + query hooks). Same pattern as session (q)'s port of
+  admin's `add-order-edit-items-table/` for Edit Order. Hooks
+  (`useAddExchangeOutboundItems`, etc.) already exist in
+  `hooks/api/exchanges.tsx` so the picker can be wired without
+  revisiting the lifecycle code in `create/index.tsx`.
+- **Per-item reason + note** on inbound rows (Figma shows a per-row
+  reason dropdown sourced from `useReturnReasons`). Backend already
+  accepts `reason_id` + `internal_note` per-item — the UI just
+  needs an expandable per-row block, same shape as the Create
+  Return session-(j) row.
+- **Location + return-shipping dropdowns** on inbound (matches
+  Create Return session-(k) shape; backend already accepts via
+  `inbound/shipping-method` route).
+- **Outbound shipping** dropdown.
+- **Exchange totals / estimated difference** — computed
+  client-side from inbound + outbound prices, matching admin's
+  `claim-create-form` pattern. Display-only.
+
+#### Verification
+
+- `bun run build` from repo root — **9 / 9 packages pass** in
+  60.3s (`@mercurjs/vendor` recompiled; route map regenerated via
+  `@mercurjs/core` codegen pass; DTS emission clean).
+- `bunx oxlint packages/vendor/src/hooks/api/exchanges.tsx
+  packages/vendor/src/pages/orders/[id]/exchanges/create/index.tsx
+  packages/vendor/src/pages/orders/[id]/_components/order-general-section/order-general-section.tsx`
+  — exit 0, no warnings, no errors.
+- No headless UI run this session — the kebab navigation path is
+  `RouteFocusModal` (proven by the sibling Create Return / Edit
+  Order siblings) and the hook contracts are unchanged from the
+  Edit Order session-(p) pattern.
+
 ### Session 2026-06-08 (s) — `/vendor/claims` integration suite + checklist hygiene
 
 Closes the deferred integration suite from session (r) and refreshes

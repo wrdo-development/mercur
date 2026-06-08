@@ -552,7 +552,11 @@
         "useForVariantsDescription": "If checked, you will be able to create variants using this attribute. If not, the attribute will be used for informational purposes only.",
         "variantAxisTip": "This attribute will create variants. You can define them in the next step.",
         "titlePlaceholder": "e.g. Color",
-        "valuePlaceholder": "Enter values"
+        "valuePlaceholder": "Enter values",
+        "errors": {
+          "titleRequired": "Please enter a title",
+          "valuesRequired": "Please enter at least one value"
+        }
       }
     },
     "export": {
@@ -614,13 +618,16 @@
     "attributeVariantsDescription": "Attributes used for variations",
     "attributeProductInformation": "Product Information",
     "attributeProductInformationDescription": "Attributes used for informational purposes",
-    "attributeRequiredByMarketplace": "This attribute is required by marketplace",
+    "attributeRequiredByMarketplace": "This attribute is required by the Marketplace",
+    "attributeRequiredDeleteDisabledTooltip": "Required attributes cannot be removed.",
     "addAttribute": "Add Attribute",
     "deleteAttributeWarning": "Are you sure you want to delete the attribute \"{{title}}\"? This action cannot be undone.",
     "attributesSection": {
       "removeWarning": "You are about to remove this attribute from the product. This action cannot be undone."
     },
     "editAttributes": "Edit Attributes",
+    "editAttribute": "Edit Attribute",
+    "editAttributeHint": "Update the values selected for this attribute on the product.",
     "editOptions": "Edit Options",
     "media": {
       "label": "Media",
@@ -1559,6 +1566,16 @@
     },
     "exchanges": {
       "create": "Create Exchange",
+      "title": "Create Exchange",
+      "description": "Select returnable items and confirm to create an exchange request.",
+      "inboundItems": "Items to return",
+      "noReturnableItems": "No returnable items on this order.",
+      "remainingQty": "{{count}} returnable",
+      "noteHint": "Add an internal note for this exchange (visible only to your team).",
+      "toast": {
+        "confirmedSuccessfully": "Exchange request confirmed.",
+        "canceledSuccessfully": "Exchange draft discarded."
+      },
       "manage": "Manage Exchange",
       "confirm": "Confirm Exchange",
       "confirmText": "You are about to confirm an Exchange. This action cannot be undone.",
