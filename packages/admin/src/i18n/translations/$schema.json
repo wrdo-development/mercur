@@ -12143,9 +12143,6 @@
         "product_attributes": {
           "type": "string"
         },
-        "brand_id": {
-          "type": "string"
-        },
         "type_id": {
           "type": "string"
         },

@@ -3344,27 +3344,6 @@
       "value": "Wartość"
     }
   },
-  "productBrands": {
-    "domain": "Marki",
-    "subtitle": "Organizuj swoje produkty według marek.",
-    "create": {
-      "header": "Utwórz markę",
-      "hint": "Utwórz nową markę do powiązania z produktami.",
-      "successToast": "Marka {{name}} została pomyślnie utworzona."
-    },
-    "edit": {
-      "header": "Edytuj markę",
-      "successToast": "Marka {{name}} została pomyślnie zaktualizowana."
-    },
-    "delete": {
-      "confirmation": "Zamierzasz usunąć markę \"{{name}}\". Tej czynności nie można cofnąć.",
-      "successToast": "Marka \"{{name}}\" została pomyślnie usunięta."
-    },
-    "fields": {
-      "isRestricted": "Ograniczona",
-      "isRestrictedHint": "Ogranicz, którzy sprzedawcy mogą używać tej marki w swoich produktach."
-    }
-  },
   "productTags": {
     "domain": "Tagi produktów",
     "create": {
@@ -3455,7 +3434,6 @@
     "enabledInStore": "Dostępne w sklepie",
     "isReturn": "Zwrot",
     "conditions": "Warunki",
-    "brand": "Marka",
     "category": "Kategoria",
     "collection": "Kolekcja",
     "store": "Sklep",
@@ -3612,7 +3590,6 @@
     "requires_shipping": "Wymaga wysyłki",
     "variant_attributes": "Atrybuty wariantu",
     "product_attributes": "Atrybuty produktu",
-    "brand_id": "Marka",
     "type_id": "Typ",
     "collection_id": "Kolekcja"
   },

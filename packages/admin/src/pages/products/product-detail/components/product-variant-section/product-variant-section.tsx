@@ -5,16 +5,18 @@ import { HttpTypes } from "@medusajs/types";
 import { ProductDTO } from "@mercurjs/types";
 import {
   Badge,
+  Button,
   Container,
   createDataTableColumnHelper,
   DataTableAction,
+  Heading,
   Tooltip,
   usePrompt,
 } from "@medusajs/ui";
 import { keepPreviousData } from "@tanstack/react-query";
 import { CellContext } from "@tanstack/react-table";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { DataTable } from "../../../../../components/data-table";
 import { useDataTableDateColumns } from "../../../../../components/data-table/helpers/general/use-data-table-date-columns";
@@ -52,7 +54,7 @@ export const ProductVariantSection = ({
       created_at: created_at ? JSON.parse(created_at) : undefined,
       updated_at: updated_at ? JSON.parse(updated_at) : undefined,
       fields:
-        "title,created_at,updated_at,*options,*options.option",
+        "title,sku,created_at,updated_at,*options,*options.option",
     },
     {
       placeholderData: keepPreviousData,
@@ -65,6 +67,17 @@ export const ProductVariantSection = ({
 
   return (
     <Container className="divide-y p-0" data-testid="product-variant-section">
+      <div className="flex items-center justify-between px-6 py-4">
+        <Heading level="h2">{t("products.variants.header")}</Heading>
+        <Button
+          size="small"
+          variant="secondary"
+          asChild
+          data-testid="product-variants-create-button"
+        >
+          <Link to="variants/create">{t("actions.create")}</Link>
+        </Button>
+      </div>
       <div data-testid="product-variants-table-container">
         <DataTable
           data={variants}
@@ -75,7 +88,7 @@ export const ProductVariantSection = ({
           rowHref={(row) => `/products/${product.id}/variants/${row.id}`}
           pageSize={PAGE_SIZE}
           isLoading={isPending}
-          heading={t("products.variants.header")}
+          compact
           emptyState={{
             empty: {
               heading: t("products.variants.empty.heading"),
@@ -85,10 +98,6 @@ export const ProductVariantSection = ({
               heading: t("products.variants.filtered.heading"),
               description: t("products.variants.filtered.description"),
             },
-          }}
-          action={{
-            label: t("actions.create"),
-            to: `variants/create`,
           }}
           prefix={PREFIX}
         />
@@ -229,6 +238,17 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
         enableSorting: true,
         sortAscLabel: t("filters.sorting.alphabeticallyAsc"),
         sortDescLabel: t("filters.sorting.alphabeticallyDesc"),
+      }),
+      columnHelper.accessor("sku", {
+        header: t("fields.sku"),
+        cell: ({ getValue }) => {
+          const value = getValue();
+          return value ? (
+            value
+          ) : (
+            <span className="text-ui-fg-muted">-</span>
+          );
+        },
       }),
       ...attributeColumns,
       ...dateColumns,

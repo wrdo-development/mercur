@@ -1836,6 +1836,9 @@
             "requestSuccessToast": {
               "type": "string"
             },
+            "duplicateRequestErrorToast": {
+              "type": "string"
+            },
             "attributes": {
               "type": "object",
               "properties": {
@@ -1906,6 +1909,7 @@
             "description",
             "successToast",
             "requestSuccessToast",
+            "duplicateRequestErrorToast",
             "attributes",
             "informationalAttributes"
           ],
@@ -15331,9 +15335,6 @@
         "categories": {
           "type": "string"
         },
-        "brand_id": {
-          "type": "string"
-        },
         "type_id": {
           "type": "string"
         },
@@ -15772,9 +15773,6 @@
         "professional": {
           "type": "string"
         },
-        "brand": {
-          "type": "string"
-        },
         "is_giftcard": {
           "type": "string"
         },
@@ -15858,7 +15856,6 @@
         "newPassword",
         "repeatNewPassword",
         "categories",
-        "brand_id",
         "type_id",
         "collection_id",
         "shippingMethod",
@@ -16005,7 +16002,6 @@
         "values",
         "premium",
         "professional",
-        "brand",
         "is_giftcard",
         "origin_country",
         "hs_code",

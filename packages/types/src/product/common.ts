@@ -59,18 +59,6 @@ export enum ProductChangeActionType {
 
 // --- Mercur-only DTOs ---
 
-export interface ProductBrandDTO {
-  id: string
-  name: string
-  handle: string
-  is_restricted: boolean
-  metadata: Record<string, unknown> | null
-  products?: ProductDTO[]
-  created_at: string | Date
-  updated_at: string | Date
-  deleted_at: string | Date | null
-}
-
 export interface ProductAttributeValueDTO {
   id: string
   handle: string | null

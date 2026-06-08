@@ -37,7 +37,6 @@ export {
   type ProductDTO,
   type ProductVariantDTO,
   type ProductCategoryDTO,
-  type ProductBrandDTO,
   type ProductAttributeDTO,
   type ProductAttributeValueDTO,
   type ProductChangeDTO,

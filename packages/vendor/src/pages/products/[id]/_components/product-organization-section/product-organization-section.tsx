@@ -43,44 +43,19 @@ export const ProductOrganizationSection = ({
       </div>
 
       <SectionRow
-        title={t("fields.tags")}
+        title={t("fields.category")}
         value={
-          product.tags?.length
-            ? product.tags.map((tag) => (
+          product.categories?.length
+            ? product.categories.map((pcat) => (
                 <OrganizationTag
-                  key={tag.id}
-                  label={tag.value}
-                  to={`/settings/product-tags/${tag.id}`}
+                  key={pcat.id}
+                  label={pcat.name}
+                  to={`/categories/${pcat.id}`}
                 />
               ))
             : undefined
         }
-        data-testid="product-tags-row"
-      />
-      <SectionRow
-        title={t("fields.type")}
-        value={
-          product.type ? (
-            <OrganizationTag
-              label={product.type.value}
-              to={`/settings/product-types/${product.type_id}`}
-            />
-          ) : undefined
-        }
-        data-testid="product-type-row"
-      />
-
-      <SectionRow
-        title={t("fields.brand")}
-        value={
-          (product as any).brand ? (
-            <OrganizationTag
-              label={(product as any).brand.name}
-              to={`/settings/product-brands/${(product as any).brand.id}`}
-            />
-          ) : undefined
-        }
-        data-testid="product-brand-row"
+        data-testid="product-categories-row"
       />
 
       <SectionRow
@@ -97,19 +72,32 @@ export const ProductOrganizationSection = ({
       />
 
       <SectionRow
-        title={t("fields.categories")}
+        title={t("fields.tags")}
         value={
-          product.categories?.length
-            ? product.categories.map((pcat) => (
+          product.tags?.length
+            ? product.tags.map((tag) => (
                 <OrganizationTag
-                  key={pcat.id}
-                  label={pcat.name}
-                  to={`/categories/${pcat.id}`}
+                  key={tag.id}
+                  label={tag.value}
+                  to={`/settings/product-tags/${tag.id}`}
                 />
               ))
             : undefined
         }
-        data-testid="product-categories-row"
+        data-testid="product-tags-row"
+      />
+
+      <SectionRow
+        title={t("fields.type")}
+        value={
+          product.type ? (
+            <OrganizationTag
+              label={product.type.value}
+              to={`/settings/product-types/${product.type_id}`}
+            />
+          ) : undefined
+        }
+        data-testid="product-type-row"
       />
     </Container>
   );

@@ -18,6 +18,7 @@ import {
 import {
   VendorAddProductAttribute,
   VendorAddProductVariant,
+  VendorBatchProductAttributes,
   VendorCancelProductChange,
   VendorCreateProduct,
   VendorGetProductAttributeParams,
@@ -197,6 +198,19 @@ export const vendorProductsMiddlewares: MiddlewareRoute[] = [
     matcher: "/vendor/products/:id/attributes",
     middlewares: [
       validateAndTransformBody(VendorAddProductAttribute),
+      validateAndTransformQuery(
+        VendorGetProductParams,
+        vendorProductQueryConfig.retrieve
+      ),
+    ],
+  },
+
+  // --- /vendor/products/:id/attributes/batch ---
+  {
+    method: ["POST"],
+    matcher: "/vendor/products/:id/attributes/batch",
+    middlewares: [
+      validateAndTransformBody(VendorBatchProductAttributes),
       validateAndTransformQuery(
         VendorGetProductParams,
         vendorProductQueryConfig.retrieve

@@ -422,3 +422,28 @@ export const VendorCancelProductChange = z
     internal_note: z.string().optional(),
   })
   .strict()
+
+const VendorBatchProductAttributeCreate = z.union([
+  z
+    .object({
+      attribute_id: z.string(),
+      attribute_value_ids: z.array(z.string()).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      attribute_id: z.string(),
+      values: z.array(z.string()),
+    })
+    .strict(),
+])
+
+export type VendorBatchProductAttributesType = z.infer<
+  typeof VendorBatchProductAttributes
+>
+export const VendorBatchProductAttributes = z
+  .object({
+    create: z.array(VendorBatchProductAttributeCreate).optional(),
+    delete: z.array(z.string()).optional(),
+  })
+  .strict()

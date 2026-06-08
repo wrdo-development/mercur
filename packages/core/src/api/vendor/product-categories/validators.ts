@@ -20,6 +20,7 @@ export const VendorProductCategoryParams = createSelectParams().merge(
 const VendorProductCategoriesParamsFields = z.object({
   q: z.string().optional(),
   id: z.union([z.string(), z.array(z.string())]).optional(),
+  name: z.union([z.string(), z.array(z.string())]).optional(),
   handle: z.union([z.string(), z.array(z.string())]).optional(),
   parent_category_id: z.union([z.string(), z.array(z.string())]).optional(),
   is_active: booleanString().optional(),
@@ -39,3 +40,11 @@ export const VendorGetProductCategoriesParams = createFindParams({
 })
   .merge(VendorProductCategoriesParamsFields)
   .merge(applyAndAndOrOperators(VendorProductCategoriesParamsFields))
+
+export type VendorBatchLinkProductsToCategoryType = z.infer<
+  typeof VendorBatchLinkProductsToCategory
+>
+export const VendorBatchLinkProductsToCategory = z.object({
+  add: z.array(z.string()).optional(),
+  remove: z.array(z.string()).optional(),
+})
