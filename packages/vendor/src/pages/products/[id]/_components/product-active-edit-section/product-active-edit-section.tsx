@@ -16,7 +16,7 @@ import {
   isReferenceField,
   partitionProductChangeActions,
 } from "@mercurjs/dashboard-shared";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { Fragment, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -62,18 +62,6 @@ const ImageStrip = ({
   </div>
 );
 
-const BrandName = ({ id }: { id: string }) => {
-  const { data } = useQuery({
-    queryKey: ["product_brand", id],
-    queryFn: () =>
-      sdk.vendor.productBrands.$id.query({ $id: id }) as Promise<{
-        product_brand: { name: string };
-      }>,
-    enabled: !!id,
-  });
-  return <>{data?.product_brand?.name ?? id}</>;
-};
-
 const TypeName = ({ id }: { id: string }) => {
   const { product_type } = useProductType(id);
   return <>{product_type?.value ?? id}</>;
@@ -102,8 +90,6 @@ const ReferenceName = ({
   id: string;
 }) => {
   switch (field) {
-    case "brand_id":
-      return <BrandName id={id} />;
     case "type_id":
       return <TypeName id={id} />;
     case "collection_id":
@@ -488,12 +474,6 @@ export const ProductActiveEditSection = ({
         <Heading level="h2" data-testid="product-active-edit-heading">
           {t("products.edits.panel.title")}
         </Heading>
-      </div>
-
-      <div className="px-6 py-4">
-        <Text size="small" leading="compact" className="text-ui-fg-subtle">
-          {t("products.edits.panel.description")}
-        </Text>
       </div>
 
       {hasContent && (

@@ -122,16 +122,23 @@ export const createProductsWorkflow: ReturnWorkflow<
           } = p
 
           // Build synthetic options from variant-axis attribute refs.
+          // Refs without any chosen values cannot anchor a stock option —
+          // emitting them would create an axis the default variant has no
+          // value for ("Product options are not provided for: [X].").
           const refs = resolved[idx]
           const synthOptions: ProductOptionInput[] = [
-            ...refs.existing_variant.map((r) => ({
-              title: r.attribute_name,
-              values: r.value_names,
-            })),
-            ...refs.inline_variant.map((r) => ({
-              title: r.name,
-              values: r.values,
-            })),
+            ...refs.existing_variant
+              .filter((r) => r.value_names.length)
+              .map((r) => ({
+                title: r.attribute_name,
+                values: r.value_names,
+              })),
+            ...refs.inline_variant
+              .filter((r) => r.values.length)
+              .map((r) => ({
+                title: r.name,
+                values: r.values,
+              })),
           ]
           const options = synthOptions.length ? synthOptions : (rawOptions ?? [])
 
@@ -157,27 +164,36 @@ export const createProductsWorkflow: ReturnWorkflow<
             }
           })
 
-          if (!options.length && !stockVariants.length) {
+          // No variant axes were derived from the wrapper inputs. Stock
+          // Medusa still requires every product to carry at least one
+          // option, so we synthesise a `Default option`. Any variants the
+          // caller sent (e.g. the dashboard's pre-filled default variant
+          // with a user-supplied SKU) are kept and pinned to that option;
+          // a fully empty payload gets a default variant too.
+          if (!options.length) {
+            const defaultOptionMap = {
+              [DEFAULT_OPTION_TITLE]: DEFAULT_OPTION_VALUE,
+            }
             return {
               ...rest,
               options: [
                 { title: DEFAULT_OPTION_TITLE, values: [DEFAULT_OPTION_VALUE] },
               ],
-              variants: [
-                {
-                  title: "Default variant",
-                  manage_inventory: false,
-                  options: {
-                    [DEFAULT_OPTION_TITLE]: DEFAULT_OPTION_VALUE,
-                  },
-                },
-              ],
+              variants: stockVariants.length
+                ? stockVariants.map((v) => ({ ...v, options: defaultOptionMap }))
+                : [
+                    {
+                      title: "Default variant",
+                      manage_inventory: false,
+                      options: defaultOptionMap,
+                    },
+                  ],
             }
           }
 
           return {
             ...rest,
-            ...(options.length ? { options } : {}),
+            options,
             ...(stockVariants.length ? { variants: stockVariants } : {}),
           }
         }),

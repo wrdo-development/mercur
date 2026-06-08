@@ -15,12 +15,14 @@ type AttributeCreateFormValues = {
   is_filterable: boolean;
   is_required: boolean;
   is_variant_axis: boolean;
+  is_global: boolean;
   category_ids?: string[];
 };
 
 const Root = () => {
   const { t } = useTranslation();
   const form = useTabbedForm<AttributeCreateFormValues>();
+  const isGlobal = form.watch("is_global");
 
   return (
     <div
@@ -95,7 +97,7 @@ const Root = () => {
             label={t("attributes.fields.isRequired", "Required attribute")}
             description={t(
               "attributes.fields.isRequiredHint",
-              "If checked, vendors must set a value for this attribute.",
+              "If checked, a value must be set to this attribute.",
             )}
             data-testid="attribute-create-required-switch"
           />
@@ -106,31 +108,50 @@ const Root = () => {
             label={t("attributes.fields.isFilterable", "Filterable attribute")}
             description={t(
               "attributes.fields.isFilterableHint",
-              "If checked, buyers will be able to filter products using this attribute.",
+              "If checked, customers will be able to filter products using this attribute.",
             )}
             data-testid="attribute-create-filterable-switch"
           />
+
+          <SwitchBox
+            control={form.control}
+            name="is_global"
+            label={t("attributes.fields.isGlobal", "Global attribute")}
+            description={t(
+              "attributes.fields.isGlobalHint",
+              "If checked, this attribute applies to all products across all categories.",
+            )}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                form.setValue("category_ids", [], {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                });
+              }
+            }}
+            data-testid="attribute-create-global-switch"
+          />
         </div>
 
-        <Form.Field
-          control={form.control}
-          name="category_ids"
-          render={({ field }) => (
-            <Form.Item>
-              <Form.Label optional>
-                {t("attributes.fields.categories")}
-              </Form.Label>
-              <Form.Control>
-                <CategoryCombobox
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                  data-testid="attribute-create-categories-combobox"
-                />
-              </Form.Control>
-              <Form.ErrorMessage />
-            </Form.Item>
-          )}
-        />
+        {!isGlobal && (
+          <Form.Field
+            control={form.control}
+            name="category_ids"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>{t("attributes.fields.categories")}</Form.Label>
+                <Form.Control>
+                  <CategoryCombobox
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    data-testid="attribute-create-categories-combobox"
+                  />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
+          />
+        )}
       </div>
     </div>
   );

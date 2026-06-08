@@ -88,23 +88,23 @@ const Root = () => {
           )}
         />
 
-        {showValues && (
-          <div data-testid="attribute-create-values-section">
-            <PossibleValuesList />
-          </div>
-        )}
-
         {type === AttributeType.MULTI_SELECT && (
           <SwitchBox
             control={form.control}
             name="is_variant_axis"
-            label={t("attributes.fields.isVariantAxis", "Use for Variants")}
+            label={t("attributes.fields.isVariantAxis", "Use for variants")}
             description={t(
               "attributes.fields.isVariantAxisHint",
-              "If checked, this attribute can be used to create product variants."
+              "If checked, this attribute will define product variants (e.g. size, color)."
             )}
             data-testid="attribute-create-variant-axis-switch"
           />
+        )}
+
+        {showValues && (
+          <div data-testid="attribute-create-values-section">
+            <PossibleValuesList />
+          </div>
         )}
       </div>
     </div>

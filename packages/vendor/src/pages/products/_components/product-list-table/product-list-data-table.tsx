@@ -3,7 +3,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { createColumnHelper } from "@tanstack/react-table";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash } from "@medusajs/icons";
+import { PencilSquare, Tag, Trash } from "@medusajs/icons";
 
 import { ExtendedAdminProduct } from "@custom-types/products";
 import { ActionMenu } from "@components/common/action-menu";
@@ -69,6 +69,16 @@ export const ProductListDataTable = () => {
           label: t("fields.updatedAt"),
         },
       ]}
+      defaultOrderBy="title"
+      noRecords={{
+        icon: <Tag className="text-ui-fg-subtle" />,
+        title: t("products.list.noRecordsTitle"),
+        message: t("products.list.noRecordsMessage"),
+        action: {
+          to: "create",
+          label: t("actions.create"),
+        },
+      }}
     />
   );
 };
@@ -111,6 +121,15 @@ const ProductActions = ({ product }: { product: ExtendedAdminProduct }) => {
   return (
     <ActionMenu
       groups={[
+        {
+          actions: [
+            {
+              icon: <PencilSquare />,
+              label: t("actions.edit"),
+              to: `/products/${product.id}/edit`,
+            },
+          ],
+        },
         {
           actions: [
             {

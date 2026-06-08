@@ -44,6 +44,8 @@ export const PossibleValuesList = () => {
 
   const valuesError = errors.values
   const shouldShowListError = valuesError && !Array.isArray(valuesError)
+  const listErrorMessage =
+    shouldShowListError && (valuesError as { message?: string }).message
 
   return (
     <div
@@ -51,20 +53,12 @@ export const PossibleValuesList = () => {
       data-testid="attribute-form-values-list"
     >
       <div
-        className="flex items-start justify-between gap-x-4"
+        className="flex items-center justify-between gap-x-4"
         data-testid="attribute-form-values-header"
       >
-        <div className="flex flex-col">
-          <Label weight="plus" data-testid="attribute-form-values-label">
-            {t("attributes.fields.values")}
-          </Label>
-          <Hint>
-            {t(
-              "attributes.fields.valuesHint",
-              "Add the possible values for this attribute."
-            )}
-          </Hint>
-        </div>
+        <Label weight="plus" data-testid="attribute-form-values-label">
+          {t("attributes.fields.possibleValues")}
+        </Label>
         <Button
           type="button"
           variant="secondary"
@@ -131,12 +125,12 @@ export const PossibleValuesList = () => {
         />
       )}
 
-      {shouldShowListError && (
+      {shouldShowListError && listErrorMessage && (
         <Hint
           variant="error"
           data-testid="attribute-form-values-list-error"
         >
-          {(valuesError as { message?: string }).message as string}
+          {t(listErrorMessage, listErrorMessage)}
         </Hint>
       )}
     </div>

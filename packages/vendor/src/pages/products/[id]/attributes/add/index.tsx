@@ -28,7 +28,7 @@ import { Form } from "@components/common/form"
 import { RouteFocusModal, useRouteModal } from "@components/modals"
 import { KeyboundForm } from "@components/utilities/keybound-form"
 import { useProductAttributes } from "@hooks/api/product-attributes"
-import { useAddProductAttribute, useProduct } from "@hooks/api/products"
+import { useBatchProductAttributes, useProduct } from "@hooks/api/products"
 import { useAttributeTableQuery } from "@hooks/table/query/use-attribute-table-query"
 import { useAttributeTableFilters } from "@hooks/table/filters/use-attribute-table-filters"
 import { PRODUCT_DETAIL_QUERY } from "../../../common/constants"
@@ -109,7 +109,8 @@ const Content = ({ productId }: { productId: string }) => {
   const assignedIds = useMemo(
     () =>
       new Set(
-        ((product as any)?.attributes ?? []).map((a: ProductAttributeDTO) => a.id)
+        ((product as { attributes?: ProductAttributeDTO[] })?.attributes ?? [])
+          .map((a) => a.id)
       ),
     [product]
   )
@@ -137,7 +138,7 @@ const Content = ({ productId }: { productId: string }) => {
     })
   }, [lockedIds])
 
-  const { mutateAsync, isPending } = useAddProductAttribute(productId)
+  const { mutateAsync, isPending } = useBatchProductAttributes(productId)
 
   const form = useForm<AddExistingFormValues>({
     defaultValues: { attributes: [] },
@@ -196,6 +197,12 @@ const Content = ({ productId }: { productId: string }) => {
   }
 
   const handleSubmit = form.handleSubmit(async (data) => {
+    const create: {
+      attribute_id: string
+      attribute_value_ids?: string[]
+      values?: string[]
+    }[] = []
+
     for (const attr of data.attributes) {
       const vals = Array.isArray(attr.values)
         ? attr.values
@@ -206,12 +213,6 @@ const Content = ({ productId }: { productId: string }) => {
       const hasPresetValues =
         attr.type === "single_select" || attr.type === "multi_select"
 
-      let payload: {
-        attribute_id: string
-        attribute_value_ids?: string[]
-        values?: string[]
-      }
-
       if (hasPresetValues) {
         const nameToId = new Map(
           attr.available_values.map((v) => [v.name, v.id])
@@ -219,26 +220,29 @@ const Content = ({ productId }: { productId: string }) => {
         const valueIds = vals
           .map((name) => nameToId.get(name))
           .filter(Boolean) as string[]
-        payload = {
+        create.push({
           attribute_id: attr.attribute_id,
           attribute_value_ids: valueIds.length ? valueIds : undefined,
-        }
+        })
       } else {
-        payload = {
+        create.push({
           attribute_id: attr.attribute_id,
           values: vals.length ? vals : undefined,
-        }
-      }
-
-      try {
-        await mutateAsync(payload)
-      } catch (err: any) {
-        toast.error(err.message)
-        return
+        })
       }
     }
 
-    handleSuccess()
+    await mutateAsync(
+      { create },
+      {
+        onSuccess: () => {
+          handleSuccess()
+        },
+        onError: (err) => {
+          toast.error(err.message)
+        },
+      }
+    )
   })
 
   return (

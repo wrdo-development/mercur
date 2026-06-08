@@ -15,14 +15,12 @@ export type ProductChangePartition = {
 }
 
 export type ReferenceField =
-  | "brand_id"
   | "type_id"
   | "collection_id"
   | "categories"
   | "tags"
 
 export const REFERENCE_FIELDS: ReferenceField[] = [
-  "brand_id",
   "type_id",
   "collection_id",
   "categories",

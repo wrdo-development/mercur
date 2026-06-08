@@ -8,6 +8,7 @@ import {
   Textarea,
   toast,
 } from "@medusajs/ui"
+import { useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import * as zod from "zod"
@@ -18,11 +19,30 @@ import { RouteDrawer, useRouteModal } from "@components/modals"
 import { KeyboundForm } from "@components/utilities/keybound-form"
 import { useAddProductAttribute } from "@hooks/api/products"
 
-type CreateAttributeFormValues = {
-  title: string
-  values: string | string[]
-  use_for_variants: boolean
-}
+const normalizeValues = (raw: string | string[]): string[] =>
+  (Array.isArray(raw)
+    ? raw
+    : raw.split(",")
+  )
+    .map((v) => v.trim())
+    .filter(Boolean)
+
+const buildSchema = (messages: { title: string; values: string }) =>
+  zod
+    .object({
+      title: zod.string().min(1, { message: messages.title }),
+      values: zod.union([zod.string(), zod.array(zod.string())]),
+      use_for_variants: zod.boolean(),
+    })
+    .superRefine((data, ctx) => {
+      if (normalizeValues(data.values).length === 0) {
+        ctx.addIssue({
+          code: zod.ZodIssueCode.custom,
+          path: ["values"],
+          message: messages.values,
+        })
+      }
+    })
 
 type CreateAttributeFormProps = {
   productId: string
@@ -34,21 +54,18 @@ export const CreateAttributeForm = ({
   const { t } = useTranslation()
   const { handleSuccess } = useRouteModal()
 
-  const schema = zod.object({
-    title: zod
-      .string()
-      .trim()
-      .min(1, { message: t("products.create.attributes.errors.titleRequired") }),
-    values: zod
-      .union([zod.string(), zod.array(zod.string())])
-      .refine(
-        (v) => (Array.isArray(v) ? v.length > 0 : v.trim().length > 0),
-        { message: t("products.create.attributes.errors.valuesRequired") },
-      ),
-    use_for_variants: zod.boolean(),
-  })
+  const schema = useMemo(
+    () =>
+      buildSchema({
+        title: t("products.create.attributes.errors.titleRequired"),
+        values: t("products.create.attributes.errors.valuesRequired"),
+      }),
+    [t]
+  )
 
-  const form = useForm<CreateAttributeFormValues>({
+  type FormValues = zod.infer<typeof schema>
+
+  const form = useForm<FormValues>({
     defaultValues: {
       title: "",
       values: "",
@@ -63,20 +80,13 @@ export const CreateAttributeForm = ({
     useAddProductAttribute(productId)
 
   const handleSubmit = form.handleSubmit(async (data) => {
-    const values = Array.isArray(data.values)
-      ? data.values
-      : data.values
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean)
-
     await createAttribute(
       {
         name: data.title,
         type: data.use_for_variants ? "multi_select" : "text",
         is_variant_axis: data.use_for_variants,
-        values,
-      } as any,
+        values: normalizeValues(data.values),
+      },
       {
         onSuccess: () => {
           handleSuccess()
@@ -119,7 +129,7 @@ export const CreateAttributeForm = ({
                               : "bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
                           }
                           placeholder={t(
-                            "products.create.attributes.titlePlaceholder",
+                            "products.create.attributes.titlePlaceholder"
                           )}
                           data-testid="create-attribute-title-input"
                         />
@@ -140,11 +150,12 @@ export const CreateAttributeForm = ({
                 <Form.Field
                   control={form.control}
                   name="values"
-                  render={({ field: { onChange, value }, fieldState }) => (
+                  render={({ field: { onChange, value, ...field }, fieldState }) => (
                     <Form.Item>
                       <Form.Control>
                         {useForVariants ? (
                           <ChipInput
+                            {...field}
                             variant="contrast"
                             value={Array.isArray(value) ? value : []}
                             onChange={onChange}
@@ -157,11 +168,12 @@ export const CreateAttributeForm = ({
                                 : undefined
                             }
                             placeholder={t(
-                              "products.create.attributes.valuePlaceholder",
+                              "products.create.attributes.valuePlaceholder"
                             )}
                           />
                         ) : (
                           <Textarea
+                            {...field}
                             aria-invalid={
                               fieldState.invalid ? "true" : undefined
                             }
@@ -177,7 +189,7 @@ export const CreateAttributeForm = ({
                             }
                             onChange={(e) => onChange(e.target.value)}
                             placeholder={t(
-                              "products.create.attributes.valuePlaceholder",
+                              "products.create.attributes.valuePlaceholder"
                             )}
                             data-testid="create-attribute-values-input"
                           />
@@ -204,7 +216,7 @@ export const CreateAttributeForm = ({
                             onCheckedChange={(checked) => {
                               fieldOnChange(checked)
                               form.setValue("values", checked ? [] : "", {
-                                shouldValidate: false,
+                                shouldValidate: form.formState.isSubmitted,
                               })
                             }}
                           />

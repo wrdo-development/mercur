@@ -17,6 +17,7 @@ export const CreateAttributeSchema = z
     is_filterable: z.boolean().default(false),
     is_required: z.boolean().default(false),
     is_variant_axis: z.boolean().default(false),
+    is_global: z.boolean().default(true),
     type: z
       .enum([
         AttributeType.SINGLE_SELECT,
@@ -29,7 +30,7 @@ export const CreateAttributeSchema = z
     values: z
       .array(
         z.object({
-          name: z.string().min(1),
+          name: z.string(),
           rank: z.number(),
           metadata: z.record(z.string()).optional(),
         })
@@ -43,12 +44,19 @@ export const CreateAttributeSchema = z
       [AttributeType.SINGLE_SELECT, AttributeType.MULTI_SELECT].includes(
         data.type
       ) &&
-      (!data.values || data.values.length === 0)
+      !(data.values ?? []).some((value) => value.name.trim().length > 0)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "At least one value is required for this type.",
+        message: "attributes.create.possibleValuesRequired",
         path: ["values"],
+      })
+    }
+    if (!data.is_global && (data.category_ids ?? []).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "attributes.create.categoriesRequired",
+        path: ["category_ids"],
       })
     }
   })

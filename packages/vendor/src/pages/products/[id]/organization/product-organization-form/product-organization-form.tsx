@@ -119,27 +119,23 @@ export const ProductOrganizationForm = ({
           >
             <Form.Field
               control={form.control}
-              name="type_id"
+              name="category_id"
               render={({ field }) => {
                 return (
-                  <Form.Item data-testid="product-organization-form-type-item">
+                  <Form.Item data-testid="product-organization-form-category-item">
                     <Form.Label
-                      optional
-                      data-testid="product-organization-form-type-label"
+                      tooltip={t("products.fields.primaryCategory.tooltip")}
+                      data-testid="product-organization-form-category-label"
                     >
-                      {t("products.fields.type.label")}
+                      {t("fields.category")}
                     </Form.Label>
-                    <Form.Control data-testid="product-organization-form-type-control">
-                      <Combobox
+                    <Form.Control data-testid="product-organization-form-categories-control">
+                      <SingleCategoryCombobox
                         {...field}
-                        options={types.options}
-                        searchValue={types.searchValue}
-                        onSearchValueChange={types.onSearchValueChange}
-                        fetchNextPage={types.fetchNextPage}
-                        data-testid="product-organization-form-type-combobox"
+                        data-testid="product-organization-form-categories-combobox"
                       />
                     </Form.Control>
-                    <Form.ErrorMessage data-testid="product-organization-form-type-error" />
+                    <Form.ErrorMessage data-testid="product-organization-form-categories-error" />
                   </Form.Item>
                 );
               }}
@@ -173,26 +169,6 @@ export const ProductOrganizationForm = ({
             />
             <Form.Field
               control={form.control}
-              name="category_id"
-              render={({ field }) => {
-                return (
-                  <Form.Item data-testid="product-organization-form-category-item">
-                    <Form.Label data-testid="product-organization-form-category-label">
-                      {t("fields.category")}
-                    </Form.Label>
-                    <Form.Control data-testid="product-organization-form-categories-control">
-                      <SingleCategoryCombobox
-                        {...field}
-                        data-testid="product-organization-form-categories-combobox"
-                      />
-                    </Form.Control>
-                    <Form.ErrorMessage data-testid="product-organization-form-categories-error" />
-                  </Form.Item>
-                );
-              }}
-            />
-            <Form.Field
-              control={form.control}
               name="tag_ids"
               render={({ field }) => {
                 return (
@@ -214,6 +190,33 @@ export const ProductOrganizationForm = ({
                       />
                     </Form.Control>
                     <Form.ErrorMessage data-testid="product-organization-form-tags-error" />
+                  </Form.Item>
+                );
+              }}
+            />
+            <Form.Field
+              control={form.control}
+              name="type_id"
+              render={({ field }) => {
+                return (
+                  <Form.Item data-testid="product-organization-form-type-item">
+                    <Form.Label
+                      optional
+                      data-testid="product-organization-form-type-label"
+                    >
+                      {t("products.fields.type.label")}
+                    </Form.Label>
+                    <Form.Control data-testid="product-organization-form-type-control">
+                      <Combobox
+                        {...field}
+                        options={types.options}
+                        searchValue={types.searchValue}
+                        onSearchValueChange={types.onSearchValueChange}
+                        fetchNextPage={types.fetchNextPage}
+                        data-testid="product-organization-form-type-combobox"
+                      />
+                    </Form.Control>
+                    <Form.ErrorMessage data-testid="product-organization-form-type-error" />
                   </Form.Item>
                 );
               }}

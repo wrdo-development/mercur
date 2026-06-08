@@ -77,6 +77,53 @@ medusaIntegrationTestRunner({
           }
         })
 
+        // MER-112: the dashboard always renders (and submits) a single
+        // pre-populated default variant for products with no axes. The
+        // wrapper has to attach a default option to that variant or stock
+        // Medusa rejects it for not providing one.
+        it("creates a simple product when the payload carries a pre-populated default variant", async () => {
+          const res = await api.post(
+            `/vendor/products`,
+            {
+              title: "Pre-populated default",
+              variants: [{ title: "Default variant", sku: "VEN-DEF-1" }],
+            },
+            seller1Headers,
+          )
+          expect(res.status).toBe(201)
+          expect(res.data.product.variants).toHaveLength(1)
+          expect(res.data.product.variants[0].sku).toBe("VEN-DEF-1")
+          expect(res.data.product.options).toHaveLength(1)
+        })
+
+        // MER-112: an inline variant-axis attribute with no values used to
+        // synthesize an option (e.g. "Book") whose default variant carried
+        // no matching value, surfacing as "Product options are not provided
+        // for: [Book]." The frontend must skip such empty refs entirely.
+        it("creates a simple product when an inline variant-axis attribute carries no values", async () => {
+          const res = await api.post(
+            `/vendor/products`,
+            {
+              title: "Empty axis",
+              variants: [{ title: "Default variant" }],
+              variant_attributes: [
+                {
+                  name: "Book",
+                  type: "multi_select",
+                  values: [],
+                  is_variant_axis: true,
+                },
+              ],
+            },
+            seller1Headers,
+          )
+          expect(res.status).toBe(201)
+          expect(res.data.product.options).toHaveLength(1)
+          expect(
+            res.data.product.options.some((o: any) => o.title === "Book"),
+          ).toBe(false)
+        })
+
         // --- Case A: existing variant-axis attribute ---
         it("(A) existing variant-axis: synthesizes stock options + links the chosen values", async () => {
           const size = await createGlobalAttribute({
@@ -322,6 +369,131 @@ medusaIntegrationTestRunner({
           expect(byName.get("Origin")?.values.map((v: any) => v.name)).toEqual([
             "Italy",
           ])
+        })
+
+        it("links pre-existing attributes of every type to a single product", async () => {
+          const size = await createGlobalAttribute({
+            name: "AllSize",
+            type: "single_select",
+            is_variant_axis: true,
+            values: ["S", "M"],
+          })
+          const color = await createGlobalAttribute({
+            name: "AllColor",
+            type: "multi_select",
+            is_variant_axis: true,
+            values: ["Red", "Blue"],
+          })
+          const care = await createGlobalAttribute({
+            name: "AllCare",
+            type: "text",
+            values: ["Hand wash"],
+          })
+          const featured = await createGlobalAttribute({
+            name: "AllFeatured",
+            type: "toggle",
+            values: ["yes"],
+          })
+          const weight = await createGlobalAttribute({
+            name: "AllWeight",
+            type: "unit",
+            values: ["1kg"],
+          })
+
+          const create = await api.post(
+            `/vendor/products`,
+            {
+              title: "All Attribute Types",
+              variants: [
+                {
+                  title: "S-Red",
+                  attribute_values: { AllSize: "S", AllColor: "Red" },
+                },
+                {
+                  title: "M-Blue",
+                  attribute_values: { AllSize: "M", AllColor: "Blue" },
+                },
+              ],
+              variant_attributes: [
+                {
+                  attribute_id: size.attribute_id,
+                  value_ids: [
+                    size.byName.get("S")!,
+                    size.byName.get("M")!,
+                  ],
+                },
+                {
+                  attribute_id: color.attribute_id,
+                  value_ids: [
+                    color.byName.get("Red")!,
+                    color.byName.get("Blue")!,
+                  ],
+                },
+              ],
+              product_attributes: [
+                {
+                  attribute_id: care.attribute_id,
+                  value_ids: [care.byName.get("Hand wash")!],
+                },
+                {
+                  attribute_id: featured.attribute_id,
+                  value_ids: [featured.byName.get("yes")!],
+                },
+                {
+                  attribute_id: weight.attribute_id,
+                  value_ids: [weight.byName.get("1kg")!],
+                },
+              ],
+            },
+            seller1Headers,
+          )
+          expect(create.status).toBe(201)
+
+          const got = await api.get(
+            `/vendor/products/${create.data.product.id}`,
+            seller1Headers,
+          )
+          const attrs = got.data.product.attributes
+          expect(attrs).toHaveLength(5)
+          const byName = new Map(attrs.map((a: any) => [a.name, a]))
+          expect(
+            (byName.get("AllSize") as any)?.values
+              .map((v: any) => v.name)
+              .sort(),
+          ).toEqual(["M", "S"])
+          expect((byName.get("AllSize") as any)?.is_variant_axis).toBe(true)
+          expect(
+            (byName.get("AllColor") as any)?.values
+              .map((v: any) => v.name)
+              .sort(),
+          ).toEqual(["Blue", "Red"])
+          expect((byName.get("AllColor") as any)?.is_variant_axis).toBe(true)
+          expect(
+            (byName.get("AllCare") as any)?.values.map((v: any) => v.name),
+          ).toEqual(["Hand wash"])
+          expect((byName.get("AllCare") as any)?.is_variant_axis).toBe(false)
+          expect(
+            (byName.get("AllFeatured") as any)?.values.map(
+              (v: any) => v.name,
+            ),
+          ).toEqual(["yes"])
+          expect((byName.get("AllFeatured") as any)?.is_variant_axis).toBe(
+            false,
+          )
+          expect(
+            (byName.get("AllWeight") as any)?.values.map((v: any) => v.name),
+          ).toEqual(["1kg"])
+          expect((byName.get("AllWeight") as any)?.is_variant_axis).toBe(
+            false,
+          )
+
+          // Both variant-axis attributes synthesized stock options.
+          const optionTitles = (got.data.product.options ?? [])
+            .map((o: any) => o.title)
+            .sort()
+          expect(optionTitles).toEqual(
+            expect.arrayContaining(["AllColor", "AllSize"]),
+          )
         })
       })
 
@@ -769,6 +941,154 @@ medusaIntegrationTestRunner({
             )
             .catch((err) => err.response)
           expect(res.status).toBe(400)
+        })
+
+        // Guards MER-132: form previously submitted with `values: []` and
+        // backend happily created a product-scoped attribute that never
+        // got linked to any value — surfaced in `scoped_attributes` but
+        // rendered as a blank value column in the product detail page.
+        it("rejects inline-create for `multi_select` when `values` is empty", async () => {
+          const create = await api.post(
+            `/vendor/products`,
+            { title: "Vendor Inline Empty Values" },
+            seller1Headers,
+          )
+          const productId = create.data.product.id
+
+          const res = await api
+            .post(
+              `/vendor/products/${productId}/attributes`,
+              {
+                name: "Color",
+                type: "multi_select",
+                is_variant_axis: true,
+                values: [],
+              },
+              seller1Headers,
+            )
+            .catch((err) => err.response)
+          expect(res.status).toBe(400)
+          expect(JSON.stringify(res.data)).toMatch(/values/i)
+
+          // The orphan attribute must NOT have been created.
+          const got = await api.get(
+            `/vendor/products/${productId}`,
+            seller1Headers,
+          )
+          const scoped = (got.data.product as { scoped_attributes?: unknown[] })
+            .scoped_attributes
+          expect(scoped ?? []).toHaveLength(0)
+        })
+
+        it("rejects inline-create for `single_select` when `values` is missing", async () => {
+          const create = await api.post(
+            `/vendor/products`,
+            { title: "Vendor Inline Missing Values" },
+            seller1Headers,
+          )
+          const productId = create.data.product.id
+
+          const res = await api
+            .post(
+              `/vendor/products/${productId}/attributes`,
+              {
+                name: "Size",
+                type: "single_select",
+              },
+              seller1Headers,
+            )
+            .catch((err) => err.response)
+          expect(res.status).toBe(400)
+        })
+
+        // End-to-end coverage of the create-attribute form's main path:
+        // user types a name, toggles "Use for variants", enters chips,
+        // submits. Backend should materialise the attribute, create the
+        // values, link them to the product, and synthesize a matching
+        // stock option for the variant axis.
+        it("inline creates a variant-axis attribute, links values, and synthesizes the stock option", async () => {
+          const create = await api.post(
+            `/vendor/products`,
+            { title: "Vendor Inline Axis" },
+            seller1Headers,
+          )
+          const productId = create.data.product.id
+
+          const res = await api.post(
+            `/vendor/products/${productId}/attributes`,
+            {
+              name: "Color",
+              type: "multi_select",
+              is_variant_axis: true,
+              values: ["Red", "Blue"],
+            },
+            seller1Headers,
+          )
+          expect(res.status).toBe(202)
+
+          const got = await api.get(
+            `/vendor/products/${productId}`,
+            seller1Headers,
+          )
+          const attrs = (got.data.product as { attributes?: Array<{
+            name: string
+            is_variant_axis?: boolean
+            values?: Array<{ name: string }>
+          }> }).attributes ?? []
+          const color = attrs.find((a) => a.name === "Color")
+          expect(color).toBeDefined()
+          expect(color!.is_variant_axis).toBe(true)
+          expect((color!.values ?? []).map((v) => v.name).sort()).toEqual([
+            "Blue",
+            "Red",
+          ])
+
+          const options = (got.data.product as { options?: Array<{
+            title: string
+            values?: Array<{ value: string }>
+          }> }).options ?? []
+          const colorOption = options.find((o) => o.title === "Color")
+          expect(colorOption).toBeDefined()
+          expect(
+            (colorOption!.values ?? []).map((v) => v.value).sort(),
+          ).toEqual(["Blue", "Red"])
+        })
+
+        // Existing non-axis inline-create test only checks the attribute
+        // appears under `scoped_attributes`. This case verifies the
+        // values are actually linked to the product (the bug surfaced as
+        // attribute present, values missing).
+        it("inline creates a non-axis text attribute and links the value to the product", async () => {
+          const create = await api.post(
+            `/vendor/products`,
+            { title: "Vendor Inline Text" },
+            seller1Headers,
+          )
+          const productId = create.data.product.id
+
+          const res = await api.post(
+            `/vendor/products/${productId}/attributes`,
+            {
+              name: "ShippingNote",
+              type: "text",
+              values: ["Fragile"],
+              is_variant_axis: false,
+            },
+            seller1Headers,
+          )
+          expect(res.status).toBe(202)
+
+          const got = await api.get(
+            `/vendor/products/${productId}`,
+            seller1Headers,
+          )
+          const attrs = (got.data.product as { attributes?: Array<{
+            name: string
+            values?: Array<{ name: string }>
+          }> }).attributes ?? []
+          const note = attrs.find((a) => a.name === "ShippingNote")
+          expect(note).toBeDefined()
+          expect((note!.values ?? []).map((v) => v.name)).toEqual(["Fragile"])
         })
 
         it("rejects attaching to another seller's product", async () => {

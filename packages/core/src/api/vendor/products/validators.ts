@@ -10,8 +10,8 @@ import {
   applyAndAndOrOperators,
   booleanString,
 } from "@medusajs/medusa/api/utils/common-validators/common"
-import { AdditionalData } from "@medusajs/framework/types"
-import { FeatureFlag } from "@medusajs/framework/utils"
+import { AdditionalData, OperatorMap } from "@medusajs/framework/types"
+import { FeatureFlag, isPresent } from "@medusajs/framework/utils"
 
 const statusEnum = z.nativeEnum(ProductStatus)
 
@@ -43,6 +43,21 @@ export const VendorGetProductsParams = createFindParams({
 })
   .merge(VendorGetProductsParamsFields)
   .merge(applyAndAndOrOperators(VendorGetProductsParamsFields))
+  .transform((data) => {
+    const res = { ...data } as Record<string, unknown>
+
+    if (isPresent(data.tag_id)) {
+      res.tags = { id: data.tag_id as string[] }
+      delete res.tag_id
+    }
+
+    if (isPresent(data.category_id)) {
+      res.categories = { id: data.category_id as OperatorMap<string> }
+      delete res.category_id
+    }
+
+    return res
+  })
 
 export type VendorGetProductParamsType = z.infer<typeof VendorGetProductParams>
 export const VendorGetProductParams = createSelectParams()
@@ -398,6 +413,22 @@ export const VendorAddProductAttribute = z
       path: ["type"],
     },
   )
+  // Inline-create select-type attributes carry their values as their
+  // entire identity — an empty `values` array would create an orphan
+  // attribute scope that the apply-actions dispatcher silently skips
+  // (it short-circuits on empty `attribute_value_ids`), leaving the
+  // product with a visible attribute and no linked values.
+  .refine(
+    (data) =>
+      !data.name ||
+      (data.type !== "single_select" && data.type !== "multi_select") ||
+      (data.values?.length ?? 0) > 0,
+    {
+      message:
+        "Inline-create with `single_select` or `multi_select` requires at least one entry in `values`.",
+      path: ["values"],
+    },
+  )
 
 /**
  * `PATCH /vendor/products/:id/attributes/:attribute_id` — atomic
@@ -426,5 +457,30 @@ export type VendorCancelProductChangeType = z.infer<
 export const VendorCancelProductChange = z
   .object({
     internal_note: z.string().optional(),
+  })
+  .strict()
+
+const VendorBatchProductAttributeCreate = z.union([
+  z
+    .object({
+      attribute_id: z.string(),
+      attribute_value_ids: z.array(z.string()).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      attribute_id: z.string(),
+      values: z.array(z.string()),
+    })
+    .strict(),
+])
+
+export type VendorBatchProductAttributesType = z.infer<
+  typeof VendorBatchProductAttributes
+>
+export const VendorBatchProductAttributes = z
+  .object({
+    create: z.array(VendorBatchProductAttributeCreate).optional(),
+    delete: z.array(z.string()).optional(),
   })
   .strict()

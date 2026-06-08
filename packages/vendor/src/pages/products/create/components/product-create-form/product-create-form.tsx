@@ -1,4 +1,3 @@
-import { HttpTypes } from "@medusajs/types"
 import { MercurFeatureFlags } from "@mercurjs/types"
 import { Button, toast } from "@medusajs/ui"
 import { ReactNode, useEffect, useMemo, Children } from "react"
@@ -22,8 +21,6 @@ import { ProductCreateAttributesForm } from "../product-create-attributes-form"
 import { ProductCreateDetailsForm } from "../product-create-details-form"
 import { ProductCreateOrganizeForm } from "../product-create-organize-form"
 import { ProductCreateVariantsForm } from "../product-create-variants-form"
-
-const SAVE_DRAFT_BUTTON = "save-draft-button"
 
 type ProductCreateFormProps = {
   children?: ReactNode
@@ -75,13 +72,10 @@ export const ProductCreateForm = ({
     }
   }, [watchedAttributes])
 
-  const handleSubmit = form.handleSubmit(async (values, e) => {
-    let isDraftSubmission = false
-    if (e?.nativeEvent instanceof SubmitEvent) {
-      const submitter = e?.nativeEvent?.submitter as HTMLButtonElement
-      isDraftSubmission = submitter?.dataset?.name === SAVE_DRAFT_BUTTON
-    }
-
+  const submitProduct = async (
+    values: ProductCreateSchemaType,
+    isDraftSubmission: boolean
+  ) => {
     const media = values.media || []
     const payload = { ...values, media: undefined }
 
@@ -138,7 +132,21 @@ export const ProductCreateForm = ({
         },
       }
     )
+  }
+
+  const handleSubmit = form.handleSubmit(async (values) => {
+    await submitProduct(values, false)
   })
+
+  const handleSaveAsDraft = async () => {
+    // Drafts only require a title; bypass the full schema so users can save
+    // incomplete products without filling category, attributes, etc.
+    const titleValid = await form.trigger("title")
+    if (!titleValid) {
+      return
+    }
+    await submitProduct(form.getValues(), true)
+  }
 
   const defaultTabs = useMemo(
     () => [
@@ -172,9 +180,10 @@ export const ProductCreateForm = ({
             </Button>
           </RouteFocusModal.Close>
           <Button
-            data-name={SAVE_DRAFT_BUTTON}
+            variant="secondary"
             size="small"
-            type="submit"
+            type="button"
+            onClick={handleSaveAsDraft}
             isLoading={isLoading}
             className="whitespace-nowrap"
             data-testid="product-create-form-save-draft-button"

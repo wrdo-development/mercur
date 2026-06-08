@@ -476,7 +476,8 @@ export const useAddProductAttribute = (
 
 /**
  * Stages `ATTRIBUTE_REMOVE + ATTRIBUTE_ADD` for the same attribute on
- * one product-change so the value set replaces atomically.
+ * one product-change so the value set replaces atomically. Used by the
+ * single-attribute edit drawer.
  */
 export const useUpdateProductAttribute = (
   productId: string,
@@ -495,6 +496,50 @@ export const useUpdateProductAttribute = (
       sdk.vendor.products.$id.attributes.$attributeId.mutate({
         $id: productId,
         $attributeId: attributeId,
+        ...payload,
+      }) as Promise<ProductChangeResponse>,
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: productChangeQueryKeys.detail(productId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: productAttributesQueryKeys.lists(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: productsQueryKeys.detail(productId),
+      });
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};
+
+/**
+ * Stages a batch of `ATTRIBUTE_ADD` / `ATTRIBUTE_REMOVE` operations
+ * via `productEditUpdateAttributesWorkflow`. Mirrors admin's
+ * `useBatchProductAttributes` so the "add multiple attributes" wizard
+ * stages one `ProductChange` for the whole batch instead of looping
+ * per-attribute and producing N change records.
+ */
+export const useBatchProductAttributes = (
+  productId: string,
+  options?: UseMutationOptions<
+    ProductChangeResponse,
+    ClientError,
+    {
+      create?: {
+        attribute_id: string
+        attribute_value_ids?: string[]
+        values?: string[]
+      }[]
+      delete?: string[]
+    }
+  >
+) => {
+  return useMutation({
+    mutationFn: (payload) =>
+      sdk.vendor.products.$id.attributes.batch.mutate({
+        $id: productId,
         ...payload,
       }) as Promise<ProductChangeResponse>,
     onSuccess: (data, variables, context) => {

@@ -2,8 +2,10 @@ import { ProductAttributeDTO } from "@mercurjs/types";
 import {
   Badge,
   Button,
+  Checkbox,
   createDataTableColumnHelper,
   DataTableRowSelectionState,
+  Tooltip,
 } from "@medusajs/ui";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -29,6 +31,14 @@ const ATTRIBUTE_TYPE_LABELS: Record<string, string> = {
   toggle: "attributes.type.toggle",
   text: "attributes.type.text_area",
 };
+
+// Highlight rows based on the state of their select checkbox:
+// - required (preselected, disabled): subtle grey
+// - selected (user-checked, enabled): highlight (light blue)
+const ROW_HIGHLIGHT_CLASSES = [
+  "[&_tr:has(button[role=checkbox][data-state=checked]:not([disabled]))>td]:!bg-ui-bg-highlight",
+  "[&_tr:has(button[role=checkbox][data-state=checked][disabled])>td]:!bg-ui-bg-subtle",
+].join(" ");
 
 export const ProductCreateAddAttributesModal = () => {
   const form = useTabbedForm<ProductCreateSchemaType>();
@@ -191,10 +201,23 @@ export const ProductCreateAddAttributesModal = () => {
     throw error;
   }
 
+  const emptyState = useMemo(
+    () => ({
+      empty: {
+        heading: t("products.create.attributes.noAttributesTitle"),
+        description: t("products.create.attributes.noAttributesDescription"),
+      },
+    }),
+    [t],
+  );
+
   return (
     <StackedFocusModal.Content className="flex flex-col overflow-hidden">
       <StackedFocusModal.Header />
-      <StackedFocusModal.Body className="flex-1 overflow-hidden">
+      <StackedFocusModal.Body
+        className={`flex-1 overflow-hidden ${ROW_HIGHLIGHT_CLASSES}`}
+        data-testid="product-create-add-attributes-table"
+      >
         <DataTable
           data={product_attributes}
           columns={columns}
@@ -210,6 +233,8 @@ export const ProductCreateAddAttributesModal = () => {
           isLoading={isLoading}
           layout="fill"
           prefix={ADD_ATTRIBUTES_MODAL_ID}
+          compact
+          emptyState={emptyState}
         />
       </StackedFocusModal.Body>
       <StackedFocusModal.Footer>
@@ -235,7 +260,34 @@ const useColumns = () => {
 
   return useMemo(
     () => [
-      columnHelper.select(),
+      columnHelper.select({
+        cell: (ctx) => {
+          const checked = ctx.row.getIsSelected();
+          const onChange = ctx.row.getToggleSelectedHandler();
+          const disabled = !ctx.row.getCanSelect();
+          const checkbox = (
+            <Checkbox
+              onClick={(e) => e.stopPropagation()}
+              checked={checked}
+              onCheckedChange={onChange}
+              disabled={disabled}
+            />
+          );
+
+          // Required attributes can't be deselected — explain via tooltip.
+          if (disabled) {
+            return (
+              <Tooltip
+                content={t("products.create.attributes.requiredTooltip")}
+              >
+                <span className="inline-flex">{checkbox}</span>
+              </Tooltip>
+            );
+          }
+
+          return checkbox;
+        },
+      }),
       columnHelper.accessor("name", {
         header: t("attributes.fields.name"),
         enableSorting: false,

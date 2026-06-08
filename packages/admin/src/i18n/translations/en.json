@@ -2998,6 +2998,7 @@
       },
       "fillNameWarning": "Please fill in at least the name field before proceeding to Type configuration.",
       "possibleValuesRequired": "At least one possible value is required for this type",
+      "categoriesRequired": "Please select at least one category, or enable the global attribute switch.",
       "successToast": "Attribute \"{{name}}\" was successfully created."
     },
     "edit": {
@@ -3046,11 +3047,17 @@
       "categories": "Product Categories",
       "productAttribute": "Product Attribute",
       "values": "Values",
-      "possibleValues": "Possible Values",
+      "possibleValues": "Possible values",
       "value": "Value",
       "variantAxis": "Use for Variants",
       "rank": "Rank",
-      "metadata": "Metadata"
+      "metadata": "Metadata",
+      "isRequired": "Required attribute",
+      "isRequiredHint": "If checked, a value must be set to this attribute.",
+      "isFilterable": "Filterable attribute",
+      "isFilterableHint": "If checked, customers will be able to filter products using this attribute.",
+      "isGlobal": "Global attribute",
+      "isGlobalHint": "If checked, this attribute applies to all products across all categories."
     },
     "type": {
       "select": "Single Select",
@@ -3275,27 +3282,6 @@
       "value": "Value"
     }
   },
-  "productBrands": {
-    "domain": "Brands",
-    "subtitle": "Organize your products into brands.",
-    "create": {
-      "header": "Create Brand",
-      "hint": "Create a new brand to associate with your products.",
-      "successToast": "Brand {{name}} was successfully created."
-    },
-    "edit": {
-      "header": "Edit Brand",
-      "successToast": "Brand {{name}} was successfully updated."
-    },
-    "delete": {
-      "confirmation": "You are about to delete the brand \"{{name}}\". This action cannot be undone.",
-      "successToast": "Brand \"{{name}}\" was successfully deleted."
-    },
-    "fields": {
-      "isRestricted": "Restricted",
-      "isRestrictedHint": "Limit which sellers can use this brand on their products."
-    }
-  },
   "productTags": {
     "domain": "Product Tags",
     "create": {
@@ -3386,7 +3372,6 @@
     "enabledInStore": "Enabled in store",
     "isReturn": "Is return",
     "conditions": "Conditions",
-    "brand": "Brand",
     "category": "Category",
     "collection": "Collection",
     "store": "Store",
@@ -3543,7 +3528,6 @@
     "requires_shipping": "Requires shipping",
     "variant_attributes": "Variant attributes",
     "product_attributes": "Product attributes",
-    "brand_id": "Brand",
     "type_id": "Type",
     "collection_id": "Collection"
   },

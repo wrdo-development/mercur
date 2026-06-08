@@ -1808,11 +1808,15 @@
         "list": {
           "type": "object",
           "properties": {
+            "noRecordsTitle": {
+              "type": "string"
+            },
             "noRecordsMessage": {
               "type": "string"
             }
           },
           "required": [
+            "noRecordsTitle",
             "noRecordsMessage"
           ],
           "additionalProperties": false
@@ -1830,6 +1834,9 @@
               "type": "string"
             },
             "requestSuccessToast": {
+              "type": "string"
+            },
+            "duplicateRequestErrorToast": {
               "type": "string"
             },
             "attributes": {
@@ -1902,6 +1909,7 @@
             "description",
             "successToast",
             "requestSuccessToast",
+            "duplicateRequestErrorToast",
             "attributes",
             "informationalAttributes"
           ],
@@ -1916,9 +1924,6 @@
                 "title": {
                   "type": "string"
                 },
-                "description": {
-                  "type": "string"
-                },
                 "deleteRequested": {
                   "type": "string"
                 },
@@ -1931,7 +1936,6 @@
               },
               "required": [
                 "title",
-                "description",
                 "deleteRequested",
                 "cancelTitle",
                 "cancelDescription"
@@ -2039,6 +2043,18 @@
                 },
                 "requiredAttribute": {
                   "type": "string"
+                },
+                "categoryRequired": {
+                  "type": "string"
+                },
+                "requiredAttributeSelect": {
+                  "type": "string"
+                },
+                "requiredAttributeEnter": {
+                  "type": "string"
+                },
+                "requiredAttributeMultiSelect": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -2049,7 +2065,11 @@
                 "titleRequired",
                 "handleInvalidFormat",
                 "handleMustContainLetter",
-                "requiredAttribute"
+                "requiredAttribute",
+                "categoryRequired",
+                "requiredAttributeSelect",
+                "requiredAttributeEnter",
+                "requiredAttributeMultiSelect"
               ],
               "additionalProperties": false
             },
@@ -2228,6 +2248,21 @@
                 },
                 "valuePlaceholder": {
                   "type": "string"
+                },
+                "enterValuePlaceholder": {
+                  "type": "string"
+                },
+                "selectValuePlaceholder": {
+                  "type": "string"
+                },
+                "requiredTooltip": {
+                  "type": "string"
+                },
+                "noAttributesTitle": {
+                  "type": "string"
+                },
+                "noAttributesDescription": {
+                  "type": "string"
                 }
               },
               "required": [
@@ -2248,7 +2283,12 @@
                 "useForVariantsDescription",
                 "variantAxisTip",
                 "titlePlaceholder",
-                "valuePlaceholder"
+                "valuePlaceholder",
+                "enterValuePlaceholder",
+                "selectValuePlaceholder",
+                "requiredTooltip",
+                "noAttributesTitle",
+                "noAttributesDescription"
               ],
               "additionalProperties": false
             }
@@ -12017,10 +12057,38 @@
           "properties": {
             "websiteHint": {
               "type": "string"
+            },
+            "mediaHeading": {
+              "type": "string"
+            },
+            "mediaTipLabel": {
+              "type": "string"
+            },
+            "mediaTipBody": {
+              "type": "string"
+            },
+            "uploadLogoLabel": {
+              "type": "string"
+            },
+            "uploadLogoHint": {
+              "type": "string"
+            },
+            "uploadBannerLabel": {
+              "type": "string"
+            },
+            "uploadBannerHint": {
+              "type": "string"
             }
           },
           "required": [
-            "websiteHint"
+            "websiteHint",
+            "mediaHeading",
+            "mediaTipLabel",
+            "mediaTipBody",
+            "uploadLogoLabel",
+            "uploadLogoHint",
+            "uploadBannerLabel",
+            "uploadBannerHint"
           ],
           "additionalProperties": false
         },
@@ -15295,9 +15363,6 @@
         "categories": {
           "type": "string"
         },
-        "brand_id": {
-          "type": "string"
-        },
         "type_id": {
           "type": "string"
         },
@@ -15736,9 +15801,6 @@
         "professional": {
           "type": "string"
         },
-        "brand": {
-          "type": "string"
-        },
         "is_giftcard": {
           "type": "string"
         },
@@ -15822,7 +15884,6 @@
         "newPassword",
         "repeatNewPassword",
         "categories",
-        "brand_id",
         "type_id",
         "collection_id",
         "shippingMethod",
@@ -15969,7 +16030,6 @@
         "values",
         "premium",
         "professional",
-        "brand",
         "is_giftcard",
         "origin_country",
         "hs_code",
