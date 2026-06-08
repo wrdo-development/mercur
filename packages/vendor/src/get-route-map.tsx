@@ -251,6 +251,11 @@ export function getRouteMap({
                             lazy: () =>
                               import("./pages/orders/[id]/refund"),
                           },
+                          {
+                            path: "edit",
+                            lazy: () =>
+                              import("./pages/orders/[id]/edit"),
+                          },
                         ],
                       },
                     ],
