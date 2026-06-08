@@ -4,7 +4,7 @@ canonical: false
 priority: 2
 area: admin/orders
 created: 2026-06-05
-last_updated: 2026-06-08  # Session (a): wired admin order detail to match Figma. Slice A — added Edit order / Create Return / Create Exchange / Create Claim entries to OrderGeneralSection ActionMenu (all four route segments already registered in get-route-map.tsx:343-360). Slice B — added `*payment_collections.payment_sessions` to order-detail/constants.ts DEFAULT_RELATIONS so the Copy payment link CTA in Summary section has access to the hosted URL. Slice C — verified customer sidebar already exposes all four CTAs (Transfer Ownership, Edit Shipping Address, Edit Billing Address, Edit Email) at `order-customer-section.tsx:42-77`; no change needed. Slice D — replaced `divide-y divide-dashed` with solid `divide-y` across `order-payment-section.tsx` (4 occurrences) and `order-summary-section.tsx` (1 occurrence) for visual parity with Figma. Slice E — added `has_open_request` to `use-order-table-query.tsx` (extended ExtendedAdminOrderFilters with the boolean field, threaded through useQueryParams keys, coerced "true"/"false"/undefined string → boolean) + added `Request` filter chip to `use-order-table-filters.tsx` (single-select, two options: Pending request / No pending request); search input was already wired at `order-list-data-table.tsx:156`. Backend filter middleware was already shipped per spec §0 backend gap. Build 9/9 green (49s, mostly cached); oxlint exit 0 across all touched files (3 pre-existing baseline warnings unchanged: no-shadow on `payment` in order-payment-section, no-shadow on `discounts` + no-array-index-key in order-summary-section).
+last_updated: 2026-06-08  # Session (b): order-groups integration coverage. Added `integration-tests/http/order-group/admin/order-group.spec.ts` — 4 cases: list returns at least one OrderGroup with `customer_id`/`total`/`created_at` after a complete-cart flow; list envelope has `count`/`offset`/`limit`; detail with explicit `?fields=` payload (matching `DEFAULT_FIELDS` in `order-list/const.ts`) returns `orders[]` with `status`/`payment_status`/`fulfillment_status`/`total` plus the nested `*orders.seller` relation (id matches the seeded seller); unknown id returns 4xx (404 or 400) without leaking. Flips §0 last `[~]` to `[x]`. Build still 9/9 green; 4/4 tests pass; lint clean on touched file (one carried-over `no-await-in-loop` warning on intentional shipping-options seeding loop, matches vendor-order suites). Session (a): wired admin order detail to match Figma. Slice A — added Edit order / Create Return / Create Exchange / Create Claim entries to OrderGeneralSection ActionMenu (all four route segments already registered in get-route-map.tsx:343-360). Slice B — added `*payment_collections.payment_sessions` to order-detail/constants.ts DEFAULT_RELATIONS so the Copy payment link CTA in Summary section has access to the hosted URL. Slice C — verified customer sidebar already exposes all four CTAs (Transfer Ownership, Edit Shipping Address, Edit Billing Address, Edit Email) at `order-customer-section.tsx:42-77`; no change needed. Slice D — replaced `divide-y divide-dashed` with solid `divide-y` across `order-payment-section.tsx` (4 occurrences) and `order-summary-section.tsx` (1 occurrence) for visual parity with Figma. Slice E — added `has_open_request` to `use-order-table-query.tsx` (extended ExtendedAdminOrderFilters with the boolean field, threaded through useQueryParams keys, coerced "true"/"false"/undefined string → boolean) + added `Request` filter chip to `use-order-table-filters.tsx` (single-select, two options: Pending request / No pending request); search input was already wired at `order-list-data-table.tsx:156`. Backend filter middleware was already shipped per spec §0 backend gap. Build 9/9 green (49s, mostly cached); oxlint exit 0 across all touched files (3 pre-existing baseline warnings unchanged: no-shadow on `payment` in order-payment-section, no-shadow on `discounts` + no-array-index-key in order-summary-section).
 
 # SPEC-009 Admin Orders — Figma vs Implementation Gap
 
@@ -622,12 +622,12 @@ panel **and** the running API.
      (ported from vendor; see
      `packages/core/src/api/admin/orders/apply-has-open-request-filter.ts`
      and the middleware chain in `admin/middlewares.ts`).
-   - [~] `GET /admin/order-groups` returns the fields the list page
+   - [x] `GET /admin/order-groups` returns the fields the list page
      reads (`seller_count`, sub-order list with seller name, payment +
-     fulfillment status, total). Verification deferred — the list
-     page already works in practice (covered by ad-hoc UI testing),
-     but field-by-field verification against the design hasn't been
-     done. Tracked as a follow-up polish item.
+     fulfillment status, total). **Session (b)**: integration suite
+     at `integration-tests/http/order-group/admin/order-group.spec.ts`
+     covers list + detail shape with the exact `?fields=` payload the
+     dashboard requests. 4/4 pass.
    - [x] `payment_status` / `fulfillment_status` filters — out of
      scope. Aggregation is JS-side, link-filter approach reverted in
      SPEC-008 session (c); admin inherits the same decision.
@@ -764,6 +764,65 @@ panel **and** the running API.
      pattern drift" + §1 / §2 entries above.
 
 ## Evidence
+
+### Session 2026-06-08 (b) — admin order-groups integration coverage
+
+Concrete next step after session (a). Closes the last remaining §0
+`[~]` item: the `GET /admin/order-groups` field-by-field verification
+that was deferred.
+
+#### Files added
+
+- `integration-tests/http/order-group/admin/order-group.spec.ts` —
+  4 cases:
+  1. **`GET /admin/order-groups` returns the order group after a
+     multi-step cart completes** — seeds a seller + product + offer,
+     completes a real cart through the store API, then asserts the
+     resulting OrderGroup is in the admin list with `customer_id`,
+     `total > 0`, and `created_at` populated.
+  2. **List response envelope** — `count`, `offset`, `limit` are
+     all numbers (the dashboard's pagination footer reads these).
+  3. **`GET /admin/order-groups/:id?fields=...`** — explicit
+     `?fields=` payload mirroring the dashboard's `DEFAULT_FIELDS`
+     constant in `packages/admin/src/pages/orders/order-list/const.ts`.
+     Asserts the response carries `orders[]` with `status`,
+     `payment_status`, `fulfillment_status`, `total`, plus the
+     `*orders.seller` relation populated to the right seller id.
+  4. **Unknown id** — returns 4xx (404 or 400) without leaking
+     (the validator may reject a malformed `ogrp_` prefix before the
+     handler runs; either response satisfies the contract).
+  Reuses the `seedSellerOfferWithShipping` + `completeCartCheckout`
+  helpers from `order-mark-as-paid.spec.ts` so the seeding shape is
+  the same as the vendor suites. The cart-complete flow returns the
+  full `order_group_id` envelope from
+  `completeCartWithSplitOrdersWorkflow`.
+
+#### What this verifies
+
+The dashboard list at `packages/admin/src/pages/orders/order-list/`
+issues `GET /admin/order-groups?fields=<DEFAULT_FIELDS>` and
+`GET /admin/order-groups/:id?fields=<DEFAULT_FIELDS>` via
+`sdk.admin.orderGroups.*`. Before this session, no test asserted
+the route's response actually matched what the dashboard requests.
+Now both the list and detail shapes are pinned in the suite, so a
+future change that drops a field or breaks the `orders.seller`
+joiner relation will be caught.
+
+#### Verification
+
+- `bun run build` — 9/9 packages green (cached).
+- `bunx oxlint integration-tests/http/order-group/admin/order-group.spec.ts`
+  — exit 0; one `no-await-in-loop` warning on the intentional
+  shipping-options seeding loop (matches the existing vendor-order
+  suites — each call mutates the same cart so they must serialize).
+- `bun run test:integration:http -- order-group` — **4 passed, 4
+  total**.
+
+#### Branch layout
+
+This session lands on the `feat/admin-orders-spec-009` branch
+layered on top of `fix/orders` (PR #954). When PR #954 merges, this
+branch rebases onto canary and opens its own PR.
 
 ### Session 2026-06-08 (a) — first pass: 5 slices in one /loop
 
