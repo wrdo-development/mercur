@@ -63,7 +63,7 @@ export function EditOrderEmailForm({ order }: EditOrderEmailFormProps) {
             render={({ field }) => {
               return (
                 <Form.Item data-testid="order-edit-email-item">
-                  <Form.Label data-testid="order-edit-email-label">{t('fields.email')}</Form.Label>
+                  <Form.Label data-testid="order-edit-email-label">{t('orders.edit.email.addressLabel')}</Form.Label>
 
                   <Form.Control data-testid="order-edit-email-control">
                     <Input

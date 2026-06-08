@@ -1085,7 +1085,7 @@ export const ClaimCreateForm = ({
                             className="!mt-1"
                             data-testid="order-create-claim-notification-hint"
                           >
-                            {t("orders.returns.sendNotificationHint")}
+                            {t("orders.claims.sendNotificationHint")}
                           </Form.Hint>
                         </div>
                       </div>

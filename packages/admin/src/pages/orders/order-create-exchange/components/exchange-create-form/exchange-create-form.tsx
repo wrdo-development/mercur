@@ -580,7 +580,7 @@ export const ExchangeCreateForm = ({
                             className="!mt-1"
                             data-testid="order-create-exchange-notification-hint"
                           >
-                            {t("orders.returns.sendNotificationHint")}
+                            {t("orders.exchanges.sendNotificationHint")}
                           </Form.Hint>
                         </div>
                       </div>

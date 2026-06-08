@@ -12,7 +12,7 @@ type ExtendedAdminOrderFilters = HttpTypes.AdminOrderFilters & {
   customer_id?: string[]
   seller_id?: string[]
   status?: string[]
-  has_open_request?: boolean
+  has_open_request?: string
 }
 
 export const useOrderTableQuery = ({
@@ -63,12 +63,7 @@ export const useOrderTableQuery = ({
     status: status?.split(","),
     fulfillment_status: fulfillment_status?.split(","),
     payment_status: payment_status?.split(","),
-    has_open_request:
-      has_open_request === "true"
-        ? true
-        : has_open_request === "false"
-          ? false
-          : undefined,
+    has_open_request: has_open_request || undefined,
     created_at: created_at ? JSON.parse(created_at) : undefined,
     updated_at: updated_at ? JSON.parse(updated_at) : undefined,
     region_id: region_id?.split(","),

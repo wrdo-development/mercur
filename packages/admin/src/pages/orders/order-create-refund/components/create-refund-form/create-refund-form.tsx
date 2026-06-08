@@ -266,7 +266,7 @@ export const CreateRefundForm = ({ order }: CreateRefundFormProps) => {
                       data-testid="order-create-refund-reason-label"
                       optional
                     >
-                      {t("fields.refundReason")}
+                      {t("fields.reason")}
                     </Form.Label>
 
                     <Form.Control data-testid="order-create-refund-reason-control">

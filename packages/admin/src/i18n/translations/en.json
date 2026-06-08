@@ -1184,6 +1184,11 @@
     "list": {
       "noRecordsMessage": "Your orders will show up here."
     },
+    "detail": {
+      "otherOrdersInGroup": {
+        "title": "Other orders from this group {{groupId}}"
+      }
+    },
     "status": {
       "not_paid": "Not paid",
       "pending": "Pending",
@@ -1226,6 +1231,9 @@
       "capture_short": "Capture",
       "refund": "Refund",
       "markAsPaid": "Mark as paid",
+      "copyPaymentLink": "Copy payment link for {{amount}}",
+      "copyPaymentLinkSuccess": "Payment link copied to clipboard.",
+      "copyPaymentLinkUnavailable": "No payment link is available for this payment.",
       "statusLabel": "Payment status",
       "statusTitle": "Payment Status",
       "status": {
@@ -1282,9 +1290,17 @@
         "quantityLowerThanFulfillment": "Cannot set quantity to be less then or equal to fulfilled quantity"
       }
     },
+    "filters": {
+      "hasOpenRequest": "Request",
+      "hasOpenRequestEdit": "Edit",
+      "hasOpenRequestReturn": "Return",
+      "hasOpenRequestExchange": "Exchange",
+      "hasOpenRequestClaim": "Claim"
+    },
     "edit": {
       "email": {
         "title": "Edit email",
+        "addressLabel": "Email address",
         "requestSuccess": "Email was successfully updated."
       },
       "shippingAddress": {
@@ -1379,6 +1395,7 @@
       "confirm": "Confirm Claim",
       "confirmText": "You are about to confirm a Claim. This action cannot be undone.",
       "manage": "Manage Claim",
+      "sendNotificationHint": "Notify customer about claim.",
       "outbound": "Outbound",
       "outboundItemAdded": "{{itemsCount}}x added through claim",
       "outboundTotal": "Outbound total",
@@ -1412,6 +1429,7 @@
       "manage": "Manage Exchange",
       "confirm": "Confirm Exchange",
       "confirmText": "You are about to confirm an Exchange. This action cannot be undone.",
+      "sendNotificationHint": "Notify customer about exchange.",
       "outbound": "Outbound",
       "outboundItemAdded": "{{itemsCount}}x added through exchange",
       "outboundTotal": "Outbound total",
@@ -1627,10 +1645,10 @@
       "refundableAmount": "Refundable amount",
       "returnableQuantity": "Returnable quantity",
       "groupId": "Group ID",
-      "orderIds": "Order IDs",
-      "vendor": "Vendor",
-      "vendorsCount_one": "{{count}} vendor",
-      "vendorsCount_other": "{{count}} vendors"
+      "orderIds": "Order ID",
+      "vendor": "Store",
+      "vendorsCount_one": "{{count}} store",
+      "vendorsCount_other": "{{count}} stores"
     }
   },
   "payouts": {

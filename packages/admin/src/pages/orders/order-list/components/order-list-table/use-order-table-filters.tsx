@@ -44,7 +44,7 @@ export const useOrderGroupTableFilters = () => {
     if (sellers?.length) {
       filters.push({
         key: "seller_id",
-        label: "Seller",
+        label: t("fields.store", { defaultValue: "Store" }),
         type: "select",
         multiple: true,
         searchable: true,
@@ -88,19 +88,31 @@ export const useOrderGroupTableFilters = () => {
         defaultValue: "Request",
       }),
       type: "select",
-      multiple: false,
+      multiple: true,
       options: [
         {
-          label: t("orders.filters.hasOpenRequestTrue", {
-            defaultValue: "Pending request",
+          label: t("orders.filters.hasOpenRequestEdit", {
+            defaultValue: "Edit",
           }),
-          value: "true",
+          value: "edit",
         },
         {
-          label: t("orders.filters.hasOpenRequestFalse", {
-            defaultValue: "No pending request",
+          label: t("orders.filters.hasOpenRequestReturn", {
+            defaultValue: "Return",
           }),
-          value: "false",
+          value: "return",
+        },
+        {
+          label: t("orders.filters.hasOpenRequestExchange", {
+            defaultValue: "Exchange",
+          }),
+          value: "exchange",
+        },
+        {
+          label: t("orders.filters.hasOpenRequestClaim", {
+            defaultValue: "Claim",
+          }),
+          value: "claim",
         },
       ],
     })

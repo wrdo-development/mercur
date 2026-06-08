@@ -8,6 +8,18 @@ import {
   promiseAll,
 } from "@medusajs/framework/utils"
 
+const VALID_TYPES = ["edit", "return", "exchange", "claim"] as const
+type RequestType = (typeof VALID_TYPES)[number]
+
+const CHANGE_TYPE_FOR_REQUEST: Record<
+  Exclude<RequestType, "return">,
+  string
+> = {
+  edit: "edit",
+  exchange: "exchange",
+  claim: "claim",
+}
+
 export const applyHasOpenRequestFilter = async (
   req: MedusaRequest,
   _: MedusaResponse,
@@ -19,24 +31,72 @@ export const applyHasOpenRequestFilter = async (
     return next()
   }
 
-  const hasOpenRequest = raw === "true"
+  let booleanMode: boolean | null = null
+  let selectedTypes: RequestType[] | null = null
+
+  const rawValues = Array.isArray(raw)
+    ? raw.flatMap((v) => String(v).split(","))
+    : String(raw).split(",")
+
+  const trimmed = rawValues.map((v) => v.trim()).filter(Boolean)
+
+  if (trimmed.length === 1 && (trimmed[0] === "true" || trimmed[0] === "false")) {
+    booleanMode = trimmed[0] === "true"
+  } else {
+    const parsed = trimmed.filter((v): v is RequestType =>
+      (VALID_TYPES as readonly string[]).includes(v)
+    )
+    if (parsed.length > 0) {
+      selectedTypes = Array.from(new Set(parsed))
+    }
+  }
+
+  if (booleanMode === null && selectedTypes === null) {
+    return next()
+  }
 
   const filterableFields = req.filterableFields ?? {}
   delete filterableFields.has_open_request
 
+  const includeReturns =
+    booleanMode === true ||
+    booleanMode === false ||
+    (selectedTypes !== null && selectedTypes.includes("return"))
+
+  const nonReturnTypes =
+    selectedTypes?.filter((t): t is Exclude<RequestType, "return"> => t !== "return") ??
+    []
+
+  const includeChanges =
+    booleanMode !== null || (selectedTypes !== null && nonReturnTypes.length > 0)
+
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
+  const changeTypeFilter =
+    selectedTypes !== null
+      ? nonReturnTypes.map((t) => CHANGE_TYPE_FOR_REQUEST[t])
+      : undefined
+
   const [changesRes, returnsRes] = await promiseAll([
-    query.graph({
-      entity: "order_change",
-      fields: ["order_id"],
-      filters: { status: ["requested", "pending"] },
-    }),
-    query.graph({
-      entity: "return",
-      fields: ["order_id"],
-      filters: { status: "requested" },
-    }),
+    includeChanges
+      ? query.graph({
+          entity: "order_change",
+          fields: ["order_id"],
+          filters: {
+            status: ["requested", "pending"],
+            ...(changeTypeFilter
+              ? { change_type: changeTypeFilter }
+              : {}),
+          },
+        })
+      : Promise.resolve({ data: [] as { order_id: string }[] }),
+    includeReturns
+      ? query.graph({
+          entity: "return",
+          fields: ["order_id"],
+          filters: { status: "requested" },
+        })
+      : Promise.resolve({ data: [] as { order_id: string }[] }),
   ])
 
   const openOrderIds = Array.from(
@@ -48,7 +108,9 @@ export const applyHasOpenRequestFilter = async (
 
   const existingId = filterableFields.id
 
-  if (hasOpenRequest) {
+  const includeMode = booleanMode !== false
+
+  if (includeMode) {
     if (openOrderIds.length === 0) {
       filterableFields.id = { $in: [""] }
     } else if (existingId !== undefined) {

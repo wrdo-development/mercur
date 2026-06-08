@@ -140,6 +140,30 @@ export const OrderSummarySection = ({ order }: OrderSummarySectionProps) => {
     unpaidPaymentCollection && pendingDifference > 0 && isAmountSignificant;
   const showRefund = pendingDifference < 0 && isAmountSignificant;
 
+  const handleCopyPaymentLink = async (
+    paymentCollection: AdminPaymentCollection,
+  ) => {
+    const session = paymentCollection.payment_sessions?.find(
+      (s) => s.data && typeof (s.data as Record<string, unknown>).url === "string",
+    );
+
+    const url = session
+      ? ((session.data as Record<string, unknown>).url as string)
+      : undefined;
+
+    if (!url) {
+      toast.error(t("orders.payment.copyPaymentLinkUnavailable"));
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(t("orders.payment.copyPaymentLinkSuccess"));
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  };
+
   const handleMarkAsPaid = async (
     paymentCollection: AdminPaymentCollection,
   ) => {
@@ -261,14 +285,29 @@ export const OrderSummarySection = ({ order }: OrderSummarySectionProps) => {
           )}
 
           {showPayment && (
-            <Button
-              size="small"
-              variant="secondary"
-              onClick={() => handleMarkAsPaid(unpaidPaymentCollection)}
-              data-testid="order-summary-mark-as-paid-button"
-            >
-              {t("orders.payment.markAsPaid")}
-            </Button>
+            <>
+              <Button
+                size="small"
+                variant="secondary"
+                onClick={() => handleCopyPaymentLink(unpaidPaymentCollection)}
+                data-testid="order-summary-copy-payment-link-button"
+              >
+                {t("orders.payment.copyPaymentLink", {
+                  amount: getStylizedAmount(
+                    pendingDifference,
+                    order.currency_code,
+                  ),
+                })}
+              </Button>
+              <Button
+                size="small"
+                variant="secondary"
+                onClick={() => handleMarkAsPaid(unpaidPaymentCollection)}
+                data-testid="order-summary-mark-as-paid-button"
+              >
+                {t("orders.payment.markAsPaid")}
+              </Button>
+            </>
           )}
 
           {showRefund && (
