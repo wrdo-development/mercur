@@ -2,28 +2,40 @@
 //
 // SPEC-008 — Create Exchange focus modal. Initiates an exchange draft on
 // mount (`useCreateExchange`), exposes a quantity stepper for each
-// returnable line item (`useAddExchangeInboundItems`). Walks the draft
-// through request → confirm via the same `POST /vendor/exchanges/:id/request`
-// route. Cancel closes the modal and discards the draft via
-// `useCancelExchangeBegin` (DELETE :id/request).
+// returnable line item (`useAddExchangeInboundItems`) and an outbound
+// variant picker via StackedFocusModal (`useAddExchangeOutboundItems`).
+// Walks the draft through request → confirm via the same
+// `POST /vendor/exchanges/:id/request` route. Cancel closes the modal
+// and discards the draft via `useCancelExchangeBegin` (DELETE :id/request).
 //
-// Outbound variant picker is deferred to a follow-up sub-slice — the
-// hooks (`useAddExchangeOutboundItems`, etc.) already exist in
-// `hooks/api/exchanges.tsx` so the picker can be wired without
-// revisiting this file's lifecycle code.
+// The outbound picker reuses the generic `AddOrderEditItemsTable` variant
+// table from the Edit Order flow — same shape, both flows take
+// `{ variant_id, quantity }` pairs as input.
+//
+// Per-row reason / location / shipping dropdowns deferred to a future
+// sub-slice; backend already accepts those fields on the inbound /
+// shipping-method sub-routes (hooks in tree).
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { Button, Heading, Input, Text, Textarea, toast } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 
-import { RouteFocusModal, useRouteModal } from "@components/modals"
+import {
+  RouteFocusModal,
+  StackedFocusModal,
+  useRouteModal,
+  useStackedModal,
+} from "@components/modals"
 import { useOrder, useOrderPreview } from "@hooks/api/orders"
 import {
   useAddExchangeInboundItems,
+  useAddExchangeOutboundItems,
   useCancelExchangeBegin,
   useCreateExchange,
   useRequestExchange,
 } from "@hooks/api/exchanges"
+
+import { AddOrderEditItemsTable } from "../../edit/_components/add-order-edit-items-table"
 
 let IS_REQUEST_RUNNING = false
 
@@ -59,6 +71,8 @@ export const Component = () => {
   )
   const { mutateAsync: addInboundItems, isPending: isAddingInbound } =
     useAddExchangeInboundItems(exchangeId, orderId)
+  const { mutateAsync: addOutboundItems, isPending: isAddingOutbound } =
+    useAddExchangeOutboundItems(exchangeId, orderId)
 
   useEffect(() => {
     async function run() {
@@ -117,10 +131,25 @@ export const Component = () => {
     })
   }, [order])
 
+  const outboundItems = useMemo(() => {
+    const previewItems = ((preview as any)?.items ?? []) as Array<{
+      id: string
+      title?: string
+      product_title?: string
+      quantity: number
+      variant?: { title?: string }
+    }>
+    const originalIds = new Set(
+      (((order as any)?.items ?? []) as Array<{ id: string }>).map((i) => i.id)
+    )
+    return previewItems.filter((i) => !originalIds.has(i.id))
+  }, [preview, order])
+
   const hasSelection = useMemo(
     () =>
-      Object.values(inboundQuantities).some((qty) => qty > 0),
-    [inboundQuantities]
+      Object.values(inboundQuantities).some((qty) => qty > 0) ||
+      outboundItems.length > 0,
+    [inboundQuantities, outboundItems]
   )
 
   const handleQtyChange = (itemId: string, nextQty: number) => {
@@ -256,6 +285,70 @@ export const Component = () => {
               </div>
             </section>
 
+            <section className="bg-ui-bg-component shadow-elevation-card-rest rounded-lg">
+              <div className="border-ui-border-base flex items-center justify-between border-b px-4 py-3">
+                <Heading level="h3" className="text-ui-fg-base">
+                  {t("orders.exchanges.outboundItems")}
+                </Heading>
+                <AddOutboundItemsTrigger
+                  disabled={!exchangeId || submitting || canceling}
+                  isPending={isAddingOutbound}
+                  onSubmit={async (variantIds) => {
+                    if (!variantIds.length) {
+                      return
+                    }
+                    try {
+                      await addOutboundItems({
+                        items: variantIds.map((variant_id) => ({
+                          variant_id,
+                          quantity: 1,
+                        })),
+                      })
+                    } catch (e) {
+                      toast.error(
+                        e instanceof Error
+                          ? e.message
+                          : t("errorBoundary.defaultTitle")
+                      )
+                    }
+                  }}
+                />
+              </div>
+              <div className="divide-y">
+                {outboundItems.length === 0 && (
+                  <div className="px-4 py-6">
+                    <Text size="small" className="text-ui-fg-subtle">
+                      {t("orders.exchanges.noOutboundItems")}
+                    </Text>
+                  </div>
+                )}
+                {outboundItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-x-4 px-4 py-3"
+                    data-testid={`exchange-outbound-item-${item.id}`}
+                  >
+                    <div className="flex flex-col">
+                      <Text size="small" weight="plus">
+                        {item.product_title ?? item.title ?? item.id}
+                      </Text>
+                      {item.variant?.title && (
+                        <Text size="xsmall" className="text-ui-fg-subtle">
+                          {item.variant.title}
+                        </Text>
+                      )}
+                    </div>
+                    <Text
+                      size="small"
+                      className="text-ui-fg-subtle tabular-nums"
+                    >
+                      {item.quantity}x
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             <section className="flex flex-col gap-y-2">
               <Text size="small" weight="plus">
                 {t("fields.internalNote", { defaultValue: "Internal note" })}
@@ -297,3 +390,84 @@ export const Component = () => {
 }
 
 export default Component
+
+type AddOutboundItemsTriggerProps = {
+  disabled?: boolean
+  isPending?: boolean
+  onSubmit: (variantIds: string[]) => Promise<void> | void
+}
+
+const STACKED_MODAL_ID = "exchange-add-outbound-items"
+
+const AddOutboundItemsTrigger = ({
+  disabled,
+  isPending,
+  onSubmit,
+}: AddOutboundItemsTriggerProps) => {
+  const { t } = useTranslation()
+  const { setIsOpen } = useStackedModal()
+  const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([])
+
+  const handleSave = async () => {
+    await onSubmit(selectedVariantIds)
+    setSelectedVariantIds([])
+    setIsOpen(STACKED_MODAL_ID, false)
+  }
+
+  return (
+    <StackedFocusModal id={STACKED_MODAL_ID}>
+      <StackedFocusModal.Trigger asChild>
+        <Button
+          variant="secondary"
+          size="small"
+          disabled={disabled}
+          data-testid="exchange-add-outbound-trigger"
+        >
+          {t("orders.exchanges.addOutboundItems")}
+        </Button>
+      </StackedFocusModal.Trigger>
+      <StackedFocusModal.Content>
+        <StackedFocusModal.Header />
+        <StackedFocusModal.Title asChild>
+          <span className="sr-only">
+            {t("orders.exchanges.addOutboundItems")}
+          </span>
+        </StackedFocusModal.Title>
+        <StackedFocusModal.Description className="sr-only">
+          {t("orders.exchanges.addOutboundItemsDescription")}
+        </StackedFocusModal.Description>
+
+        <StackedFocusModal.Body className="size-full overflow-hidden">
+          <AddOrderEditItemsTable
+            onSelectionChange={(ids) => setSelectedVariantIds(ids)}
+          />
+        </StackedFocusModal.Body>
+
+        <StackedFocusModal.Footer>
+          <div className="flex w-full items-center justify-end gap-x-2">
+            <StackedFocusModal.Close asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                size="small"
+                data-testid="exchange-add-outbound-cancel"
+              >
+                {t("actions.cancel")}
+              </Button>
+            </StackedFocusModal.Close>
+            <Button
+              size="small"
+              type="button"
+              onClick={handleSave}
+              isLoading={isPending}
+              disabled={!selectedVariantIds.length || isPending}
+              data-testid="exchange-add-outbound-save"
+            >
+              {t("actions.save")}
+            </Button>
+          </div>
+        </StackedFocusModal.Footer>
+      </StackedFocusModal.Content>
+    </StackedFocusModal>
+  )
+}

@@ -1469,6 +1469,75 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (z) — Slice 4b: Exchange outbound variant picker
+
+Closes one of the §4 follow-up sub-slices flagged in session (x).
+Mirrors session (q)'s port of `add-order-edit-items-table` for Edit
+Order — same StackedFocusModal trigger pattern, reusing the existing
+generic variant table.
+
+#### Files modified
+
+- `packages/vendor/src/pages/orders/[id]/exchanges/create/index.tsx`:
+  - Imported `StackedFocusModal` + `useStackedModal` from
+    `@components/modals`.
+  - Imported `useAddExchangeOutboundItems` (already in
+    `hooks/api/exchanges.tsx` from slice 4).
+  - Imported `AddOrderEditItemsTable` from
+    `../../edit/_components/add-order-edit-items-table` — the same
+    generic variant table session (q) shipped is reused as-is. Both
+    flows take `{ variant_id, quantity }` pairs as input, so no
+    bespoke table is needed.
+  - Added `outboundItems` memo: derives items from `preview.items`
+    not present in `order.items` (i.e. items added via
+    add-outbound-item actions). Same diff pattern as the Edit Order
+    modal's `addedItems` memo (session q).
+  - Relaxed `hasSelection` to also count outbound additions, so the
+    user can confirm a replace-only exchange (no inbound).
+  - Inserted a new "Items to send" section between the inbound items
+    section and the internal-note section. Header includes an
+    `AddOutboundItemsTrigger` button; body lists added outbound items
+    with `{quantity}x` qty display (uniform 1 for v1 — quantity
+    editing per-row queued for follow-up).
+  - Added a new `AddOutboundItemsTrigger` component at the bottom of
+    the file. Wraps `StackedFocusModal` with id
+    `exchange-add-outbound-items`, mounting
+    `AddOrderEditItemsTable` in the body and a Cancel / Save footer.
+    On Save, calls `addOutboundItems({ items: variantIds.map(v => ({
+    variant_id: v, quantity: 1 })) })`, clears the selection state,
+    and closes the stacked modal. `data-testid` ids:
+    `exchange-add-outbound-trigger`, `-save`, `-cancel`,
+    `exchange-outbound-item-${id}`.
+- `packages/vendor/src/i18n/translations/en.json`:
+  - Added 4 keys under `orders.exchanges` (sibling to
+    `inboundItems`):
+    - `outboundItems` ("Items to send")
+    - `noOutboundItems` ("No replacement items added yet.")
+    - `addOutboundItems` ("Add items")
+    - `addOutboundItemsDescription` ("Pick variants to send as
+      replacements for the returned items.")
+
+#### What's NOT in this slice
+
+- **Per-row quantity edit / remove** on outbound items — hooks
+  `useUpdateExchangeOutboundItem` and `useRemoveExchangeOutboundItem`
+  exist in tree (slice 4); v1 ships add-only with qty=1.
+- **Inbound per-row reason dropdown** + location/shipping pickers —
+  separate scope; backend already accepts these fields.
+- **Outbound shipping picker** — separate from outbound items;
+  uses `useAddExchangeOutboundShipping` (not yet on the hooks list;
+  would need adding alongside slice-4 hooks).
+
+#### Verification
+
+- `bun run build` from repo root — 9/9 packages green in 24.5s
+  (mostly cached; `@mercurjs/vendor` recompiled).
+- `bunx oxlint packages/vendor/src/pages/orders/[id]/exchanges/create/index.tsx`
+  — exit 0, no warnings, no errors.
+- No headless UI run this session — the stacked-modal trigger
+  pattern is proven by the sibling Edit Order modal's
+  `AddItemsTrigger` (session q).
+
 ### Session 2026-06-08 (x) — /loop slices 1-8 close-out sweep
 
 End of the /loop sequence kicked off after session (q). Captures the

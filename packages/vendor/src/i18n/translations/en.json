@@ -1580,6 +1580,10 @@
       "description": "Select returnable items and confirm to create an exchange request.",
       "inboundItems": "Items to return",
       "noReturnableItems": "No returnable items on this order.",
+      "outboundItems": "Items to send",
+      "noOutboundItems": "No replacement items added yet.",
+      "addOutboundItems": "Add items",
+      "addOutboundItemsDescription": "Pick variants to send as replacements for the returned items.",
       "remainingQty": "{{count}} returnable",
       "noteHint": "Add an internal note for this exchange (visible only to your team).",
       "toast": {
