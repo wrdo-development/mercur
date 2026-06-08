@@ -794,6 +794,31 @@ export type Routes = {
         };
         stores: typeof import("../../src/api/vendor/stores/route");
         uploads: typeof import("../../src/api/vendor/uploads/route");
+        claims: typeof import("../../src/api/vendor/claims/route") & {
+            $id: {
+                cancel: typeof import("../../src/api/vendor/claims/[id]/cancel/route");
+                claimItems: typeof import("../../src/api/vendor/claims/[id]/claim-items/route") & {
+                    $actionId: typeof import("../../src/api/vendor/claims/[id]/claim-items/[action_id]/route");
+                };
+                inbound: {
+                    items: typeof import("../../src/api/vendor/claims/[id]/inbound/items/route") & {
+                        $actionId: typeof import("../../src/api/vendor/claims/[id]/inbound/items/[action_id]/route");
+                    };
+                    shippingMethod: typeof import("../../src/api/vendor/claims/[id]/inbound/shipping-method/route") & {
+                        $actionId: typeof import("../../src/api/vendor/claims/[id]/inbound/shipping-method/[action_id]/route");
+                    };
+                };
+                outbound: {
+                    items: typeof import("../../src/api/vendor/claims/[id]/outbound/items/route") & {
+                        $actionId: typeof import("../../src/api/vendor/claims/[id]/outbound/items/[action_id]/route");
+                    };
+                    shippingMethod: typeof import("../../src/api/vendor/claims/[id]/outbound/shipping-method/route") & {
+                        $actionId: typeof import("../../src/api/vendor/claims/[id]/outbound/shipping-method/[action_id]/route");
+                    };
+                };
+                request: typeof import("../../src/api/vendor/claims/[id]/request/route");
+            };
+        };
         exchanges: typeof import("../../src/api/vendor/exchanges/route") & {
             $id: {
                 cancel: typeof import("../../src/api/vendor/exchanges/[id]/cancel/route");

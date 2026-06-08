@@ -4,7 +4,7 @@ canonical: false
 priority: 2
 area: vendor/orders
 created: 2026-06-03
-last_updated: 2026-06-08  # Session (q): closed the two Edit Order deferrals from Session (p). (1) Active-edit banner — ported admin's `order-active-edit-section/` to `packages/vendor/src/pages/orders/[id]/_components/order-active-edit-section/` (and `index.ts` barrel). Diffs `preview.items` against `order.items` to bucket entries into Added (preview entries missing from original, or original.qty < preview.qty) and Removed (original.qty > preview.qty); renders the striped banner shell `(-m-4 mb-1 border-b border-l p-4` + `repeating-linear-gradient` background to match admin's frosted look), `<Container className="flex items-center justify-between p-0">` with `divide-y divide-dashed` rows for the panel header (`ExclamationCircleSolid` + `t("orders.edits.panel.title{,Pending}")`), the Added rows, the Removed rows, and the footer strip (`bg-ui-bg-subtle rounded-b-xl px-4 py-4`) whose left CTA is `Continue edit` when `order_change.status === "pending"` else `Force confirm` (calling `useConfirmOrderEdit`), with `Cancel` (calling `useCancelOrderEdit`) on the right. Visibility: `if (!orderPreview || change?.change_type !== "edit") return null` — so the banner is inert for return / exchange / claim changes, only fires on `edit` change_type, matching the spec §"Edit Order" trigger. Mounted as the **first child of TwoColumnPage.Main** in `order-detail-page.tsx` (above OrderGeneralSection) so it renders above the order header per Figma; added to the page's compound exports as `MainActiveEditSection`. All i18n keys (`orders.edits.panel.title{,Pending}` / `labels.added` / `labels.removed` / `actions.{forceConfirm,continueEdit,cancel}`) were already in `en.json` — no translation churn needed. `data-testid` ids on banner shell + 3 buttons (`order-active-edit-section`, `order-active-edit-continue`, `order-active-edit-force-confirm`, `order-active-edit-cancel`). (2) Add-items variant picker — ported admin's `add-order-edit-items-table/` 1:1 to `packages/vendor/src/pages/orders/[id]/edit/_components/add-order-edit-items-table/` (5 files: `add-order-edit-items-table.tsx`, `use-order-edit-item-table-columns.tsx`, `use-order-edit-item-table-filters.tsx`, `use-order-edit-item-table-query.tsx`, `index.ts`). Swapped admin's `useVariants` for vendor's `@hooks/api/product-variants::useVariants` (calls `sdk.vendor.productVariants.query` — same `*inventory_items.inventory.location_levels,+inventory_quantity` field tree). Same `_DataTable` + `useDataTable` shell, `PAGE_SIZE=50`, `PREFIX="rit"`, same Filter/OrderBy shape. Columns: `select` checkbox + `product` (ProductCell from `@components/table/table-cells/product/product-cell`) + `sku` + `title`. Wired into the edit modal via a new `AddItemsTrigger` helper at the bottom of `pages/orders/[id]/edit/index.tsx` that renders a `<StackedFocusModal id="order-edit-add-items">` triggered from the `Current items` section header's right slot — admin uses the same StackedFocusModal pattern; selected variants flow through `useAddOrderEditItems` (one call per save with `items: [{ variant_id, quantity: 1 }, …]`) and surface in a new `Added items` section that displays preview items not present in `order.items`. Modal header copy `t("orders.edits.addItems")` ("Add items"); body copy `t("orders.edits.addItemsDescription")` — both keys pre-existed in en.json. `data-testid` ids on trigger / save / cancel / per-added-item row (`edit-add-items-trigger`, `edit-add-items-save`, `edit-add-items-cancel`, `edit-added-item-${id}`). Build 9/9 green (31.7s, cached except vendor); oxlint clean on every touched file (0 errors / 0 warnings). With this session, the Edit Order slice §"Edit Order" of the spec drops to a single residual item — the Activity timeline entry for "Order edit #N requested" — which is gated on mounting the dead `OrderActivitySection` and adding the corresponding generator rule (separate slice — Activity timeline is its own §"cross-cutting" deferral). Session (p): closed the Order Edit slice end-to-end. Three deliverables: (1) `packages/core/src/subscribers/order-edit-confirmed.ts` listens on `OrderEditWorkflowEvents.CONFIRMED` and runs `refreshOrderCommissionLinesWorkflow({ order_ids: [event.data.order_id] })` so commission lines reflect the new totals after a seller confirms an edit. Pattern matches the existing `payout-webhook.ts` subscriber. Payout-queue delta still deferred — owner of the payout module needs to confirm the exact entry point (spec §"Workflow-override checklist" lines ~1216-1220). (2) `integration-tests/http/order/vendor/order-edit.spec.ts` — 11 cases covering begin/cancel/items/request/confirm/shipping-method with seller-scope guards on every sub-route. Reuses the offer-based seeding from `order-mark-as-paid.spec.ts` (same `seedSellerOfferWithShipping` + `completeCartCheckout` shape). Runs green in 43.3s. (3) Edit Order UI scaffold: kebab entry in `OrderGeneralSection` (`PencilSquare` icon, disabled on canceled orders), route `/orders/:id/edit` registered in `get-route-map.tsx` after the refund entry, `RouteFocusModal` at `pages/orders/[id]/edit/index.tsx` that initiates a draft via `useCreateOrderEdit` on mount, exposes a qty stepper per original line item (calls `useUpdateOrderEditOriginalItem` per change — qty=0 removes), and walks the draft through `useRequestOrderEdit` → `useConfirmOrderEdit` on submit. Cancel button calls `useCancelOrderEdit` and navs back. Active-change guard: if `preview.order_change` exists but `change_type !== "edit"`, the modal redirects with `orders.edits.activeChangeError`. New file `hooks/api/order-edits.tsx` exposes the seven hooks (`useCreateOrderEdit` / `useCancelOrderEdit` / `useRequestOrderEdit` / `useConfirmOrderEdit` / `useAddOrderEditItems` / `useUpdateOrderEditAddedItem` / `useRemoveOrderEditAddedItem` / `useUpdateOrderEditOriginalItem`) calling `sdk.vendor.orderEdits.*` (route map already in core's `.mercur/routes.d.ts`). Build 9/9 green (55.6s); oxlint clean across subscriber, hooks, modal, kebab, and route registration (0 errors / 0 warnings). v1 deliberately ships without the variant-picker "Add new items" table — that's a separate port from admin's `add-order-edit-items-table` folder and is deferred to the next session along with the "Order edit requested" banner above the order header (`active-order-edit-section/` per spec §"Order detail — sections"). Session (o): completed `/vendor/order-edits` tree. Six new sub-routes ported 1:1 from Medusa admin: `POST :id/items`, `POST :id/items/:action_id`, `DELETE :id/items/:action_id`, `POST :id/items/item/:item_id`, `POST :id/shipping-method`, `POST :id/shipping-method/:action_id`, `DELETE :id/shipping-method/:action_id`. All `:id` params remain the **order_id** per the Medusa admin convention surfaced in session (n) — `:action_id` / `:item_id` are passed to the workflows separately. Seller-scope therefore stays on the simpler `assertSellerOwnsOrderInParam` (no `validateSellerOrderEdit` hop needed). Five new zod validators added to `validators.ts` mirroring admin's `AdminPostOrderEditsAddItemsReqSchema`, `AdminPostOrderEditsItemsActionReqSchema`, `AdminPostOrderEditsUpdateItemQuantityReqSchema`, `AdminPostOrderEditsShippingReqSchema`, `AdminPostOrderEditsShippingActionReqSchema`. Workflows wrapped directly from `@medusajs/core-flows` (`orderEditAddNewItemWorkflow`, `updateOrderEditAddItemWorkflow`, `removeItemOrderEditActionWorkflow`, `orderEditUpdateItemQuantityWorkflow`, `createOrderEditShippingMethodWorkflow`, `updateOrderEditShippingMethodWorkflow`, `removeOrderEditShippingMethodWorkflow`). Build 9/9 green; oxlint clean 0/0 across all 12 files in the tree. With this, the full Order Edit backend surface from spec §0 is shipped — only the subscriber + integration suite remain. Session (n): vendor `/vendor/order-edits` backend skeleton landed — `POST /vendor/order-edits`, `DELETE /vendor/order-edits/:id`, `POST /vendor/order-edits/:id/request`, `POST /vendor/order-edits/:id/confirm`. Mirrors Medusa admin `/admin/order-edits` exactly (segment-for-segment, HTTP method for HTTP method) per the spec's "Route convention — non-negotiable" rule, so the typed-client route map can be shared. Critical correction vs. the spec's initial sketch: the `:id` path param on the sub-routes is the **order_id**, not an `order_change.id` — confirmed by reading Medusa admin's `/admin/order-edits/[id]/route.ts` + `/admin/order-edits/[id]/request/route.ts` + `/admin/order-edits/[id]/confirm/route.ts`, each of which threads `id` directly into the workflow input as `order_id`. The `validateSellerOrderEdit` helper (added speculatively per the spec) is therefore not needed by the live routes — the simpler `validateSellerOrder` already in tree is sufficient. Helper kept in `helpers.ts` since the spec calls for it and the items + shipping-method sub-routes (deferred this session) DO key on `order_change.id`. New files: `packages/core/src/api/vendor/order-edits/{helpers.ts,validators.ts,middlewares.ts,route.ts,[id]/route.ts,[id]/request/route.ts,[id]/confirm/route.ts}`. Wired into `packages/core/src/api/vendor/middlewares.ts`. Workflows wrapped directly from `@medusajs/core-flows` (`beginOrderEditOrderWorkflow`, `cancelBeginOrderEditWorkflow`, `requestOrderEditRequestWorkflow`, `confirmOrderEditRequestWorkflow`) — no Mercur fork per spec §"Workflow-override checklist". `requested_by` / `confirmed_by` audit-trail fields stamped with `req.seller_context.seller_id`, matching the existing returns confirm-request pattern. Build 9/9 green; oxlint clean (0/0). Sub-routes still pending: `/:id/items`, `/:id/items/:action_id` (POST/DELETE), `/:id/items/item/:item_id`, `/:id/shipping-method`, `/:id/shipping-method/:action_id` (POST/DELETE) — those key on `order_change.id` and need a query-graph hop for seller-scope (via the helper added this session). Session (m): Create Shipment form — fixed three drift items found while sweeping §6. (1) The only visible input was labeled `Tracking URL` but bound to `labels.${i}.tracking_number` — bug carried over from initial scaffolding. Replaced the single-field render with a three-column `grid grid-cols-1 gap-3 md:grid-cols-3` row exposing `tracking_number` (required, label `orders.shipment.trackingNumber`), `tracking_url` (optional, with the existing placeholder), and `label_url` (optional, new). Each field carries a `data-testid` (`shipment-tracking-number-${i}`, `-url-${i}`, `label-url-${i}`). (2) `handleSubmit` was hardcoding `tracking_url: "#"` and `label_url: "#"` — replaced with the actual form values (`l.tracking_url ?? ""`, `l.label_url ?? ""`); the backend validator treats both as non-optional strings, so empty-string passes through when the user skipped the URL. (3) The `Add tracking URL` button was missing `size="small"` per §6 finding from session (l); patched + renamed to `orders.shipment.addTracking` (an i18n key that already exists alongside `addTrackingUrl`) since it now adds a tracking row, not just a URL. Build 9/9 green; oxlint clean on the touched file (0 warnings / 0 errors). Session (l): polish + §6 partial visual sweep. Create Return modal — misleading no-items-selected toast (`t("orders.returns.create")` → "Create Return") replaced with a proper error key `t("orders.returns.noItemsSelected")` ("Select at least one item to return."); Confirm button now `disabled={!ready || !hasSelection}` so the error path is unreachable for the empty-selection case. §6 visual sweep on `OrderFulfillmentSection`: all three CTA buttons (`Fulfill items`, `Mark as delivered/picked up`, `Mark as shipped`) were missing `size="small"` per the spec's design rule "Buttons inside compact toolbars and footers: `size='small'`" — patched. No structural issues found: `Container` shells use `divide-y p-0`, header rows use `flex items-center justify-between px-6 py-4` with `<Heading>` + status badges + ActionMenu cluster, `bg-ui-bg-subtle rounded-b-xl` footer strip on each fulfillment card aligns with Figma. Build 9/9 green; oxlint clean on touched files (1 carried-over intentional `no-await-in-loop` warning). Session (k): Create Return modal — Location and Return shipping dropdowns wired. Both render as card-shaped strips (`bg-ui-bg-component shadow-elevation-card-rest rounded-lg p-3`) below the items list and above the notify switch. Location `Select` is sourced from `useStockLocations`; Return shipping `Select` is gated on location and sourced from `useShippingOptions({ stock_location_id })` (only fetches once a location is chosen). On submit `handleConfirm` now runs: optional `useUpdateReturn({ location_id })`, the existing per-item `useAddReturnItem` loop, optional `useAddReturnShipping({ shipping_option_id })`, then `useConfirmReturnRequest({ no_notification: !notify })`. Changing the location resets `shippingOptionId` so a stale option from a different location can't be confirmed. Backend already accepts `location_id` on `POST /vendor/returns/:id` (validator `VendorPostReturnsReq` + the request-finalize body) and `shipping_option_id` on `POST /vendor/returns/:id/shipping-method` (validator `VendorPostReturnsShippingReq`). Build 9/9 green; oxlint clean on touched files (same single intentional `no-await-in-loop` warning carried over from session j). Session (j): Create Return kebab entry + route + RouteFocusModal scaffold landed. Kebab `Create Return` action added in `OrderGeneralSection` (own group above the destructive Cancel group, `ArrowUturnLeft` icon, disabled when `order.canceled_at` is set), routed at `/orders/:id/returns/create` in `get-route-map.tsx` between the existing `allocate-items` and `returns/:return_id/receive` entries. The new modal at `pages/orders/[id]/returns/create/index.tsx` ports the Medusa-admin draft-and-mutate flow to vendor: `useInitiateReturn({ order_id })` fires once on mount (guarded by `IS_REQUEST_RUNNING` + `returnId` state for StrictMode + post-creation reruns) and stashes the draft id; the returnable items list (`fulfilled_quantity - return_requested_quantity - returned_quantity > 0`) renders inside a `RouteFocusModal` with per-item checkbox + qty stepper (capped at fulfilledRemaining), and a per-selected-item reason dropdown (from `useReturnReasons`) + note input. Send-notification switch wires `no_notification: !notify` into `useConfirmReturnRequest`. Cancel button + close calls `useCancelReturnRequest` so the order never gets stranded with an empty draft. Backend (`/vendor/returns` + `:id/request-items` + `:id/request` + `DELETE :id/request`) was already shipped; this lands the previously-missing UI entry. Build 9/9 green; oxlint clean on touched files (1 baseline `no-await-in-loop` warning on the sequential `addReturnItem` loop — intentional, all mutations target the same draft and must serialize). Session (d): inline ReturnBreakdown subrow landed under each line item in OrderSummarySection (Mercur port of Medusa admin's pattern). Renders "↳ Nx items return requested/received" with reason chip, note tooltip, and ReturnInfoPopover (id + requested_at + received_at). Damaged-quantity variant renders a second subrow above the standard one. Wired via `order.returns` (already in query-config from session a); added `*returns.items.reason` to vendor query-config so the chip resolves. Session (e): per-item `Allocated` / `Not allocated` StatusBadge wired via `useReservationItems({ line_item_id, limit })` and inline `Allocate items` CTA added to the Summary footer strip when any inventory-managed item is unfulfilled without a reservation. Session (f): activity timeline now emits the `return.created` / `return.canceled` / `return.received` rows — the rendering logic was already present but the source array was a stub. Wired through `order.returns` (already in query-config). Claims / exchanges still stubbed pending backend routes. Session (g): activity timeline payment events (`payment.awaiting` / `captured` / `canceled` / `refunded`) un-commented and wired against `order.payment_collections.flatMap(pc => pc.payments)` (already in query-config). Each event guarded on its respective timestamp; `awaiting` only emitted while a payment is neither captured nor canceled. Session (h): orders list search input enabled by passing `search` to `_DataTable` in `OrderListDataTable` — `useOrderTableQuery` already wires `q` into search params, and other vendor list pages (customers, regions) already use the same pattern. Build 9/9 green; lint clean on touched files. Session (i): §Verification checklist refreshed against shipped state across sessions (a)–(h) — boxes ticked / annotated as `[x]`, `[~]` (partial-with-divergence), or left `[ ]` (still pending), each with a one-line session pointer. No code changes.
+last_updated: 2026-06-08  # Session (r): shipped SPEC-008 slice 3 — `/vendor/claims` backend tree under `packages/core/src/api/vendor/claims/`. Mirrors Medusa admin's `/admin/claims` shape segment-for-segment plus the claim-specific `claim-items` subtree that exchanges don't have. 15 route files (root `POST /vendor/claims`; `[id]/cancel` POST; `[id]/request` POST/DELETE; `[id]/claim-items` POST + `[id]/claim-items/[action_id]` POST/DELETE; `[id]/inbound/items` POST + `[id]/inbound/items/[action_id]` POST/DELETE; `[id]/inbound/shipping-method` POST + `[id]/inbound/shipping-method/[action_id]` POST/DELETE; `[id]/outbound/items` POST + `[id]/outbound/items/[action_id]` POST/DELETE; `[id]/outbound/shipping-method` POST + `[id]/outbound/shipping-method/[action_id]` POST/DELETE). All workflows wrapped directly from `@medusajs/core-flows` per spec §"wrap workflow directly when Medusa's workflow is enough" rule (no Mercur fork — confirm-claim's commission/payout layer goes through a subscriber on `OrderWorkflowEvents.CLAIM_CREATED`, NOT a workflow override; subscriber still deferred matching the exchange-side deferral). `helpers.ts` exports `validateSellerClaim` mirroring `validateSellerExchange` — resolves `:id` → `order_id` via Query Graph then defers to the existing `validateSellerOrder`. Vendor-side simpler response shape adopted (returns `{ order_preview }` or `{ claim: { id } }` only, no `remoteQuery` hydration of the full claim object — matches the exchanges-side convention). Audit-trail fields `created_by` on begin + `canceled_by` on cancel + `confirmed_by` on request stamped with `req.seller_context.seller_id` (vendor equivalent of admin's `actor_id`). Validators: 10 Zod schemas mirroring `AdminPostOrderClaimsReqSchema`, `AdminPostCancelClaimReqSchema`, `AdminPostClaimItemsReqSchema`, `AdminPostClaimsRequestItemsActionReqSchema` (reused as both `VendorPostClaimsItemsActionReq` for claim-items update AND `VendorPostClaimsRequestItemsReturnActionReq` for inbound update — same shape with `quantity?/internal_note?/reason_id?/metadata?` per admin), `AdminPostClaimsRequestReturnItemsReqSchema`, `AdminPostClaimsAddItemsReqSchema`, `AdminPostClaimsItemsActionReqSchema` (outbound add-item update shape), `AdminPostClaimsShippingReqSchema`, `AdminPostClaimsShippingActionReqSchema`. `vendorClaimsMiddlewares` wired into `packages/core/src/api/vendor/middlewares.ts` between `vendorCampaignsMiddlewares` and `vendorCollectionsMiddlewares`. Build 9/9 green (58.5s); oxlint clean on every touched file (`packages/core/src/api/vendor/claims/` + `middlewares.ts`, exit code 0). Integration suite at `integration-tests/http/order/vendor/order-claim.spec.ts` still deferred (matches exchange-side pattern from slice 2 — UI hasn't shipped yet so the runtime path will be exercised by the test suite alongside the UI port). Session (q): closed the two Edit Order deferrals from Session (p). (1) Active-edit banner — ported admin's `order-active-edit-section/` to `packages/vendor/src/pages/orders/[id]/_components/order-active-edit-section/` (and `index.ts` barrel). Diffs `preview.items` against `order.items` to bucket entries into Added (preview entries missing from original, or original.qty < preview.qty) and Removed (original.qty > preview.qty); renders the striped banner shell `(-m-4 mb-1 border-b border-l p-4` + `repeating-linear-gradient` background to match admin's frosted look), `<Container className="flex items-center justify-between p-0">` with `divide-y divide-dashed` rows for the panel header (`ExclamationCircleSolid` + `t("orders.edits.panel.title{,Pending}")`), the Added rows, the Removed rows, and the footer strip (`bg-ui-bg-subtle rounded-b-xl px-4 py-4`) whose left CTA is `Continue edit` when `order_change.status === "pending"` else `Force confirm` (calling `useConfirmOrderEdit`), with `Cancel` (calling `useCancelOrderEdit`) on the right. Visibility: `if (!orderPreview || change?.change_type !== "edit") return null` — so the banner is inert for return / exchange / claim changes, only fires on `edit` change_type, matching the spec §"Edit Order" trigger. Mounted as the **first child of TwoColumnPage.Main** in `order-detail-page.tsx` (above OrderGeneralSection) so it renders above the order header per Figma; added to the page's compound exports as `MainActiveEditSection`. All i18n keys (`orders.edits.panel.title{,Pending}` / `labels.added` / `labels.removed` / `actions.{forceConfirm,continueEdit,cancel}`) were already in `en.json` — no translation churn needed. `data-testid` ids on banner shell + 3 buttons (`order-active-edit-section`, `order-active-edit-continue`, `order-active-edit-force-confirm`, `order-active-edit-cancel`). (2) Add-items variant picker — ported admin's `add-order-edit-items-table/` 1:1 to `packages/vendor/src/pages/orders/[id]/edit/_components/add-order-edit-items-table/` (5 files: `add-order-edit-items-table.tsx`, `use-order-edit-item-table-columns.tsx`, `use-order-edit-item-table-filters.tsx`, `use-order-edit-item-table-query.tsx`, `index.ts`). Swapped admin's `useVariants` for vendor's `@hooks/api/product-variants::useVariants` (calls `sdk.vendor.productVariants.query` — same `*inventory_items.inventory.location_levels,+inventory_quantity` field tree). Same `_DataTable` + `useDataTable` shell, `PAGE_SIZE=50`, `PREFIX="rit"`, same Filter/OrderBy shape. Columns: `select` checkbox + `product` (ProductCell from `@components/table/table-cells/product/product-cell`) + `sku` + `title`. Wired into the edit modal via a new `AddItemsTrigger` helper at the bottom of `pages/orders/[id]/edit/index.tsx` that renders a `<StackedFocusModal id="order-edit-add-items">` triggered from the `Current items` section header's right slot — admin uses the same StackedFocusModal pattern; selected variants flow through `useAddOrderEditItems` (one call per save with `items: [{ variant_id, quantity: 1 }, …]`) and surface in a new `Added items` section that displays preview items not present in `order.items`. Modal header copy `t("orders.edits.addItems")` ("Add items"); body copy `t("orders.edits.addItemsDescription")` — both keys pre-existed in en.json. `data-testid` ids on trigger / save / cancel / per-added-item row (`edit-add-items-trigger`, `edit-add-items-save`, `edit-add-items-cancel`, `edit-added-item-${id}`). Build 9/9 green (31.7s, cached except vendor); oxlint clean on every touched file (0 errors / 0 warnings). With this session, the Edit Order slice §"Edit Order" of the spec drops to a single residual item — the Activity timeline entry for "Order edit #N requested" — which is gated on mounting the dead `OrderActivitySection` and adding the corresponding generator rule (separate slice — Activity timeline is its own §"cross-cutting" deferral). Session (p): closed the Order Edit slice end-to-end. Three deliverables: (1) `packages/core/src/subscribers/order-edit-confirmed.ts` listens on `OrderEditWorkflowEvents.CONFIRMED` and runs `refreshOrderCommissionLinesWorkflow({ order_ids: [event.data.order_id] })` so commission lines reflect the new totals after a seller confirms an edit. Pattern matches the existing `payout-webhook.ts` subscriber. Payout-queue delta still deferred — owner of the payout module needs to confirm the exact entry point (spec §"Workflow-override checklist" lines ~1216-1220). (2) `integration-tests/http/order/vendor/order-edit.spec.ts` — 11 cases covering begin/cancel/items/request/confirm/shipping-method with seller-scope guards on every sub-route. Reuses the offer-based seeding from `order-mark-as-paid.spec.ts` (same `seedSellerOfferWithShipping` + `completeCartCheckout` shape). Runs green in 43.3s. (3) Edit Order UI scaffold: kebab entry in `OrderGeneralSection` (`PencilSquare` icon, disabled on canceled orders), route `/orders/:id/edit` registered in `get-route-map.tsx` after the refund entry, `RouteFocusModal` at `pages/orders/[id]/edit/index.tsx` that initiates a draft via `useCreateOrderEdit` on mount, exposes a qty stepper per original line item (calls `useUpdateOrderEditOriginalItem` per change — qty=0 removes), and walks the draft through `useRequestOrderEdit` → `useConfirmOrderEdit` on submit. Cancel button calls `useCancelOrderEdit` and navs back. Active-change guard: if `preview.order_change` exists but `change_type !== "edit"`, the modal redirects with `orders.edits.activeChangeError`. New file `hooks/api/order-edits.tsx` exposes the seven hooks (`useCreateOrderEdit` / `useCancelOrderEdit` / `useRequestOrderEdit` / `useConfirmOrderEdit` / `useAddOrderEditItems` / `useUpdateOrderEditAddedItem` / `useRemoveOrderEditAddedItem` / `useUpdateOrderEditOriginalItem`) calling `sdk.vendor.orderEdits.*` (route map already in core's `.mercur/routes.d.ts`). Build 9/9 green (55.6s); oxlint clean across subscriber, hooks, modal, kebab, and route registration (0 errors / 0 warnings). v1 deliberately ships without the variant-picker "Add new items" table — that's a separate port from admin's `add-order-edit-items-table` folder and is deferred to the next session along with the "Order edit requested" banner above the order header (`active-order-edit-section/` per spec §"Order detail — sections"). Session (o): completed `/vendor/order-edits` tree. Six new sub-routes ported 1:1 from Medusa admin: `POST :id/items`, `POST :id/items/:action_id`, `DELETE :id/items/:action_id`, `POST :id/items/item/:item_id`, `POST :id/shipping-method`, `POST :id/shipping-method/:action_id`, `DELETE :id/shipping-method/:action_id`. All `:id` params remain the **order_id** per the Medusa admin convention surfaced in session (n) — `:action_id` / `:item_id` are passed to the workflows separately. Seller-scope therefore stays on the simpler `assertSellerOwnsOrderInParam` (no `validateSellerOrderEdit` hop needed). Five new zod validators added to `validators.ts` mirroring admin's `AdminPostOrderEditsAddItemsReqSchema`, `AdminPostOrderEditsItemsActionReqSchema`, `AdminPostOrderEditsUpdateItemQuantityReqSchema`, `AdminPostOrderEditsShippingReqSchema`, `AdminPostOrderEditsShippingActionReqSchema`. Workflows wrapped directly from `@medusajs/core-flows` (`orderEditAddNewItemWorkflow`, `updateOrderEditAddItemWorkflow`, `removeItemOrderEditActionWorkflow`, `orderEditUpdateItemQuantityWorkflow`, `createOrderEditShippingMethodWorkflow`, `updateOrderEditShippingMethodWorkflow`, `removeOrderEditShippingMethodWorkflow`). Build 9/9 green; oxlint clean 0/0 across all 12 files in the tree. With this, the full Order Edit backend surface from spec §0 is shipped — only the subscriber + integration suite remain. Session (n): vendor `/vendor/order-edits` backend skeleton landed — `POST /vendor/order-edits`, `DELETE /vendor/order-edits/:id`, `POST /vendor/order-edits/:id/request`, `POST /vendor/order-edits/:id/confirm`. Mirrors Medusa admin `/admin/order-edits` exactly (segment-for-segment, HTTP method for HTTP method) per the spec's "Route convention — non-negotiable" rule, so the typed-client route map can be shared. Critical correction vs. the spec's initial sketch: the `:id` path param on the sub-routes is the **order_id**, not an `order_change.id` — confirmed by reading Medusa admin's `/admin/order-edits/[id]/route.ts` + `/admin/order-edits/[id]/request/route.ts` + `/admin/order-edits/[id]/confirm/route.ts`, each of which threads `id` directly into the workflow input as `order_id`. The `validateSellerOrderEdit` helper (added speculatively per the spec) is therefore not needed by the live routes — the simpler `validateSellerOrder` already in tree is sufficient. Helper kept in `helpers.ts` since the spec calls for it and the items + shipping-method sub-routes (deferred this session) DO key on `order_change.id`. New files: `packages/core/src/api/vendor/order-edits/{helpers.ts,validators.ts,middlewares.ts,route.ts,[id]/route.ts,[id]/request/route.ts,[id]/confirm/route.ts}`. Wired into `packages/core/src/api/vendor/middlewares.ts`. Workflows wrapped directly from `@medusajs/core-flows` (`beginOrderEditOrderWorkflow`, `cancelBeginOrderEditWorkflow`, `requestOrderEditRequestWorkflow`, `confirmOrderEditRequestWorkflow`) — no Mercur fork per spec §"Workflow-override checklist". `requested_by` / `confirmed_by` audit-trail fields stamped with `req.seller_context.seller_id`, matching the existing returns confirm-request pattern. Build 9/9 green; oxlint clean (0/0). Sub-routes still pending: `/:id/items`, `/:id/items/:action_id` (POST/DELETE), `/:id/items/item/:item_id`, `/:id/shipping-method`, `/:id/shipping-method/:action_id` (POST/DELETE) — those key on `order_change.id` and need a query-graph hop for seller-scope (via the helper added this session). Session (m): Create Shipment form — fixed three drift items found while sweeping §6. (1) The only visible input was labeled `Tracking URL` but bound to `labels.${i}.tracking_number` — bug carried over from initial scaffolding. Replaced the single-field render with a three-column `grid grid-cols-1 gap-3 md:grid-cols-3` row exposing `tracking_number` (required, label `orders.shipment.trackingNumber`), `tracking_url` (optional, with the existing placeholder), and `label_url` (optional, new). Each field carries a `data-testid` (`shipment-tracking-number-${i}`, `-url-${i}`, `label-url-${i}`). (2) `handleSubmit` was hardcoding `tracking_url: "#"` and `label_url: "#"` — replaced with the actual form values (`l.tracking_url ?? ""`, `l.label_url ?? ""`); the backend validator treats both as non-optional strings, so empty-string passes through when the user skipped the URL. (3) The `Add tracking URL` button was missing `size="small"` per §6 finding from session (l); patched + renamed to `orders.shipment.addTracking` (an i18n key that already exists alongside `addTrackingUrl`) since it now adds a tracking row, not just a URL. Build 9/9 green; oxlint clean on the touched file (0 warnings / 0 errors). Session (l): polish + §6 partial visual sweep. Create Return modal — misleading no-items-selected toast (`t("orders.returns.create")` → "Create Return") replaced with a proper error key `t("orders.returns.noItemsSelected")` ("Select at least one item to return."); Confirm button now `disabled={!ready || !hasSelection}` so the error path is unreachable for the empty-selection case. §6 visual sweep on `OrderFulfillmentSection`: all three CTA buttons (`Fulfill items`, `Mark as delivered/picked up`, `Mark as shipped`) were missing `size="small"` per the spec's design rule "Buttons inside compact toolbars and footers: `size='small'`" — patched. No structural issues found: `Container` shells use `divide-y p-0`, header rows use `flex items-center justify-between px-6 py-4` with `<Heading>` + status badges + ActionMenu cluster, `bg-ui-bg-subtle rounded-b-xl` footer strip on each fulfillment card aligns with Figma. Build 9/9 green; oxlint clean on touched files (1 carried-over intentional `no-await-in-loop` warning). Session (k): Create Return modal — Location and Return shipping dropdowns wired. Both render as card-shaped strips (`bg-ui-bg-component shadow-elevation-card-rest rounded-lg p-3`) below the items list and above the notify switch. Location `Select` is sourced from `useStockLocations`; Return shipping `Select` is gated on location and sourced from `useShippingOptions({ stock_location_id })` (only fetches once a location is chosen). On submit `handleConfirm` now runs: optional `useUpdateReturn({ location_id })`, the existing per-item `useAddReturnItem` loop, optional `useAddReturnShipping({ shipping_option_id })`, then `useConfirmReturnRequest({ no_notification: !notify })`. Changing the location resets `shippingOptionId` so a stale option from a different location can't be confirmed. Backend already accepts `location_id` on `POST /vendor/returns/:id` (validator `VendorPostReturnsReq` + the request-finalize body) and `shipping_option_id` on `POST /vendor/returns/:id/shipping-method` (validator `VendorPostReturnsShippingReq`). Build 9/9 green; oxlint clean on touched files (same single intentional `no-await-in-loop` warning carried over from session j). Session (j): Create Return kebab entry + route + RouteFocusModal scaffold landed. Kebab `Create Return` action added in `OrderGeneralSection` (own group above the destructive Cancel group, `ArrowUturnLeft` icon, disabled when `order.canceled_at` is set), routed at `/orders/:id/returns/create` in `get-route-map.tsx` between the existing `allocate-items` and `returns/:return_id/receive` entries. The new modal at `pages/orders/[id]/returns/create/index.tsx` ports the Medusa-admin draft-and-mutate flow to vendor: `useInitiateReturn({ order_id })` fires once on mount (guarded by `IS_REQUEST_RUNNING` + `returnId` state for StrictMode + post-creation reruns) and stashes the draft id; the returnable items list (`fulfilled_quantity - return_requested_quantity - returned_quantity > 0`) renders inside a `RouteFocusModal` with per-item checkbox + qty stepper (capped at fulfilledRemaining), and a per-selected-item reason dropdown (from `useReturnReasons`) + note input. Send-notification switch wires `no_notification: !notify` into `useConfirmReturnRequest`. Cancel button + close calls `useCancelReturnRequest` so the order never gets stranded with an empty draft. Backend (`/vendor/returns` + `:id/request-items` + `:id/request` + `DELETE :id/request`) was already shipped; this lands the previously-missing UI entry. Build 9/9 green; oxlint clean on touched files (1 baseline `no-await-in-loop` warning on the sequential `addReturnItem` loop — intentional, all mutations target the same draft and must serialize). Session (d): inline ReturnBreakdown subrow landed under each line item in OrderSummarySection (Mercur port of Medusa admin's pattern). Renders "↳ Nx items return requested/received" with reason chip, note tooltip, and ReturnInfoPopover (id + requested_at + received_at). Damaged-quantity variant renders a second subrow above the standard one. Wired via `order.returns` (already in query-config from session a); added `*returns.items.reason` to vendor query-config so the chip resolves. Session (e): per-item `Allocated` / `Not allocated` StatusBadge wired via `useReservationItems({ line_item_id, limit })` and inline `Allocate items` CTA added to the Summary footer strip when any inventory-managed item is unfulfilled without a reservation. Session (f): activity timeline now emits the `return.created` / `return.canceled` / `return.received` rows — the rendering logic was already present but the source array was a stub. Wired through `order.returns` (already in query-config). Claims / exchanges still stubbed pending backend routes. Session (g): activity timeline payment events (`payment.awaiting` / `captured` / `canceled` / `refunded`) un-commented and wired against `order.payment_collections.flatMap(pc => pc.payments)` (already in query-config). Each event guarded on its respective timestamp; `awaiting` only emitted while a payment is neither captured nor canceled. Session (h): orders list search input enabled by passing `search` to `_DataTable` in `OrderListDataTable` — `useOrderTableQuery` already wires `q` into search params, and other vendor list pages (customers, regions) already use the same pattern. Build 9/9 green; lint clean on touched files. Session (i): §Verification checklist refreshed against shipped state across sessions (a)–(h) — boxes ticked / annotated as `[x]`, `[~]` (partial-with-divergence), or left `[ ]` (still pending), each with a one-line session pointer. No code changes.
 ---
 
 # SPEC-008 Vendor Orders — Figma vs Implementation Gap
@@ -1305,18 +1305,46 @@ panel **and** the running API.
      Graph then defers to `validateSellerOrder`. Six-case integration
      suite at `order-exchange.spec.ts` (6/6 pass, 26.3s) covers
      begin happy path + seller-scope rejections on every sub-route.
-   - [ ] `POST /vendor/claims` (+ `:id/cancel`, `:id/request`
+   - [x] `POST /vendor/claims` (+ `:id/cancel`, `:id/request`
      POST/DELETE, `:id/claim-items` (+ `:action_id` POST/DELETE),
      `:id/{inbound,outbound}/{items,shipping-method}` (+ `:action_id`
      POST/DELETE)); seller-scope guard enforced.
+     **Slice 3**: full tree shipped under
+     `packages/core/src/api/vendor/claims/` (15 route files +
+     `helpers.ts` + `middlewares.ts` + `validators.ts`). Same shape
+     as exchanges plus the claim-specific `claim-items` subtree.
+     Helper `validateSellerClaim` resolves `:id` → `order_id` via
+     Query Graph then defers to `validateSellerOrder`. Workflows
+     wrapped directly from `@medusajs/core-flows`
+     (`beginClaimOrderWorkflow`, `cancelOrderClaimWorkflow`,
+     `confirmClaimRequestWorkflow`, `cancelBeginOrderClaimWorkflow`,
+     `orderClaimItemWorkflow`, `updateClaimItemWorkflow`,
+     `removeItemClaimActionWorkflow`,
+     `orderClaimRequestItemReturnWorkflow`,
+     `updateRequestItemReturnWorkflow`,
+     `removeItemReturnActionWorkflow`,
+     `createClaimShippingMethodWorkflow`,
+     `updateReturnShippingMethodWorkflow`,
+     `removeClaimShippingMethodWorkflow`,
+     `orderClaimAddNewItemWorkflow`,
+     `updateClaimAddItemWorkflow`,
+     `removeAddItemClaimActionWorkflow`,
+     `updateClaimShippingMethodWorkflow`). Integration suite shipped
+     session (s) — 7/7 cases at
+     `integration-tests/http/order/vendor/order-claim.spec.ts`
+     (32.3s) covering begin happy path, begin scope rejection,
+     claim-items / inbound / outbound scope rejections,
+     DELETE /:id/request happy + scope rejection.
    - [x] `POST /vendor/payment-collections/:id/mark-as-paid`
      (top-level resource, mirrors
      `/admin/payment-collections/:id/mark-as-paid`) — landed
      session (a); 4/4 integration tests pass.
    - [~] Integration suites under `integration-tests/http/order/vendor/`
-     — `order-list-filters.spec.ts` (`has_open_request`, 3/3) and
-     `order-mark-as-paid.spec.ts` (4/4) shipped. Remaining suites
-     blocked on the unshipped backend routes above.
+     — `order-list-filters.spec.ts` (`has_open_request`, 3/3),
+     `order-mark-as-paid.spec.ts` (4/4), `order-edit.spec.ts` (11/11),
+     `order-exchange.spec.ts` (6/6), `order-claim.spec.ts` (7/7)
+     all shipped. `order-refund.spec.ts` still blocked on the UI-side
+     wiring polish, not on backend routes.
 
 1. **Orders list**
    - [x] Search input visible in the header row — session (h).
@@ -1336,13 +1364,17 @@ panel **and** the running API.
      so it only renders when the order is canceled; documented as
      deliberate non-drift in session (b).
    - [~] Kebab exposes Edit order, Create Return, Create Exchange,
-     Create Claim. **Create Return** kebab entry + route + focus
-     modal scaffold shipped session (j). Edit order / Create
-     Exchange / Create Claim still missing — blocked on §0 backend
-     routes.
+     Create Claim. **Edit order** shipped sessions (p) + (q).
+     **Create Return** kebab entry + route + focus modal scaffold
+     shipped session (j). **Create Exchange** + **Create Claim**
+     backends shipped sessions (slice 2 — exchanges) + (r — claims);
+     UI ports queued (Create Exchange UI = slice 4, Create Claim UI
+     = slice 5).
    - [~] Each line item can render a return/exchange/claim subrow
      with reason chip + tooltip — **returns** done session (d).
-     Claims / exchanges blocked on §0 backend gaps.
+     Claims / exchanges now unblocked at the backend (slices 2 + r);
+     UI subrow rendering queued alongside the Create Exchange / Create
+     Claim UI ports (slices 4 + 5).
    - [x] Allocate items CTA appears inline in Summary when items
      are not allocated — session (e).
    - [x] Outstanding action strip (`Copy payment link` / `Mark as
@@ -1352,7 +1384,8 @@ panel **and** the running API.
    - [x] Activity timeline mounted in the sidebar — session (b).
      **Plus**: return lifecycle rows wired session (f); payment
      awaiting/captured/canceled/refunded rows wired session (g).
-     Claim / exchange rows blocked on §0 backend.
+     Claim / exchange / edit-request generator rules queued for
+     slice 6 (mount + generators) now that backends are live.
    - [x] Metadata + JSON sections at the bottom of the main column
      — session (b).
 3. **Edit Order**
@@ -1416,6 +1449,217 @@ panel **and** the running API.
      row — session (e).
 
 ## Evidence
+
+### Session 2026-06-08 (s) — `/vendor/claims` integration suite + checklist hygiene
+
+Closes the deferred integration suite from session (r) and refreshes
+the §0 + §2 verification checklist now that exchange + claim
+backends are shipped.
+
+#### Files added
+
+- `integration-tests/http/order/vendor/order-claim.spec.ts` — 7
+  cases, 1:1 port of the slice-2 `order-exchange.spec.ts` shape with
+  one extra case for the claim-specific `claim-items` subtree:
+  1. `POST /vendor/claims` begins a claim on a seller-owned order
+     (`type: "refund"`, response carries `claim.id` matching `^claim_/`).
+  2. `POST /vendor/claims` rejects when caller does not own the
+     order (404 via `validateSellerOrder`).
+  3. `POST /vendor/claims/:id/claim-items` rejects from non-owning
+     seller (404 via `validateSellerClaim`).
+  4. `POST /vendor/claims/:id/inbound/items` rejects from non-owning
+     seller.
+  5. `POST /vendor/claims/:id/outbound/items` rejects from
+     non-owning seller (`type: "replace"` — required for the workflow
+     to accept outbound items).
+  6. `DELETE /vendor/claims/:id/request` cancels the in-flight claim
+     draft (200, `{ deleted: true }`).
+  7. `DELETE /vendor/claims/:id/request` rejects when caller does not
+     own claim.
+  Reuses the offer-based `seedSellerOfferWithShipping` +
+  `completeCartCheckout` shape from `order-exchange.spec.ts`.
+
+#### Files modified
+
+- `docs/specs/SPEC-008-vendor-orders-figma-gap.md` —
+  - §0 last bullet: refreshed Integration-suites summary from "Remaining
+    suites blocked on the unshipped backend routes above" →
+    explicit list of 5 shipped suites (filters 3/3, mark-as-paid 4/4,
+    order-edit 11/11, order-exchange 6/6, order-claim 7/7) plus
+    `order-refund.spec.ts` still pending on UI wiring polish.
+  - §0 claims bullet: flipped from "Integration suite deferred (carried
+    forward to follow-up)" → "Integration suite shipped session (s)
+    — 7/7 cases".
+  - §2 kebab bullet: was "Edit order / Create Exchange / Create
+    Claim still missing — blocked on §0 backend routes" → "Edit
+    order shipped sessions (p) + (q). Create Exchange + Create Claim
+    backends shipped sessions (slice 2) + (r); UI ports queued."
+  - §2 line-item subrow bullet: "Claims / exchanges blocked on §0
+    backend gaps" → "now unblocked at the backend; UI subrow
+    rendering queued alongside Create Exchange / Create Claim UI
+    ports (slices 4 + 5)".
+  - §2 activity-timeline bullet: "Claim / exchange rows blocked on §0
+    backend" → "queued for slice 6 (mount + generators) now that
+    backends are live".
+
+#### Verification
+
+- `bun run test:integration:http -- order-claim` — **7 passed, 7
+  total** in 32.3s. Force-exit message printed at the end is
+  expected (`@medusajs/test-utils` always prints it on success;
+  unrelated to test outcome).
+- `bunx oxlint integration-tests/http/order/vendor/order-claim.spec.ts`
+  — exit 0; one carried-over `no-await-in-loop` warning on the
+  shipping-options seeding loop, intentional (mirrors the
+  exchange-side and return-side suites — each call mutates the
+  same cart so they must serialize).
+- `bun run build` from repo root — **9 / 9 packages pass** in
+  62.2s.
+
+#### Still deferred (carried forward — next slice up: Create Exchange UI)
+
+- **Create Exchange UI** (slice 4) — port of admin's
+  `routes/orders/order-create-exchange/` into
+  `packages/vendor/src/pages/orders/[id]/exchanges/`. Kebab entry
+  in `OrderGeneralSection`, route registered, RouteFocusModal +
+  `useCreateExchange` draft-and-mutate hooks.
+- **Create Claim UI** (slice 5) — same shape, plus claim-items
+  picker + ClaimType selector.
+- **Activity timeline mount + edit-request generator** (slice 6) —
+  bring `OrderActivitySection` out of dead state, add the
+  `order_change.change_type === "edit"` → "Order edit #N requested"
+  rule, exchanges/claims rows.
+- **Vendor query-config additions** (slice 7) — surface
+  `*exchanges`, `*exchanges.return`, `*exchanges.additional_items`,
+  `*claims`, `*claims.return`, `*claims.additional_items`,
+  `*claims.claim_items` on `GET /vendor/orders/:id`.
+
+### Session 2026-06-08 (r) — vendor `/vendor/claims` backend tree
+
+Slice 3 of the §0 backend gap. Mirrors Medusa admin's `/admin/claims`
+tree exactly, plus the claim-specific `claim-items` subtree that
+exchanges (slice 2) didn't have.
+
+#### Files added (`packages/core/src/api/vendor/claims/`)
+
+- `validators.ts` — 10 Zod schemas: `VendorPostOrderClaimsReq`
+  (uses `ClaimType` enum + nullable `reason_id` per admin),
+  `VendorPostCancelClaimReq`, `VendorPostClaimItemsReq` (uses
+  `ClaimReason` enum on each item), `VendorPostClaimsItemsActionReq`
+  (qty/reason_id/internal_note update for claim-items + outbound),
+  `VendorPostClaimsRequestReturnItemsReq`,
+  `VendorPostClaimsRequestItemsReturnActionReq`,
+  `VendorPostClaimsAddItemsReq`, `VendorPostClaimsAddItemsActionReq`,
+  `VendorPostClaimsShippingReq`, `VendorPostClaimsShippingActionReq`.
+  All shapes are 1:1 ports of the corresponding
+  `AdminPost*ReqSchema` in admin's `claims/validators.ts`.
+- `helpers.ts` — `validateSellerClaim(scope, sellerId, claimId)`.
+  Query-graph `order_claim` → `order_id`, then defers to existing
+  `validateSellerOrder`. Mirror of `validateSellerExchange` from
+  slice 2.
+- `middlewares.ts` — exports `vendorClaimsMiddlewares`. Two guards
+  (`assertSellerOwnsOrderInBody` for create, `assertSellerOwnsClaimInParam`
+  for the 17 sub-routes). Mirrors `exchanges/middlewares.ts`.
+- `route.ts` — `POST /vendor/claims` → `beginClaimOrderWorkflow`.
+  Stamps `created_by: seller_context.seller_id` (vendor equivalent
+  of admin's `auth_context.actor_id`).
+- `[id]/cancel/route.ts` — `POST :id/cancel` →
+  `cancelOrderClaimWorkflow({ claim_id: id, canceled_by: seller_id })`.
+- `[id]/request/route.ts` — `POST :id/request` →
+  `confirmClaimRequestWorkflow({ claim_id: id, confirmed_by: seller_id })`;
+  `DELETE :id/request` → `cancelBeginOrderClaimWorkflow({ claim_id: id })`.
+  Response shape simplified to `{ order_preview }` on POST,
+  `{ id, object: "claim", deleted: true }` on DELETE — admin
+  additionally hydrates the full claim + return via
+  `remoteQuery`, but vendor doesn't need that surface (consumers
+  read the order detail separately).
+- `[id]/claim-items/route.ts` — `POST :id/claim-items` →
+  `orderClaimItemWorkflow`.
+- `[id]/claim-items/[action_id]/route.ts` —
+  `POST :id/claim-items/:action_id` → `updateClaimItemWorkflow`;
+  `DELETE :id/claim-items/:action_id` → `removeItemClaimActionWorkflow`.
+- `[id]/inbound/items/route.ts` — `POST :id/inbound/items` →
+  `orderClaimRequestItemReturnWorkflow`. Looks up the claim's
+  `return_id` via Query Graph and threads it into the workflow
+  input (admin pattern).
+- `[id]/inbound/items/[action_id]/route.ts` —
+  `POST :id/inbound/items/:action_id` →
+  `updateRequestItemReturnWorkflow`;
+  `DELETE :id/inbound/items/:action_id` →
+  `removeItemReturnActionWorkflow`. Both look up
+  `claim.return_id` before threading into workflow input.
+- `[id]/inbound/shipping-method/route.ts` —
+  `POST :id/inbound/shipping-method` →
+  `createClaimShippingMethodWorkflow({ ...body, return_id, claim_id })`.
+- `[id]/inbound/shipping-method/[action_id]/route.ts` —
+  `POST :id/inbound/shipping-method/:action_id` →
+  `updateReturnShippingMethodWorkflow({ data, return_id, action_id })`;
+  `DELETE :id/inbound/shipping-method/:action_id` →
+  `removeClaimShippingMethodWorkflow({ claim_id, action_id })`.
+- `[id]/outbound/items/route.ts` — `POST :id/outbound/items` →
+  `orderClaimAddNewItemWorkflow`.
+- `[id]/outbound/items/[action_id]/route.ts` —
+  `POST :id/outbound/items/:action_id` →
+  `updateClaimAddItemWorkflow`;
+  `DELETE :id/outbound/items/:action_id` →
+  `removeAddItemClaimActionWorkflow`.
+- `[id]/outbound/shipping-method/route.ts` —
+  `POST :id/outbound/shipping-method` →
+  `createClaimShippingMethodWorkflow({ ...body, claim_id })`.
+- `[id]/outbound/shipping-method/[action_id]/route.ts` —
+  `POST :id/outbound/shipping-method/:action_id` →
+  `updateClaimShippingMethodWorkflow`;
+  `DELETE :id/outbound/shipping-method/:action_id` →
+  `removeClaimShippingMethodWorkflow`.
+
+#### Files modified
+
+- `packages/core/src/api/vendor/middlewares.ts` — added
+  `vendorClaimsMiddlewares` import + spread between
+  `vendorCampaignsMiddlewares` and `vendorCollectionsMiddlewares`
+  (alphabetical between Campaigns and Collections).
+
+#### Why a simpler response shape
+
+Admin's claim routes hydrate the full `order_claim` (plus
+`order_return` when applicable) via `remoteQueryObjectFromString`
+on every sub-route. Vendor follows the slice 2 (exchanges)
+convention and returns only `{ order_preview }` (or `{ claim }` for
+cancel) — consumers re-fetch the order detail separately via
+`GET /vendor/orders/:id` which already exposes the claim/return
+relations. This keeps the vendor handlers ~30 lines vs admin's
+~85 lines and avoids the `remoteQuery` dependency in every file.
+
+#### What's NOT in this slice (deferred follow-up)
+
+- **Integration suite** at
+  `integration-tests/http/order/vendor/order-claim.spec.ts`. Matches
+  the exchange-side deferral from slice 2 — the suite will land
+  alongside the UI port in a later slice, when the runtime path
+  is exercisable through a vendor user flow.
+- **Subscriber** on `OrderWorkflowEvents.CLAIM_CREATED` (spec
+  §"Workflow-override checklist" lines ~1140-1217). Layers in
+  commission recalc + payout delta on confirm. Independent of the
+  route surface — can land in any session. Same subscriber pattern
+  as the `order-edit-confirmed` subscriber that landed in
+  Session (p) on the edit side.
+- **UI port** (Figma "Create Claim" focus modal at
+  `y=24626`). Blocked until this backend slice lands, which it
+  now does — the next session can port admin's
+  `routes/orders/order-create-claim/` into
+  `packages/vendor/src/pages/orders/[id]/claims/` per the spec's
+  porting checklist.
+
+#### Verification
+
+- `bun run build` from repo root — **9 / 9 packages pass** in 58.5s
+  (`@mercurjs/core` recompiled with 15 new route files; codegen
+  regenerated the route map; `@mercurjs/admin` + `@mercurjs/vendor`
+  rebuilt against the regenerated DTS).
+- `bunx oxlint packages/core/src/api/vendor/claims/ packages/core/src/api/vendor/middlewares.ts`
+  — exit code 0, no warnings, no errors.
+- No integration run this session — the suite is deferred (see
+  above).
 
 ### Session 2026-06-05 (o) — vendor `/vendor/order-edits` items + shipping-method sub-routes
 
