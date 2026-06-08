@@ -30,10 +30,14 @@ flock -n 9 || { echo "Another deploy is already running"; exit 1; }
 
 log() { echo "[$(date +'%F %T')] $*"; }
 
-# 1. Pull upstream
+# 1. Pull upstream.
+#    Use an explicit refspec so the remote-tracking ref always updates.
+#    Plain `git fetch origin <branch>` relies on remote.origin.fetch being
+#    configured; on this VPS it isn't, so the loose ref stayed stuck and
+#    `reset --hard origin/$BRANCH` landed on a stale commit.
 log "Fetching $BRANCH"
 cd "$SOURCE_DIR"
-git fetch --prune origin "$BRANCH"
+git fetch --force origin "+$BRANCH:refs/remotes/origin/$BRANCH"
 git reset --hard "origin/$BRANCH"
 log "Now at $(git rev-parse --short HEAD) — $(git log -1 --pretty=%s)"
 

@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@mercurjs/admin": "2.2.0-canary.7",
-    "@acme/api": "*"
+    "@acme/api": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.10.1"
