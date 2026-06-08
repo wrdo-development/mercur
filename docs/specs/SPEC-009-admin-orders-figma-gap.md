@@ -4,7 +4,7 @@ canonical: false
 priority: 2
 area: admin/orders
 created: 2026-06-05
-last_updated: 2026-06-05
+last_updated: 2026-06-08
 ---
 
 # SPEC-009 Admin Orders — Figma vs Implementation Gap
@@ -199,16 +199,15 @@ Status legend:
     `Seller`, `Sales channel`, `Status`, `Created`, `Updated`.
   - Figma filters: `Payment`, `Fulfillment`, `Request`, `Sales
     channel`, `Created`, `Updated`.
-  - Missing: `Payment status`, `Fulfillment status`, `Request`
-    (`has_open_request`).
+  - Missing: `Request` (`has_open_request`) — backend ported; admin UI
+    still needs to expose it as a filter chip.
   - Extra in code: `Customer`, `Seller`, `Status` (order status, not
     payment/fulfillment).
-  - The vendor spec (SPEC-008 §"Filter gap") reverted
-    `payment_status` / `fulfillment_status` after a complex post-filter
-    didn't pay off. Decide whether to (a) ship the same simpler shape
-    here, (b) pursue an aggregated-status link filter on the
-    `/admin/order-groups` route, or (c) document admin as intentionally
-    using the operator's preferred filters (Customer / Seller / Status).
+  - `Payment status` / `Fulfillment status` are intentionally **out of
+    scope** for admin (same decision as vendor — see SPEC-008 session
+    (c)): aggregation lives in JS, link-filter approach didn't pay off.
+    Document as a deliberate non-drift; `Customer` / `Seller` / `Status`
+    stay as admin's chosen filter set.
 - **Sort menu** — Exists. `orderBy=[display_id, created_at,
   updated_at]` matches the Figma sort popover entries.
 - **Save view dropdown** — **Mercur addition**. Code renders
@@ -542,7 +541,7 @@ stated otherwise.
 
 | Endpoint | Notes |
 | --- | --- |
-| `GET /admin/orders` | `route.ts` re-exports Medusa's handler; `validators.ts` extends `createFindParams` with `seller_id`, `total`, plus the standard operator-map filters |
+| `GET /admin/orders` | `route.ts` re-exports Medusa's handler; `validators.ts` extends `createFindParams` with `seller_id`, `total`, `has_open_request`, plus the standard operator-map filters. Middleware chain: `maybeApplySellerOrderFilter` → `applyHasOpenRequestFilter` (`packages/core/src/api/admin/orders/apply-has-open-request-filter.ts`) |
 | `GET /admin/orders/:id/order-group` | `[id]/order-group/route.ts` — returns the parent `OrderGroup` for cross-vendor sibling lookup |
 | `GET /admin/order-groups` | `order-groups/route.ts` — list endpoint for the OrderGroup-pivot list page |
 | `GET /admin/order-groups/:id` | `order-groups/[id]/route.ts` — detail endpoint for a group |
@@ -566,16 +565,20 @@ Run through this list and add what's missing:
   `DEFAULT_RELATIONS` (line 33-59).
 - **`seller_id` filter on `/admin/orders`** — Exists. Validator widens
   to `z.union([z.string(), z.array(z.string())])` at line 23.
-- **`has_open_request` filter** — Missing. Same gap as vendor before
-  SPEC-008 session (a). Decide whether to port the
-  `apply-has-open-request-filter.ts` middleware (already shipped on
-  vendor) to admin. Path:
-  `packages/core/src/api/admin/orders/apply-has-open-request-filter.ts`.
-- **`payment_status` / `fulfillment_status` on the list** — Same status
-  as vendor: validator is permissive (`createOperatorMap()`), but the
+- **`has_open_request` filter** — **Done.** Ported from vendor at
+  `packages/core/src/api/admin/orders/apply-has-open-request-filter.ts`
+  and wired into the `/admin/orders` middleware chain after
+  `maybeApplySellerOrderFilter`. The admin variant reads
+  `req.query.has_open_request` directly (Medusa owns the
+  `validateAndTransformQuery` for this route) rather than going through
+  Mercur's validator, matching the existing `seller_id` pattern.
+- **`payment_status` / `fulfillment_status` on the list** — **Out of
+  scope.** Validator is permissive (`createOperatorMap()`) but the
   underlying workflow aggregates these in JS, so they don't filter
-  reliably. See SPEC-008 §"Filter gap" + session (c) for the
-  aggregated-status link-filter pattern that was tried and reverted.
+  reliably. SPEC-008 session (c) explored an aggregated-status
+  link-filter on vendor and reverted it for not paying off. Admin
+  inherits the same decision: do not surface these filters until/unless
+  the aggregation moves to SQL. Document as a deliberate non-drift.
 - **`/admin/order-groups` filters** — Verify what the list page
   filters need. Today the filter set is Customer / Seller / Sales
   channel / Status / Created / Updated; confirm each is wired through
@@ -615,15 +618,16 @@ panel **and** the running API.
    - [ ] `GET /admin/orders/:id` `DEFAULT_FIELDS` includes
      `*payment_collections.payment_sessions` (needed for the "Copy
      payment link" CTA in §"Handle Positive Outstanding Amounts").
-   - [ ] `GET /admin/orders` accepts a `has_open_request` filter
-     (port `apply-has-open-request-filter.ts` from vendor — see
-     SPEC-008 §"Filter gap").
+   - [x] `GET /admin/orders` accepts a `has_open_request` filter
+     (ported from vendor; see
+     `packages/core/src/api/admin/orders/apply-has-open-request-filter.ts`
+     and the middleware chain in `admin/middlewares.ts`).
    - [ ] `GET /admin/order-groups` returns the fields the list page
      reads (`seller_count`, sub-order list with seller name, payment +
      fulfillment status, total).
-   - [ ] Verify whether `payment_status` / `fulfillment_status`
-     filters are surfaced (and whether they should be — see
-     SPEC-008 session (c) for the aggregated-status revert).
+   - [x] `payment_status` / `fulfillment_status` filters — out of
+     scope. Aggregation is JS-side, link-filter approach reverted in
+     SPEC-008 session (c); admin inherits the same decision.
 
 1. **Orders list**
    - [ ] Search input visible in the header row.
