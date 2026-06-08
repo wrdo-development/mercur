@@ -1591,6 +1591,10 @@
       "location": "Return location",
       "locationHint": "Choose which location you want the returned items to ship to.",
       "locationPlaceholder": "Choose a location",
+      "inboundShipping": "Return shipping (Optional)",
+      "inboundShippingHint": "Choose which method to use for the inbound shipment.",
+      "inboundShippingPlaceholder": "Choose a shipping option",
+      "inboundShippingLockedPlaceholder": "Pick a location first",
       "remainingQty": "{{count}} returnable",
       "noteHint": "Add an internal note for this exchange (visible only to your team).",
       "toast": {

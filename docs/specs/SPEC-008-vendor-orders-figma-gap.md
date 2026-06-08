@@ -1469,6 +1469,67 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (cc) — Slice 4d: Exchange Return-shipping picker + hooks
+
+Adds the two missing inbound + outbound shipping-method hooks and
+wires the inbound Return-shipping picker into Create Exchange.
+Together with slice 4c (Location), Create Exchange now covers
+inbound items + outbound items + location + inbound shipping —
+4 of 5 Figma flow blocks (the 5th being per-row reason on inbound).
+
+#### Files modified
+
+- `packages/vendor/src/hooks/api/exchanges.tsx`:
+  - Added `useAddExchangeInboundShipping(exchangeId, orderId, opts?)`
+    — `POST /vendor/exchanges/:id/inbound/shipping-method`.
+  - Added `useAddExchangeOutboundShipping(exchangeId, orderId, opts?)`
+    — `POST /vendor/exchanges/:id/outbound/shipping-method`. Wired
+    for completeness; not yet consumed by the modal.
+
+- `packages/vendor/src/pages/orders/[id]/exchanges/create/index.tsx`:
+  - Imported `useAddExchangeInboundShipping`, `useShippingOptions`.
+  - Added `shippingOptionId` state.
+  - Added `useShippingOptions({ stock_location_id: locationId })`
+    gated on `!!locationId` via `enabled` flag — no fetch before
+    the user picks a location (matches Create Return session k
+    pattern).
+  - Location dropdown's `onValueChange` now resets `shippingOptionId`
+    so a stale option from a different location can't survive the
+    re-source.
+  - Added a Return shipping `<Select>` card below the Location card
+    (label `orders.exchanges.inboundShipping` ("Return shipping
+    (Optional)")) — disabled until a location is chosen; placeholder
+    flips between "Choose a shipping option" and "Pick a location
+    first".
+  - On Confirm: after the inbound items add, calls
+    `addInboundShipping({ shipping_option_id })` when a shipping
+    option is selected. `isAddingShipping` added to the button's
+    `isLoading` state.
+
+- `packages/vendor/src/i18n/translations/en.json`:
+  - Added 4 keys under `orders.exchanges`:
+    - `inboundShipping` ("Return shipping (Optional)")
+    - `inboundShippingHint` ("Choose which method to use for the
+      inbound shipment.")
+    - `inboundShippingPlaceholder` ("Choose a shipping option")
+    - `inboundShippingLockedPlaceholder` ("Pick a location first")
+
+#### What's NOT in this slice
+
+- **Per-row reason / note on inbound items** — last remaining Figma
+  block in Create Exchange. Backend accepts `reason_id` and
+  `internal_note` per item; UI just needs per-row expandable rows.
+- **Outbound shipping picker** in the UI — hook exists
+  (`useAddExchangeOutboundShipping`) but not wired into the modal
+  yet. Less common usage path; deferred.
+- **Update / remove existing shipping-method actions** — only POST
+  is exposed; PUT / DELETE on `:action_id` deferred until needed.
+
+#### Verification
+
+- `bun run build` — 9/9 packages green in 32.0s.
+- `bunx oxlint` on touched files — exit 0, no warnings, no errors.
+
 ### Session 2026-06-08 (bb) — Slice 4c: Exchange Location picker
 
 Adds the Return Location dropdown to the Create Exchange modal —

@@ -256,3 +256,63 @@ export const useRemoveExchangeOutboundItem = (
     ...options,
   });
 };
+
+export const useAddExchangeInboundShipping = (
+  exchangeId: string,
+  orderId: string,
+  options?: UseMutationOptions<
+    InferClientOutput<
+      typeof sdk.vendor.exchanges.$id.inbound.shippingMethod.mutate
+    >,
+    ClientError,
+    Omit<
+      InferClientInput<
+        typeof sdk.vendor.exchanges.$id.inbound.shippingMethod.mutate
+      >,
+      "$id"
+    >
+  >
+) => {
+  return useMutation({
+    mutationFn: (payload) =>
+      sdk.vendor.exchanges.$id.inbound.shippingMethod.mutate({
+        $id: exchangeId,
+        ...payload,
+      }),
+    onSuccess: (data, variables, context) => {
+      invalidateOrder(orderId);
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};
+
+export const useAddExchangeOutboundShipping = (
+  exchangeId: string,
+  orderId: string,
+  options?: UseMutationOptions<
+    InferClientOutput<
+      typeof sdk.vendor.exchanges.$id.outbound.shippingMethod.mutate
+    >,
+    ClientError,
+    Omit<
+      InferClientInput<
+        typeof sdk.vendor.exchanges.$id.outbound.shippingMethod.mutate
+      >,
+      "$id"
+    >
+  >
+) => {
+  return useMutation({
+    mutationFn: (payload) =>
+      sdk.vendor.exchanges.$id.outbound.shippingMethod.mutate({
+        $id: exchangeId,
+        ...payload,
+      }),
+    onSuccess: (data, variables, context) => {
+      invalidateOrder(orderId);
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};

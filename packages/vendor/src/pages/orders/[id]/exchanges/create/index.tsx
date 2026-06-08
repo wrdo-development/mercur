@@ -38,11 +38,13 @@ import {
 import { useOrder, useOrderPreview } from "@hooks/api/orders"
 import {
   useAddExchangeInboundItems,
+  useAddExchangeInboundShipping,
   useAddExchangeOutboundItems,
   useCancelExchangeBegin,
   useCreateExchange,
   useRequestExchange,
 } from "@hooks/api/exchanges"
+import { useShippingOptions } from "@hooks/api/shipping-options"
 import { useStockLocations } from "@hooks/api/stock-locations"
 
 import { AddOrderEditItemsTable } from "../../edit/_components/add-order-edit-items-table"
@@ -65,6 +67,7 @@ export const Component = () => {
   const [exchangeId, setExchangeId] = useState<string>("")
   const [internalNote, setInternalNote] = useState("")
   const [locationId, setLocationId] = useState<string>("")
+  const [shippingOptionId, setShippingOptionId] = useState<string>("")
   const [inboundQuantities, setInboundQuantities] = useState<
     Record<string, number>
   >({})
@@ -72,6 +75,10 @@ export const Component = () => {
   const [canceling, setCanceling] = useState(false)
 
   const { stock_locations: stockLocations = [] } = useStockLocations()
+  const { shipping_options: shippingOptions = [] } = useShippingOptions(
+    { stock_location_id: locationId },
+    { enabled: !!locationId }
+  )
 
   const { mutateAsync: createExchange } = useCreateExchange(orderId)
   const { mutateAsync: cancelBegin } = useCancelExchangeBegin(
@@ -86,6 +93,8 @@ export const Component = () => {
     useAddExchangeInboundItems(exchangeId, orderId)
   const { mutateAsync: addOutboundItems, isPending: isAddingOutbound } =
     useAddExchangeOutboundItems(exchangeId, orderId)
+  const { mutateAsync: addInboundShipping, isPending: isAddingShipping } =
+    useAddExchangeInboundShipping(exchangeId, orderId)
 
   useEffect(() => {
     async function run() {
@@ -185,6 +194,10 @@ export const Component = () => {
           items: inboundPayload,
           ...(locationId ? { location_id: locationId } : {}),
         })
+      }
+
+      if (shippingOptionId) {
+        await addInboundShipping({ shipping_option_id: shippingOptionId })
       }
 
       await requestExchange()
@@ -310,7 +323,10 @@ export const Component = () => {
               </Text>
               <Select
                 value={locationId}
-                onValueChange={(value) => setLocationId(value)}
+                onValueChange={(value) => {
+                  setLocationId(value)
+                  setShippingOptionId("")
+                }}
               >
                 <Select.Trigger
                   id="exchange-location"
@@ -324,6 +340,40 @@ export const Component = () => {
                   {stockLocations.map((loc: any) => (
                     <Select.Item key={loc.id} value={loc.id}>
                       {loc.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
+            </section>
+
+            <section className="bg-ui-bg-component shadow-elevation-card-rest flex flex-col gap-y-2 rounded-lg p-3">
+              <Label htmlFor="exchange-shipping" weight="plus">
+                {t("orders.exchanges.inboundShipping")}
+              </Label>
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                {t("orders.exchanges.inboundShippingHint")}
+              </Text>
+              <Select
+                value={shippingOptionId}
+                onValueChange={(value) => setShippingOptionId(value)}
+                disabled={!locationId}
+              >
+                <Select.Trigger
+                  id="exchange-shipping"
+                  data-testid="exchange-shipping-trigger"
+                >
+                  <Select.Value
+                    placeholder={
+                      locationId
+                        ? t("orders.exchanges.inboundShippingPlaceholder")
+                        : t("orders.exchanges.inboundShippingLockedPlaceholder")
+                    }
+                  />
+                </Select.Trigger>
+                <Select.Content>
+                  {(shippingOptions as any[]).map((opt) => (
+                    <Select.Item key={opt.id} value={opt.id}>
+                      {opt.name}
                     </Select.Item>
                   ))}
                 </Select.Content>
@@ -422,7 +472,9 @@ export const Component = () => {
           <Button
             size="small"
             onClick={handleConfirm}
-            isLoading={submitting || isAddingInbound}
+            isLoading={
+              submitting || isAddingInbound || isAddingShipping
+            }
             disabled={!exchangeId || canceling || !hasSelection}
             data-testid="exchange-confirm"
           >
