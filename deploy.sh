@@ -60,8 +60,9 @@ rsync -a --delete \
 # output that references route modules absent from the package; running real
 # codegen would just re-introduce the broken references. The Routes type is
 # only used for client-side type inference at build time — runtime unaffected.
+# packages/api's exports map points "./_generated" at routes.d.ts.
 mkdir -p "$DEPLOY_DIR/packages/api/.mercur/_generated"
-cat > "$DEPLOY_DIR/packages/api/.mercur/_generated/index.ts" <<'STUB'
+cat > "$DEPLOY_DIR/packages/api/.mercur/_generated/routes.d.ts" <<'STUB'
 // Stubbed at deploy time — see deploy.sh
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Routes = any
@@ -110,8 +111,14 @@ for v in ['MERCUR_BACKEND_URL', 'NODE_ENV']:
 with open('$DEPLOY_DIR/turbo.json', 'w') as f: json.dump(t, f, indent=2)
 "
 
-# 3. Install + build the workspace
+# 3. Install + build the workspace.
+#    Force the node-modules linker so packages land on disk where the
+#    rest of the toolchain (medusa CLI, tsc, vite) expects them. Without
+#    this, yarn berry defaults to PnP and loads everything out of
+#    .yarn/berry/cache/*.zip — medusa-cli then crashes with "cmd is not
+#    a function" and tsc can't find type roots like vite/client.
 cd "$DEPLOY_DIR"
+echo "nodeLinker: node-modules" > "$DEPLOY_DIR/.yarnrc.yml"
 log "yarn install (workspace)"
 yarn install >/tmp/mercur-yarn.log 2>&1 || { tail -n 40 /tmp/mercur-yarn.log; exit 1; }
 
