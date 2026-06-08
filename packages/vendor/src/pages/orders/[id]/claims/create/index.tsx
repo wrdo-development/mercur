@@ -44,6 +44,38 @@ import {
 
 import { AddOrderEditItemsTable } from "../../edit/_components/add-order-edit-items-table"
 
+// Narrow shape of `AdminOrderLineItem` actually read by this modal. The
+// upstream `HttpTypes.AdminOrderLineItem` doesn't surface `detail.*`
+// counters cleanly — describe the fields we read locally instead of
+// `as any`-ing through the typed hook output.
+type ClaimItem = {
+  id: string
+  title?: string
+  product_title?: string
+  quantity: number
+  variant?: { title?: string }
+  detail?: {
+    fulfilled_quantity?: number
+    return_requested_quantity?: number
+    returned_quantity?: number
+  }
+}
+
+// Discriminator workaround: `preview.order_change.claim_id` is present
+// when `change_type === "claim"` but `HttpTypes.AdminOrderChange`
+// doesn't expose a discriminated union. Read via a narrow type guard.
+const readClaimId = (change: unknown): string | undefined => {
+  if (
+    change &&
+    typeof change === "object" &&
+    "claim_id" in change &&
+    typeof (change as { claim_id?: unknown }).claim_id === "string"
+  ) {
+    return (change as { claim_id: string }).claim_id
+  }
+  return undefined
+}
+
 let IS_REQUEST_RUNNING = false
 
 type ClaimType = "refund" | "replace"
@@ -107,8 +139,10 @@ export const Component = () => {
           toast.error(t("orders.claims.activeChangeError"))
           return
         }
-        // @ts-expect-error — claim_id present when change_type is claim
-        setClaimId(preview.order_change.claim_id)
+        const existingClaimId = readClaimId(preview.order_change)
+        if (existingClaimId) {
+          setClaimId(existingClaimId)
+        }
         return
       }
 
@@ -138,18 +172,7 @@ export const Component = () => {
   }, [preview, orderId, claimId, createClaim, navigate, t])
 
   const claimableItems = useMemo(() => {
-    const items = ((order as any)?.items ?? []) as Array<{
-      id: string
-      title?: string
-      product_title?: string
-      quantity: number
-      variant?: { title?: string }
-      detail?: {
-        fulfilled_quantity?: number
-        return_requested_quantity?: number
-        returned_quantity?: number
-      }
-    }>
+    const items = (order?.items ?? []) as ClaimItem[]
     return items.filter((item) => {
       const detail = item.detail ?? {}
       const fulfilled = detail.fulfilled_quantity ?? 0
@@ -163,15 +186,9 @@ export const Component = () => {
     if (claimType !== "replace") {
       return []
     }
-    const previewItems = ((preview as any)?.items ?? []) as Array<{
-      id: string
-      title?: string
-      product_title?: string
-      quantity: number
-      variant?: { title?: string }
-    }>
+    const previewItems = (preview?.items ?? []) as ClaimItem[]
     const originalIds = new Set(
-      (((order as any)?.items ?? []) as Array<{ id: string }>).map((i) => i.id)
+      ((order?.items ?? []) as ClaimItem[]).map((i) => i.id)
     )
     return previewItems.filter((i) => !originalIds.has(i.id))
   }, [preview, order, claimType])

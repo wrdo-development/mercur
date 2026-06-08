@@ -1512,9 +1512,11 @@ follow-up, not a missing feature:
    covered indirectly by `order-mark-as-paid.spec.ts` (which
    captures payments via the same `seller_payment` link path) and
    visually by the Refund drawer. A dedicated refund suite would
-   need to first resolve a pre-existing seller_payment joiner
-   entity regression in the test container — unrelated to spec
-   scope.
+   need to first resolve a `seller_payment` joiner entity
+   regression in the test container — tracked at
+   **[#955](https://github.com/mercurjs/mercur/issues/955)** and
+   referenced by an inline TODO at
+   `packages/core/src/api/vendor/payments/helpers.ts:25`.
 3. **§1 Add filter Payment/Fulfillment chips** — intentionally
    dropped per §0 revert. Documented non-drift.
 4. **§1 Sales channel column** — Mercur addition, kept as

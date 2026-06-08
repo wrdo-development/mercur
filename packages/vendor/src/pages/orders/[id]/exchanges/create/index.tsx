@@ -50,6 +50,40 @@ import { useStockLocations } from "@hooks/api/stock-locations"
 
 import { AddOrderEditItemsTable } from "../../edit/_components/add-order-edit-items-table"
 
+// Narrow shape of `AdminOrderLineItem` actually read by this modal. The
+// upstream `HttpTypes.AdminOrderLineItem` doesn't surface `detail.*`
+// counters cleanly (they live on the related OrderItem row), so we
+// describe the fields we read locally rather than `as any`-ing through
+// the typed hook output.
+type ExchangeItem = {
+  id: string
+  title?: string
+  product_title?: string
+  quantity: number
+  variant?: { title?: string }
+  detail?: {
+    fulfilled_quantity?: number
+    return_requested_quantity?: number
+    returned_quantity?: number
+  }
+}
+
+// Discriminator workaround: `preview.order_change.exchange_id` is present
+// when `change_type === "exchange"` but `HttpTypes.AdminOrderChange`
+// doesn't expose a discriminated union. Read it via a narrow cast
+// instead of `@ts-expect-error`.
+const readExchangeId = (change: unknown): string | undefined => {
+  if (
+    change &&
+    typeof change === "object" &&
+    "exchange_id" in change &&
+    typeof (change as { exchange_id?: unknown }).exchange_id === "string"
+  ) {
+    return (change as { exchange_id: string }).exchange_id
+  }
+  return undefined
+}
+
 let IS_REQUEST_RUNNING = false
 
 export const Component = () => {
@@ -116,8 +150,10 @@ export const Component = () => {
           toast.error(t("orders.exchanges.activeChangeError"))
           return
         }
-        // @ts-expect-error — exchange_id present when change_type is exchange
-        setExchangeId(preview.order_change.exchange_id)
+        const existingExchangeId = readExchangeId(preview.order_change)
+        if (existingExchangeId) {
+          setExchangeId(existingExchangeId)
+        }
         return
       }
 
@@ -140,18 +176,7 @@ export const Component = () => {
   }, [preview, orderId, exchangeId, createExchange, navigate, t])
 
   const returnableItems = useMemo(() => {
-    const items = ((order as any)?.items ?? []) as Array<{
-      id: string
-      title?: string
-      product_title?: string
-      quantity: number
-      variant?: { title?: string }
-      detail?: {
-        fulfilled_quantity?: number
-        return_requested_quantity?: number
-        returned_quantity?: number
-      }
-    }>
+    const items = (order?.items ?? []) as ExchangeItem[]
     return items.filter((item) => {
       const detail = item.detail ?? {}
       const fulfilled = detail.fulfilled_quantity ?? 0
@@ -162,15 +187,9 @@ export const Component = () => {
   }, [order])
 
   const outboundItems = useMemo(() => {
-    const previewItems = ((preview as any)?.items ?? []) as Array<{
-      id: string
-      title?: string
-      product_title?: string
-      quantity: number
-      variant?: { title?: string }
-    }>
+    const previewItems = (preview?.items ?? []) as ExchangeItem[]
     const originalIds = new Set(
-      (((order as any)?.items ?? []) as Array<{ id: string }>).map((i) => i.id)
+      ((order?.items ?? []) as ExchangeItem[]).map((i) => i.id)
     )
     return previewItems.filter((i) => !originalIds.has(i.id))
   }, [preview, order])
@@ -352,7 +371,7 @@ export const Component = () => {
                               />
                             </Select.Trigger>
                             <Select.Content>
-                              {(returnReasons as any[]).map((r) => (
+                              {returnReasons.map((r) => (
                                 <Select.Item key={r.id} value={r.id}>
                                   {r.label ?? r.value}
                                 </Select.Item>
@@ -438,7 +457,7 @@ export const Component = () => {
                   />
                 </Select.Trigger>
                 <Select.Content>
-                  {(shippingOptions as any[]).map((opt) => (
+                  {shippingOptions.map((opt) => (
                     <Select.Item key={opt.id} value={opt.id}>
                       {opt.name}
                     </Select.Item>
