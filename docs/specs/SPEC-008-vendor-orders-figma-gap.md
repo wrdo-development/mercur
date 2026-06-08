@@ -1469,6 +1469,73 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (aa) — Slice 5b: Claim outbound variant picker
+
+Closes one of the §4 follow-up sub-slices flagged in session (x).
+Mirrors slice 4b (session z) exactly — same StackedFocusModal
+trigger, same reuse of `AddOrderEditItemsTable`, gated on
+`claimType === "replace"` (the only difference from 4b).
+
+#### Files modified
+
+- `packages/vendor/src/pages/orders/[id]/claims/create/index.tsx`:
+  - Imported `StackedFocusModal` + `useStackedModal` from
+    `@components/modals`.
+  - Imported `useAddClaimOutboundItems` (already in
+    `hooks/api/claims.tsx` from slice 5).
+  - Imported `AddOrderEditItemsTable` from
+    `../../edit/_components/add-order-edit-items-table` — reuses the
+    same generic variant table session (q) shipped for Edit Order
+    and slice 4b (session z) reused for Exchange.
+  - Added `outboundItems` memo: when `claimType === "replace"`,
+    derives items from `preview.items` not present in `order.items`
+    (items added via add-outbound-item actions). Returns `[]` when
+    `claimType === "refund"` so the section is empty/inactive.
+  - Relaxed `hasSelection` to also count outbound additions for the
+    Confirm button enablement.
+  - Added a new "Items to send" section between the claim-items
+    section and the internal-note section, conditional on
+    `claimType === "replace"`. Header includes an
+    `AddClaimOutboundItemsTrigger` button; body lists added outbound
+    items with `{quantity}x` display.
+  - Added `AddClaimOutboundItemsTrigger` component at the bottom of
+    the file. Wraps `StackedFocusModal` with id
+    `claim-add-outbound-items`, mounting `AddOrderEditItemsTable` in
+    the body and a Cancel / Save footer. On Save, calls
+    `addOutboundItems({ items: variantIds.map(v => ({ variant_id: v,
+    quantity: 1 })) })`, clears selection state, closes the stacked
+    modal. `data-testid` ids: `claim-add-outbound-trigger`, `-save`,
+    `-cancel`, `claim-outbound-item-${id}`.
+- `packages/vendor/src/i18n/translations/en.json`:
+  - Added 4 keys under `orders.claims` (sibling to `claimItems`):
+    - `outboundItems` ("Items to send")
+    - `noOutboundItems` ("No replacement items added yet.")
+    - `addOutboundItems` ("Add items")
+    - `addOutboundItemsDescription` ("Pick variants to send as
+      replacements for the claimed items.")
+
+#### What's NOT in this slice
+
+- **Per-row quantity edit / remove** on outbound items — hooks
+  `useUpdateClaimOutboundItem` would need adding to the existing
+  hook surface (only `useAddClaimOutboundItems` was created in slice
+  5; the variant-axis update/remove paths for outbound items can be
+  exposed in a follow-up).
+- **Inbound per-row reason dropdown** (uses `ClaimReason` enum) +
+  location/shipping pickers — separate scope; backend already
+  accepts these fields.
+- **Outbound shipping picker** — separate from outbound items.
+
+#### Verification
+
+- `bun run build` from repo root — 9/9 packages green in 32.7s
+  (mostly cached; `@mercurjs/vendor` recompiled).
+- `bunx oxlint packages/vendor/src/pages/orders/[id]/claims/create/index.tsx`
+  — exit 0, no warnings, no errors.
+- No headless UI run this session — the stacked-modal trigger
+  pattern is proven by the sibling Exchange (slice 4b) and Edit
+  Order (session q) modals.
+
 ### Session 2026-06-08 (z) — Slice 4b: Exchange outbound variant picker
 
 Closes one of the §4 follow-up sub-slices flagged in session (x).

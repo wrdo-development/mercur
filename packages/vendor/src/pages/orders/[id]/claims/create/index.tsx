@@ -8,11 +8,10 @@
 // `useCancelClaimBegin` (DELETE :id/request).
 //
 // ClaimType selector at the top: "refund" (no replacement shipment)
-// vs "replace" (with outbound shipment). Outbound variant picker is
-// deferred to a follow-up sub-slice — hooks
-// (`useAddClaimOutboundItems`, etc.) already exist in
-// `hooks/api/claims.tsx` so the picker can be wired without
-// revisiting the lifecycle code.
+// vs "replace" (with outbound shipment). When claimType === "replace",
+// an outbound variant picker is mounted via StackedFocusModal —
+// reuses the generic `AddOrderEditItemsTable` (same pattern as
+// session q's Edit Order picker and slice 4b's Exchange outbound).
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import {
@@ -27,14 +26,22 @@ import {
 } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 
-import { RouteFocusModal, useRouteModal } from "@components/modals"
+import {
+  RouteFocusModal,
+  StackedFocusModal,
+  useRouteModal,
+  useStackedModal,
+} from "@components/modals"
 import { useOrder, useOrderPreview } from "@hooks/api/orders"
 import {
   useAddClaimItems,
+  useAddClaimOutboundItems,
   useCancelClaimBegin,
   useCreateClaim,
   useRequestClaim,
 } from "@hooks/api/claims"
+
+import { AddOrderEditItemsTable } from "../../edit/_components/add-order-edit-items-table"
 
 let IS_REQUEST_RUNNING = false
 
@@ -67,6 +74,8 @@ export const Component = () => {
   const { mutateAsync: requestClaim } = useRequestClaim(claimId, orderId)
   const { mutateAsync: addClaimItems, isPending: isAddingItems } =
     useAddClaimItems(claimId, orderId)
+  const { mutateAsync: addOutboundItems, isPending: isAddingOutbound } =
+    useAddClaimOutboundItems(claimId, orderId)
 
   useEffect(() => {
     async function run() {
@@ -132,9 +141,28 @@ export const Component = () => {
     })
   }, [order])
 
+  const outboundItems = useMemo(() => {
+    if (claimType !== "replace") {
+      return []
+    }
+    const previewItems = ((preview as any)?.items ?? []) as Array<{
+      id: string
+      title?: string
+      product_title?: string
+      quantity: number
+      variant?: { title?: string }
+    }>
+    const originalIds = new Set(
+      (((order as any)?.items ?? []) as Array<{ id: string }>).map((i) => i.id)
+    )
+    return previewItems.filter((i) => !originalIds.has(i.id))
+  }, [preview, order, claimType])
+
   const hasSelection = useMemo(
-    () => Object.values(itemQuantities).some((qty) => qty > 0),
-    [itemQuantities]
+    () =>
+      Object.values(itemQuantities).some((qty) => qty > 0) ||
+      outboundItems.length > 0,
+    [itemQuantities, outboundItems]
   )
 
   const handleQtyChange = (itemId: string, nextQty: number) => {
@@ -299,6 +327,75 @@ export const Component = () => {
               </div>
             </section>
 
+            {claimType === "replace" && (
+              <section className="bg-ui-bg-component shadow-elevation-card-rest rounded-lg">
+                <div className="border-ui-border-base flex items-center justify-between border-b px-4 py-3">
+                  <Heading level="h3" className="text-ui-fg-base">
+                    {t("orders.claims.outboundItems")}
+                  </Heading>
+                  <AddClaimOutboundItemsTrigger
+                    disabled={!claimId || submitting || canceling}
+                    isPending={isAddingOutbound}
+                    onSubmit={async (variantIds) => {
+                      if (!variantIds.length) {
+                        return
+                      }
+                      try {
+                        await addOutboundItems({
+                          items: variantIds.map((variant_id) => ({
+                            variant_id,
+                            quantity: 1,
+                          })),
+                        })
+                      } catch (e) {
+                        toast.error(
+                          e instanceof Error
+                            ? e.message
+                            : t("errorBoundary.defaultTitle")
+                        )
+                      }
+                    }}
+                  />
+                </div>
+                <div className="divide-y">
+                  {outboundItems.length === 0 && (
+                    <div className="px-4 py-6">
+                      <Text size="small" className="text-ui-fg-subtle">
+                        {t("orders.claims.noOutboundItems")}
+                      </Text>
+                    </div>
+                  )}
+                  {outboundItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-x-4 px-4 py-3"
+                      data-testid={`claim-outbound-item-${item.id}`}
+                    >
+                      <div className="flex flex-col">
+                        <Text size="small" weight="plus">
+                          {item.product_title ?? item.title ?? item.id}
+                        </Text>
+                        {item.variant?.title && (
+                          <Text
+                            size="xsmall"
+                            className="text-ui-fg-subtle"
+                          >
+                            {item.variant.title}
+                          </Text>
+                        )}
+                      </div>
+                      <Text
+                        size="small"
+                        className="text-ui-fg-subtle tabular-nums"
+                      >
+                        {item.quantity}x
+                      </Text>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <section className="flex flex-col gap-y-2">
               <Text size="small" weight="plus">
                 {t("fields.internalNote", { defaultValue: "Internal note" })}
@@ -340,3 +437,84 @@ export const Component = () => {
 }
 
 export default Component
+
+type AddClaimOutboundItemsTriggerProps = {
+  disabled?: boolean
+  isPending?: boolean
+  onSubmit: (variantIds: string[]) => Promise<void> | void
+}
+
+const STACKED_MODAL_ID = "claim-add-outbound-items"
+
+const AddClaimOutboundItemsTrigger = ({
+  disabled,
+  isPending,
+  onSubmit,
+}: AddClaimOutboundItemsTriggerProps) => {
+  const { t } = useTranslation()
+  const { setIsOpen } = useStackedModal()
+  const [selectedVariantIds, setSelectedVariantIds] = useState<string[]>([])
+
+  const handleSave = async () => {
+    await onSubmit(selectedVariantIds)
+    setSelectedVariantIds([])
+    setIsOpen(STACKED_MODAL_ID, false)
+  }
+
+  return (
+    <StackedFocusModal id={STACKED_MODAL_ID}>
+      <StackedFocusModal.Trigger asChild>
+        <Button
+          variant="secondary"
+          size="small"
+          disabled={disabled}
+          data-testid="claim-add-outbound-trigger"
+        >
+          {t("orders.claims.addOutboundItems")}
+        </Button>
+      </StackedFocusModal.Trigger>
+      <StackedFocusModal.Content>
+        <StackedFocusModal.Header />
+        <StackedFocusModal.Title asChild>
+          <span className="sr-only">
+            {t("orders.claims.addOutboundItems")}
+          </span>
+        </StackedFocusModal.Title>
+        <StackedFocusModal.Description className="sr-only">
+          {t("orders.claims.addOutboundItemsDescription")}
+        </StackedFocusModal.Description>
+
+        <StackedFocusModal.Body className="size-full overflow-hidden">
+          <AddOrderEditItemsTable
+            onSelectionChange={(ids) => setSelectedVariantIds(ids)}
+          />
+        </StackedFocusModal.Body>
+
+        <StackedFocusModal.Footer>
+          <div className="flex w-full items-center justify-end gap-x-2">
+            <StackedFocusModal.Close asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                size="small"
+                data-testid="claim-add-outbound-cancel"
+              >
+                {t("actions.cancel")}
+              </Button>
+            </StackedFocusModal.Close>
+            <Button
+              size="small"
+              type="button"
+              onClick={handleSave}
+              isLoading={isPending}
+              disabled={!selectedVariantIds.length || isPending}
+              data-testid="claim-add-outbound-save"
+            >
+              {t("actions.save")}
+            </Button>
+          </div>
+        </StackedFocusModal.Footer>
+      </StackedFocusModal.Content>
+    </StackedFocusModal>
+  )
+}
