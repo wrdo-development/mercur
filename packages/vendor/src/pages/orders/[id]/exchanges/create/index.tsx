@@ -44,6 +44,7 @@ import {
   useCreateExchange,
   useRequestExchange,
 } from "@hooks/api/exchanges"
+import { useReturnReasons } from "@hooks/api/return-reasons"
 import { useShippingOptions } from "@hooks/api/shipping-options"
 import { useStockLocations } from "@hooks/api/stock-locations"
 
@@ -71,6 +72,12 @@ export const Component = () => {
   const [inboundQuantities, setInboundQuantities] = useState<
     Record<string, number>
   >({})
+  const [inboundReasons, setInboundReasons] = useState<
+    Record<string, string>
+  >({})
+  const [inboundNotes, setInboundNotes] = useState<Record<string, string>>(
+    {}
+  )
   const [submitting, setSubmitting] = useState(false)
   const [canceling, setCanceling] = useState(false)
 
@@ -79,6 +86,7 @@ export const Component = () => {
     { stock_location_id: locationId },
     { enabled: !!locationId }
   )
+  const { return_reasons: returnReasons = [] } = useReturnReasons()
 
   const { mutateAsync: createExchange } = useCreateExchange(orderId)
   const { mutateAsync: cancelBegin } = useCancelExchangeBegin(
@@ -187,7 +195,16 @@ export const Component = () => {
     try {
       const inboundPayload = Object.entries(inboundQuantities)
         .filter(([, qty]) => qty > 0)
-        .map(([itemId, quantity]) => ({ id: itemId, quantity }))
+        .map(([itemId, quantity]) => ({
+          id: itemId,
+          quantity,
+          ...(inboundReasons[itemId]
+            ? { reason_id: inboundReasons[itemId] }
+            : {}),
+          ...(inboundNotes[itemId]
+            ? { internal_note: inboundNotes[itemId] }
+            : {}),
+        }))
 
       if (inboundPayload.length > 0) {
         await addInboundItems({
@@ -269,45 +286,95 @@ export const Component = () => {
                   const returned = detail.returned_quantity ?? 0
                   const remaining = fulfilled - requested - returned
                   const currentQty = inboundQuantities[item.id] ?? 0
+                  const isSelected = currentQty > 0
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-x-4 px-4 py-3"
+                      className="flex flex-col gap-y-3 px-4 py-3"
                       data-testid={`exchange-inbound-item-${item.id}`}
                     >
-                      <div className="flex flex-col">
-                        <Text size="small" weight="plus">
-                          {item.product_title ?? item.title ?? item.id}
-                        </Text>
-                        {item.variant?.title && (
-                          <Text
-                            size="xsmall"
-                            className="text-ui-fg-subtle"
-                          >
-                            {item.variant.title}
+                      <div className="flex items-center justify-between gap-x-4">
+                        <div className="flex flex-col">
+                          <Text size="small" weight="plus">
+                            {item.product_title ?? item.title ?? item.id}
                           </Text>
-                        )}
+                          {item.variant?.title && (
+                            <Text
+                              size="xsmall"
+                              className="text-ui-fg-subtle"
+                            >
+                              {item.variant.title}
+                            </Text>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-x-2">
+                          <Text size="xsmall" className="text-ui-fg-subtle">
+                            {t("orders.exchanges.remainingQty", {
+                              count: remaining,
+                            })}
+                          </Text>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={remaining}
+                            value={currentQty}
+                            onChange={(e) => {
+                              const raw = Number(e.target.value) || 0
+                              const next = Math.max(
+                                0,
+                                Math.min(remaining, raw)
+                              )
+                              handleQtyChange(item.id, next)
+                            }}
+                            className="w-20"
+                            data-testid={`exchange-inbound-item-${item.id}-qty`}
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-x-2">
-                        <Text size="xsmall" className="text-ui-fg-subtle">
-                          {t("orders.exchanges.remainingQty", {
-                            count: remaining,
-                          })}
-                        </Text>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={remaining}
-                          value={currentQty}
-                          onChange={(e) => {
-                            const raw = Number(e.target.value) || 0
-                            const next = Math.max(0, Math.min(remaining, raw))
-                            handleQtyChange(item.id, next)
-                          }}
-                          className="w-20"
-                          data-testid={`exchange-inbound-item-${item.id}-qty`}
-                        />
-                      </div>
+                      {isSelected && (
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                          <Select
+                            value={inboundReasons[item.id] ?? ""}
+                            onValueChange={(value) =>
+                              setInboundReasons((prev) => ({
+                                ...prev,
+                                [item.id]: value,
+                              }))
+                            }
+                          >
+                            <Select.Trigger
+                              data-testid={`exchange-inbound-item-${item.id}-reason`}
+                            >
+                              <Select.Value
+                                placeholder={t(
+                                  "orders.exchanges.reasonPlaceholder"
+                                )}
+                              />
+                            </Select.Trigger>
+                            <Select.Content>
+                              {(returnReasons as any[]).map((r) => (
+                                <Select.Item key={r.id} value={r.id}>
+                                  {r.label ?? r.value}
+                                </Select.Item>
+                              ))}
+                            </Select.Content>
+                          </Select>
+                          <Input
+                            type="text"
+                            value={inboundNotes[item.id] ?? ""}
+                            onChange={(e) =>
+                              setInboundNotes((prev) => ({
+                                ...prev,
+                                [item.id]: e.target.value,
+                              }))
+                            }
+                            placeholder={t(
+                              "orders.exchanges.itemNotePlaceholder"
+                            )}
+                            data-testid={`exchange-inbound-item-${item.id}-note`}
+                          />
+                        </div>
+                      )}
                     </div>
                   )
                 })}

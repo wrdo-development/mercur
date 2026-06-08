@@ -1595,6 +1595,8 @@
       "inboundShippingHint": "Choose which method to use for the inbound shipment.",
       "inboundShippingPlaceholder": "Choose a shipping option",
       "inboundShippingLockedPlaceholder": "Pick a location first",
+      "reasonPlaceholder": "Choose a reason",
+      "itemNotePlaceholder": "Add a note (optional)",
       "remainingQty": "{{count}} returnable",
       "noteHint": "Add an internal note for this exchange (visible only to your team).",
       "toast": {

@@ -1368,12 +1368,15 @@ panel **and** the running API.
    - [x] Kebab exposes Edit order, Create Return, Create Exchange,
      Create Claim. **Edit order** shipped sessions (p) + (q).
      **Create Return** kebab entry + route + focus modal shipped
-     sessions (j) + (k). **Create Exchange** + **Create Claim** v1
-     shipped sessions (t) + (u) — kebab entries, registered routes,
-     RouteFocusModal scaffolds walking begin → items qty stepper →
-     confirm. Outbound variant pickers + per-item reason + inbound
-     shipping deferred to follow-up sub-slices (hooks for those
-     paths already in tree).
+     sessions (j) + (k). **Create Exchange** + **Create Claim**
+     shipped sessions (t/u/z/aa/bb/cc/dd): kebab entries, registered
+     routes, RouteFocusModal scaffolds with inbound qty stepper,
+     outbound variant picker via StackedFocusModal, Location +
+     Return-shipping pickers on Exchange, per-row reason + note on
+     Exchange inbound. Per-row reason + location/shipping on Claim
+     queued for follow-up (claim-items route doesn't accept
+     `location_id`; would need to route through inbound-items
+     subtree).
    - [~] Each line item can render a return/exchange/claim subrow
      with reason chip + tooltip — **returns** done session (d).
      Claims / exchanges data now exposed via slice 7 query-config;
@@ -1468,6 +1471,53 @@ panel **and** the running API.
      row — session (e).
 
 ## Evidence
+
+### Session 2026-06-08 (dd) — Slice 4e: Exchange per-row reason + note
+
+Closes the last Figma gap inside Create Exchange. Together with
+slices 4-4d, the Exchange modal now covers:
+
+- Inbound items qty stepper (slice 4)
+- Outbound variant picker via StackedFocusModal (slice 4b)
+- Return Location dropdown (slice 4c)
+- Return shipping (Optional) dropdown (slice 4d)
+- Per-row reason + note on inbound items (this slice)
+- Confirm + Cancel + draft cleanup
+
+Five of five Figma blocks on Create Exchange. The flow is
+feature-complete vs the Figma frame.
+
+#### Files modified
+
+- `packages/vendor/src/pages/orders/[id]/exchanges/create/index.tsx`:
+  - Imported `useReturnReasons` from `@hooks/api/return-reasons`.
+  - Added per-row state: `inboundReasons` and `inboundNotes` keyed
+    by item id.
+  - Inbound items section: when a row's qty > 0, an expandable
+    two-column grid renders below it with a `Reason` `<Select>`
+    (sourced from `useReturnReasons`) and a free-text `Note`
+    `<Input>`. Per-row `data-testid`:
+    `exchange-inbound-item-${id}-reason`, `-note`.
+  - On Confirm: `inboundPayload` now includes `reason_id` and
+    `internal_note` per row when set. Backend
+    `VendorPostExchangesReturnRequestItemsReq` already accepts both.
+
+- `packages/vendor/src/i18n/translations/en.json`:
+  - Added 2 keys under `orders.exchanges`:
+    - `reasonPlaceholder` ("Choose a reason")
+    - `itemNotePlaceholder` ("Add a note (optional)")
+
+#### Spec checklist update
+
+§2 "Kebab exposes" — now reads "shipped sessions (t/u/z/aa/bb/cc/dd):
+... five of five blocks on Exchange". Claim per-row reason + location
+remain queued (claim-items route doesn't accept location_id —
+would need to route through inbound-items).
+
+#### Verification
+
+- `bun run build` — 9/9 packages green in 24.2s.
+- `bunx oxlint` on touched file — exit 0, no warnings, no errors.
 
 ### Session 2026-06-08 (cc) — Slice 4d: Exchange Return-shipping picker + hooks
 
