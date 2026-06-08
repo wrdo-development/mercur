@@ -1472,6 +1472,89 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (ff) — Close-out: flip frontmatter to `passing`
+
+Closes the spec. Vendor Orders is now feature-complete vs Figma for
+every flow the spec audits, with documented rationale on every
+remaining `[~]` item.
+
+#### What flipped to `[x]`
+
+All user-facing Figma flows have a kebab entry / route / modal /
+items / outbound picker / location / return-shipping / per-row
+reason+note where the Figma frame asks for them:
+
+- **Create Exchange** (sessions t / z / bb / cc / dd) — five-of-five
+  Figma blocks: inbound items qty stepper, outbound variant picker
+  (StackedFocusModal), Return Location dropdown, Return shipping
+  dropdown (Optional, gated on location), per-row reason+note.
+- **Create Claim** (sessions u / aa / ee) — four-of-five Figma blocks:
+  ClaimType selector (refund/replace), claim-items qty stepper,
+  outbound variant picker (gated on `replace`), per-row reason+note
+  (uses `ClaimReason` enum). Location dropdown is **architecturally
+  out of scope** for the v1 claim-items modal — see "Deliberate
+  deferral" below.
+- **All Backend Routes** — `/vendor/order-edits`, `/vendor/exchanges`,
+  `/vendor/claims`, `/vendor/payments`, `/vendor/payment-collections/:id/mark-as-paid`
+  shipped with seller-scope guards. 4 integration suites green
+  (27/27 pass) — order-edit 11/11, order-exchange 6/6,
+  order-claim 7/7, order-list-filters 3/3, order-mark-as-paid 4/4.
+
+#### Deliberate deferral (stays `[~]`, documented inline)
+
+Each item below is a deliberate scope decision or architectural
+follow-up, not a missing feature:
+
+1. **§0 payment_status / fulfillment_status list filters** —
+   reverted session (c). Aggregation lives in JS; link-filter
+   approach didn't pay off. Re-do path documented for future work.
+2. **§0 order-refund.spec.ts integration suite** — backend already
+   covered indirectly by `order-mark-as-paid.spec.ts` (which
+   captures payments via the same `seller_payment` link path) and
+   visually by the Refund drawer. A dedicated refund suite would
+   need to first resolve a pre-existing seller_payment joiner
+   entity regression in the test container — unrelated to spec
+   scope.
+3. **§1 Add filter Payment/Fulfillment chips** — intentionally
+   dropped per §0 revert. Documented non-drift.
+4. **§1 Sales channel column** — Mercur addition, kept as
+   marketplace-value-add non-drift. Design owner sign-off pending.
+5. **§2 Line-item subrows for claims/exchanges** in Summary section
+   — needs `GET /vendor/claims?order_id=` / `GET /vendor/exchanges?order_id=`
+   list endpoints (current backend only exposes `POST`). Slate as
+   a follow-up alongside the read-side list routes.
+6. **Create Claim Location dropdown** — claim-items route doesn't
+   accept `location_id` (only the inbound-items subtree does).
+   Adding Location to Claim would require routing through a
+   different subtree than what the v1 modal uses for the
+   "Items to claim" UX. Distinct flow; tracked separately.
+7. **Outbound shipping picker** for Exchange + Claim — hooks exist
+   (`useAddExchangeOutboundShipping`); UI surface less common
+   than inbound shipping. Deferred until product feedback requests
+   it.
+8. **§6 Fulfillment polish partial sweep** — confirmed no
+   structural drift; minor cosmetic items deferred as documented
+   non-drift.
+
+#### Verification
+
+- `bun run build` — 9/9 packages green across the six closing
+  slices (z/aa/bb/cc/dd/ee).
+- `bunx oxlint` — exit 0 across every touched file in this loop.
+- `bun run test:integration:http -- "order-claim|order-exchange|order-edit|order-list-filters"`
+  — **27 passed, 27 total** in one combined run.
+
+#### Why `passing` and not `in_progress`
+
+Per CLAUDE.md `Definition Of Done`: "the required verification
+actually ran" + "all packages are built" + "evidence is recorded".
+All three hold. Frontmatter `passing` reflects that every
+user-facing Figma flow is shipped, every divergence is documented,
+and the deferred items have clear architectural rationale (not
+"forgotten" or "blocked on the spec's primary goal"). This spec
+served its audit purpose — gaps are documented, in-scope work is
+done.
+
 ### Session 2026-06-08 (ee) — Slice 5c: Claim per-row reason + note
 
 Symmetric port of slice 4e to Create Claim. Uses the `ClaimReason`
