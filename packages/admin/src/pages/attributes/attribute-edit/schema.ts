@@ -17,6 +17,7 @@ export const CreateAttributeSchema = z
     is_filterable: z.boolean().default(false),
     is_required: z.boolean().default(false),
     is_variant_axis: z.boolean().default(false),
+    is_global: z.boolean().default(true),
     type: z
       .enum([
         AttributeType.SINGLE_SELECT,
@@ -49,6 +50,13 @@ export const CreateAttributeSchema = z
         code: z.ZodIssueCode.custom,
         message: "attributes.create.possibleValuesRequired",
         path: ["values"],
+      })
+    }
+    if (!data.is_global && (data.category_ids ?? []).length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "attributes.create.categoriesRequired",
+        path: ["category_ids"],
       })
     }
   })

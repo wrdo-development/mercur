@@ -680,7 +680,9 @@ export type Routes = {
             $id: typeof import("@mercurjs/core/api/vendor/product-brands/[id]/route");
         };
         productCategories: typeof import("../../src/api/vendor/product-categories/route") & {
-            $id: typeof import("../../src/api/vendor/product-categories/[id]/route");
+            $id: typeof import("../../src/api/vendor/product-categories/[id]/route") & {
+                products: typeof import("../../src/api/vendor/product-categories/[id]/products/route");
+            };
         };
         productTags: typeof import("../../src/api/vendor/product-tags/route") & {
             $id: typeof import("../../src/api/vendor/product-tags/[id]/route");

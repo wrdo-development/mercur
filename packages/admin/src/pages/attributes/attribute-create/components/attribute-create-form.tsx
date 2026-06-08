@@ -32,6 +32,7 @@ export const AttributeCreateForm = ({ children }: AttributeCreateFormProps) => {
       is_filterable: false,
       is_required: false,
       is_variant_axis: false,
+      is_global: true,
       values: [],
       category_ids: [],
       metadata: {},
@@ -46,11 +47,14 @@ export const AttributeCreateForm = ({ children }: AttributeCreateFormProps) => {
       .filter((value) => value.name.trim().length > 0)
       .map((value, index) => ({ ...value, rank: index }));
 
+    const { is_global, ...rest } = values;
+
     await mutateAsync(
       {
-        ...values,
+        ...rest,
         handle: values.handle ? values.handle : undefined,
         values: cleanedValues,
+        category_ids: is_global ? [] : (values.category_ids ?? []),
       },
       {
         onSuccess: () => {
