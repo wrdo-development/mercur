@@ -1350,18 +1350,23 @@ panel **and** the running API.
    - [x] Metadata + JSON sections at the bottom of the main column
      — session (b).
 3. **Edit Order**
-   - [ ] Banner above the header with Force confirm / Cancel — still
-     pending; ports admin's `active-order-edit-section/` and reuses
-     `useConfirmOrderEdit` / `useCancelOrderEdit` from session (p).
+   - [x] Banner above the header with Force confirm / Cancel —
+     session (q): `order-active-edit-section/` ported from admin and
+     mounted as the first child of `TwoColumnPage.Main` so it sits
+     above the order header. Diffs `preview.items` vs `order.items`
+     into Added / Removed buckets; exposes Continue edit / Force
+     confirm + Cancel CTAs based on `order_change.status`. Inert for
+     non-edit change types.
    - [~] Route registered; activity entry logged — session (p):
      route `/orders/:id/edit` mounted; kebab entry (`PencilSquare`,
      `orders.edits.create`) added in `OrderGeneralSection`;
      `RouteFocusModal` at `pages/orders/[id]/edit/index.tsx` walks
-     begin → qty edits → request → confirm. v1 ships without the
-     variant-picker for adding **new** items — that's a separate
-     port of admin's `add-order-edit-items-table` folder, deferred.
-     Activity timeline already emits `order_change` rows for edits
-     (session (f) wiring).
+     begin → qty edits → request → confirm. Session (q) added the
+     variant-picker for **new** items (admin's
+     `add-order-edit-items-table` ported 1:1 + StackedFocusModal
+     trigger). Activity timeline still pending its "Order edit #N
+     requested" generator rule + section mount — tracked under §6
+     cross-cutting deferral.
 4. **Create Return / Exchange / Claim / Refund**
    - [~] Each has a kebab entry, a registered route, a focus modal
      with the structure described above, and an activity entry on
