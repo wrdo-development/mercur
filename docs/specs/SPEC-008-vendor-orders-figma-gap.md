@@ -1469,6 +1469,49 @@ panel **and** the running API.
 
 ## Evidence
 
+### Session 2026-06-08 (bb) — Slice 4c: Exchange Location picker
+
+Adds the Return Location dropdown to the Create Exchange modal —
+sources from `useStockLocations`, threads the chosen `location_id`
+into the `useAddExchangeInboundItems` payload (the
+`/vendor/exchanges/:id/inbound/items` route already accepts
+`location_id?: string` per `VendorPostExchangesReturnRequestItemsReq`).
+
+#### Files modified
+
+- `packages/vendor/src/pages/orders/[id]/exchanges/create/index.tsx`:
+  - Imported `Label`, `Select` from `@medusajs/ui`.
+  - Imported `useStockLocations` from `@hooks/api/stock-locations`.
+  - Added `locationId` state.
+  - Added a Location card section above the outbound items section,
+    matching the Create Return session (k) card shape.
+  - Threaded `location_id: locationId` into the inbound items
+    payload when the user has selected a location.
+
+- `packages/vendor/src/i18n/translations/en.json`:
+  - Added 3 keys under `orders.exchanges`:
+    - `location` ("Return location")
+    - `locationHint` ("Choose which location you want the returned
+      items to ship to.")
+    - `locationPlaceholder` ("Choose a location")
+
+#### What's NOT in this slice
+
+- **Return shipping picker** — needs new hooks
+  `useAddExchangeInboundShipping`, `useUpdateExchangeInboundShipping`,
+  `useRemoveExchangeInboundShipping`. Tracked as follow-up; the
+  backend routes already exist (`/vendor/exchanges/:id/inbound/shipping-method`).
+- **Location on Create Claim** — `claim-items` route doesn't accept
+  `location_id` directly (the claim flow uses claim-items, not
+  inbound-items, for marking existing items as claimed). Adding a
+  Location dropdown to the Claim modal would need a separate inbound
+  items flow that the v1 modal doesn't expose. Deferred.
+
+#### Verification
+
+- `bun run build` from repo root — 9/9 packages green in 31.5s.
+- `bunx oxlint` on both modals — exit 0, no warnings, no errors.
+
 ### Session 2026-06-08 (aa) — Slice 5b: Claim outbound variant picker
 
 Closes one of the §4 follow-up sub-slices flagged in session (x).

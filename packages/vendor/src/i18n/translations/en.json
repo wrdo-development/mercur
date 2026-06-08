@@ -1588,6 +1588,9 @@
       "noOutboundItems": "No replacement items added yet.",
       "addOutboundItems": "Add items",
       "addOutboundItemsDescription": "Pick variants to send as replacements for the returned items.",
+      "location": "Return location",
+      "locationHint": "Choose which location you want the returned items to ship to.",
+      "locationPlaceholder": "Choose a location",
       "remainingQty": "{{count}} returnable",
       "noteHint": "Add an internal note for this exchange (visible only to your team).",
       "toast": {

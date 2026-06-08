@@ -17,7 +17,16 @@
 // shipping-method sub-routes (hooks in tree).
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { Button, Heading, Input, Text, Textarea, toast } from "@medusajs/ui"
+import {
+  Button,
+  Heading,
+  Input,
+  Label,
+  Select,
+  Text,
+  Textarea,
+  toast,
+} from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 
 import {
@@ -34,6 +43,7 @@ import {
   useCreateExchange,
   useRequestExchange,
 } from "@hooks/api/exchanges"
+import { useStockLocations } from "@hooks/api/stock-locations"
 
 import { AddOrderEditItemsTable } from "../../edit/_components/add-order-edit-items-table"
 
@@ -54,11 +64,14 @@ export const Component = () => {
 
   const [exchangeId, setExchangeId] = useState<string>("")
   const [internalNote, setInternalNote] = useState("")
+  const [locationId, setLocationId] = useState<string>("")
   const [inboundQuantities, setInboundQuantities] = useState<
     Record<string, number>
   >({})
   const [submitting, setSubmitting] = useState(false)
   const [canceling, setCanceling] = useState(false)
+
+  const { stock_locations: stockLocations = [] } = useStockLocations()
 
   const { mutateAsync: createExchange } = useCreateExchange(orderId)
   const { mutateAsync: cancelBegin } = useCancelExchangeBegin(
@@ -168,7 +181,10 @@ export const Component = () => {
         .map(([itemId, quantity]) => ({ id: itemId, quantity }))
 
       if (inboundPayload.length > 0) {
-        await addInboundItems({ items: inboundPayload })
+        await addInboundItems({
+          items: inboundPayload,
+          ...(locationId ? { location_id: locationId } : {}),
+        })
       }
 
       await requestExchange()
@@ -283,6 +299,35 @@ export const Component = () => {
                   )
                 })}
               </div>
+            </section>
+
+            <section className="bg-ui-bg-component shadow-elevation-card-rest flex flex-col gap-y-2 rounded-lg p-3">
+              <Label htmlFor="exchange-location" weight="plus">
+                {t("orders.exchanges.location")}
+              </Label>
+              <Text size="xsmall" className="text-ui-fg-subtle">
+                {t("orders.exchanges.locationHint")}
+              </Text>
+              <Select
+                value={locationId}
+                onValueChange={(value) => setLocationId(value)}
+              >
+                <Select.Trigger
+                  id="exchange-location"
+                  data-testid="exchange-location-trigger"
+                >
+                  <Select.Value
+                    placeholder={t("orders.exchanges.locationPlaceholder")}
+                  />
+                </Select.Trigger>
+                <Select.Content>
+                  {stockLocations.map((loc: any) => (
+                    <Select.Item key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </Select.Item>
+                  ))}
+                </Select.Content>
+              </Select>
             </section>
 
             <section className="bg-ui-bg-component shadow-elevation-card-rest rounded-lg">
