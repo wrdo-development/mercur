@@ -1,4 +1,10 @@
-import { XCircle } from "@medusajs/icons"
+import {
+  ArrowPath,
+  ArrowUturnLeft,
+  ExclamationCircle,
+  PencilSquare,
+  XCircle,
+} from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import {
   Container,
@@ -76,6 +82,38 @@ export const OrderGeneralSection = ({ order }: OrderGeneralSectionProps) => {
         </div>
         <ActionMenu
           groups={[
+            {
+              actions: [
+                {
+                  label: t("orders.edits.create"),
+                  to: "edits",
+                  // @ts-ignore
+                  disabled: !!order.canceled_at,
+                  icon: <PencilSquare />,
+                },
+                {
+                  label: t("orders.returns.create"),
+                  to: "returns",
+                  // @ts-ignore
+                  disabled: !!order.canceled_at,
+                  icon: <ArrowUturnLeft />,
+                },
+                {
+                  label: t("orders.exchanges.create"),
+                  to: "exchanges",
+                  // @ts-ignore
+                  disabled: !!order.canceled_at,
+                  icon: <ArrowPath />,
+                },
+                {
+                  label: t("orders.claims.create"),
+                  to: "claims",
+                  // @ts-ignore
+                  disabled: !!order.canceled_at,
+                  icon: <ExclamationCircle />,
+                },
+              ],
+            },
             {
               actions: [
                 {
