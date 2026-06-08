@@ -1296,9 +1296,15 @@ panel **and** the running API.
      done; payout delta still deferred — payout-module owner sign-off
      needed). Integration suite under
      `http/order/vendor/order-edit.spec.ts` shipped — 11 / 11 pass.
-   - [ ] `POST /vendor/exchanges` (+ `:id/cancel`, `:id/request`
+   - [x] `POST /vendor/exchanges` (+ `:id/cancel`, `:id/request`
      POST/DELETE, `:id/{inbound,outbound}/{items,shipping-method}`
      (+ `:action_id` POST/DELETE)); seller-scope guard enforced.
+     **Slice 2**: full tree shipped under
+     `packages/core/src/api/vendor/exchanges/`. Helper
+     `validateSellerExchange` resolves `:id` → `order_id` via Query
+     Graph then defers to `validateSellerOrder`. Six-case integration
+     suite at `order-exchange.spec.ts` (6/6 pass, 26.3s) covers
+     begin happy path + seller-scope rejections on every sub-route.
    - [ ] `POST /vendor/claims` (+ `:id/cancel`, `:id/request`
      POST/DELETE, `:id/claim-items` (+ `:action_id` POST/DELETE),
      `:id/{inbound,outbound}/{items,shipping-method}` (+ `:action_id`
@@ -1382,7 +1388,8 @@ panel **and** the running API.
      Location and return-shipping dropdowns landed session (k);
      the modal now covers the full Figma contract (items, reason,
      note, location, return shipping (optional), notification).
-     **Exchange** / **Claim** modals still blocked on §0 backend.
+     **Exchange** backend shipped slice 2 (UI deferred to slice 4);
+     **Claim** modal still blocked on §0 backend.
    - [x] Refund flow is reachable from the Payment-row kebab —
      session (b).
 5. **Receive Items**

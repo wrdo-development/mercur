@@ -794,6 +794,28 @@ export type Routes = {
         };
         stores: typeof import("../../src/api/vendor/stores/route");
         uploads: typeof import("../../src/api/vendor/uploads/route");
+        exchanges: typeof import("../../src/api/vendor/exchanges/route") & {
+            $id: {
+                cancel: typeof import("../../src/api/vendor/exchanges/[id]/cancel/route");
+                inbound: {
+                    items: typeof import("../../src/api/vendor/exchanges/[id]/inbound/items/route") & {
+                        $actionId: typeof import("../../src/api/vendor/exchanges/[id]/inbound/items/[action_id]/route");
+                    };
+                    shippingMethod: typeof import("../../src/api/vendor/exchanges/[id]/inbound/shipping-method/route") & {
+                        $actionId: typeof import("../../src/api/vendor/exchanges/[id]/inbound/shipping-method/[action_id]/route");
+                    };
+                };
+                outbound: {
+                    items: typeof import("../../src/api/vendor/exchanges/[id]/outbound/items/route") & {
+                        $actionId: typeof import("../../src/api/vendor/exchanges/[id]/outbound/items/[action_id]/route");
+                    };
+                    shippingMethod: typeof import("../../src/api/vendor/exchanges/[id]/outbound/shipping-method/route") & {
+                        $actionId: typeof import("../../src/api/vendor/exchanges/[id]/outbound/shipping-method/[action_id]/route");
+                    };
+                };
+                request: typeof import("../../src/api/vendor/exchanges/[id]/request/route");
+            };
+        };
         orderEdits: typeof import("../../src/api/vendor/order-edits/route") & {
             $id: typeof import("../../src/api/vendor/order-edits/[id]/route") & {
                 confirm: typeof import("../../src/api/vendor/order-edits/[id]/confirm/route");
