@@ -630,7 +630,7 @@
       },
       "primaryCategory": {
         "label": "Kategoria główna",
-        "tooltip": "Kategoria główna określa, które atrybuty są dostępne dla tego produktu. Atrybuty są tworzone przez administratora podczas konfiguracji platformy."
+        "tooltip": "Kategoria może definiować atrybuty, które dotyczą tego produktu. Atrybuty są tworzone przez administratora podczas konfiguracji platformy."
       },
       "secondaryCategories": {
         "label": "Kategorie dodatkowe"
