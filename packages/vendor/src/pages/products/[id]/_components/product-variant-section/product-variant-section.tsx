@@ -2,12 +2,14 @@ import { Buildings, Component, PencilSquare, Trash } from "@medusajs/icons";
 import { HttpTypes } from "@medusajs/types";
 import {
   Badge,
+  Button,
   clx,
   Container,
   createDataTableColumnHelper,
   createDataTableCommandHelper,
   createDataTableFilterHelper,
   DataTableAction,
+  Heading,
   Tooltip,
   usePrompt,
 } from "@medusajs/ui";
@@ -16,7 +18,8 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 import { CellContext } from "@tanstack/react-table";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ActionMenu } from "../../../../../components/common/action-menu";
 import { DataTable } from "../../../../../components/data-table";
 import { useDataTableDateFilters } from "../../../../../components/data-table/helpers/general/use-data-table-date-filters";
 import {
@@ -73,6 +76,30 @@ export const ProductVariantSection = () => {
 
   return (
     <Container className="divide-y p-0">
+      <div className="flex items-center justify-between px-6 py-4">
+        <Heading level="h2">{t("products.variants.header")}</Heading>
+        <div className="flex items-center gap-x-2">
+          <ActionMenu
+            groups={[
+              {
+                actions: [
+                  {
+                    label: t(
+                      "products.variants.editStocksAndPrices.action",
+                      "Edit Stocks & Prices",
+                    ),
+                    to: `edit-stocks-and-prices`,
+                    icon: <PencilSquare />,
+                  },
+                ],
+              },
+            ]}
+          />
+          <Button size="small" variant="secondary" asChild>
+            <Link to="variants/create">{t("actions.create")}</Link>
+          </Button>
+        </div>
+      </div>
       <DataTable
         data={variants}
         columns={columns}
@@ -82,8 +109,6 @@ export const ProductVariantSection = () => {
         rowHref={(row) => `/products/${product.id}/variants/${row.id}`}
         pageSize={PAGE_SIZE}
         isLoading={isPending}
-        heading={t("products.variants.header")}
-        headingLevel="h2"
         emptyState={{
           empty: {
             heading: t("products.variants.empty.heading"),
@@ -93,23 +118,6 @@ export const ProductVariantSection = () => {
             heading: t("products.variants.filtered.heading"),
             description: t("products.variants.filtered.description"),
           },
-        }}
-        action={{
-          label: t("actions.create"),
-          to: `variants/create`,
-        }}
-        actionMenu={{
-          groups: [
-            {
-              actions: [
-                {
-                  label: t("products.variants.editStocksAndPrices.action", "Edit Stocks & Prices"),
-                  to: `edit-stocks-and-prices`,
-                  icon: <PencilSquare />,
-                },
-              ],
-            },
-          ],
         }}
         commands={commands}
         prefix={PREFIX}

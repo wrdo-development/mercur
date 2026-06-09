@@ -4,20 +4,23 @@ import { Buildings, Component, PencilSquare, Trash } from '@medusajs/icons';
 import { HttpTypes } from '@medusajs/types';
 import {
   Badge,
+  Button,
   clx,
   Container,
   createDataTableColumnHelper,
   createDataTableCommandHelper,
   createDataTableFilterHelper,
   DataTableAction,
+  Heading,
   Tooltip,
   usePrompt
 } from '@medusajs/ui';
 import { keepPreviousData } from '@tanstack/react-query';
 import { CellContext } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
+import { ActionMenu } from '../../../../../components/common/action-menu';
 import { DataTable } from '../../../../../components/data-table';
 import { useDataTableDateColumns } from '../../../../../components/data-table/helpers/general/use-data-table-date-columns';
 import { useDataTableDateFilters } from '../../../../../components/data-table/helpers/general/use-data-table-date-filters';
@@ -72,33 +75,11 @@ export const ProductVariantSection = ({
       className="divide-y p-0"
       data-testid="product-variant-section"
     >
-      <div data-testid="product-variants-table-container">
-        <DataTable
-          data={variants}
-          columns={columns}
-          filters={filters}
-          rowCount={count}
-          getRowId={row => row.id}
-          rowHref={row => `/products/${product.id}/variants/${row.id}`}
-          pageSize={PAGE_SIZE}
-          isLoading={isPending}
-          heading={t('products.variants.header')}
-          emptyState={{
-            empty: {
-              heading: t('products.variants.empty.heading'),
-              description: t('products.variants.empty.description')
-            },
-            filtered: {
-              heading: t('products.variants.filtered.heading'),
-              description: t('products.variants.filtered.description')
-            }
-          }}
-          action={{
-            label: t('actions.create'),
-            to: `variants/create`
-          }}
-          actionMenu={{
-            groups: [
+      <div className="flex items-center justify-between px-6 py-4">
+        <Heading level="h2">{t('products.variants.header')}</Heading>
+        <div className="flex items-center gap-x-2">
+          <ActionMenu
+            groups={[
               {
                 actions: [
                   {
@@ -113,8 +94,36 @@ export const ProductVariantSection = ({
                   }
                 ]
               }
-            ],
-            'data-testid': 'product-variant-section-action-menu'
+            ]}
+          />
+          <Button
+            size="small"
+            variant="secondary"
+            asChild
+          >
+            <Link to="variants/create">{t('actions.create')}</Link>
+          </Button>
+        </div>
+      </div>
+      <div data-testid="product-variants-table-container">
+        <DataTable
+          data={variants}
+          columns={columns}
+          filters={filters}
+          rowCount={count}
+          getRowId={row => row.id}
+          rowHref={row => `/products/${product.id}/variants/${row.id}`}
+          pageSize={PAGE_SIZE}
+          isLoading={isPending}
+          emptyState={{
+            empty: {
+              heading: t('products.variants.empty.heading'),
+              description: t('products.variants.empty.description')
+            },
+            filtered: {
+              heading: t('products.variants.filtered.heading'),
+              description: t('products.variants.filtered.description')
+            }
           }}
           commands={commands}
           prefix={PREFIX}
