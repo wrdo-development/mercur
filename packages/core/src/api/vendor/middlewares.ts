@@ -11,6 +11,7 @@ import { vendorCustomersMiddlewares } from "./customers/middlewares"
 import { vendorFulfillmentProvidersMiddlewares } from "./fulfillment-providers/middlewares"
 import { vendorFulfillmentSetsMiddlewares } from "./fulfillment-sets/middlewares"
 import { vendorInventoryItemsMiddlewares } from "./inventory-items/middlewares"
+import { vendorOffersMiddlewares } from "./offers/middlewares"
 import { vendorOrdersMiddlewares } from "./orders/middlewares"
 import { vendorPaymentsMiddlewares } from "./payments/middlewares"
 import { vendorPayoutsMiddlewares } from "./payouts/middlewares"
@@ -19,8 +20,8 @@ import { vendorPriceListsMiddlewares } from "./price-lists/middlewares"
 import { vendorPricePreferencesMiddlewares } from "./price-preferences/middlewares"
 import { vendorProductCategoriesMiddlewares } from "./product-categories/middlewares"
 import { vendorProductsMiddlewares } from "./products/middlewares"
-import { vendorProductVariantsMiddlewares } from "./product-variants/middlewares"
 import { vendorProductTypesMiddlewares } from "./product-types/middlewares"
+import { vendorProductVariantsMiddlewares } from "./product-variants/middlewares"
 import { vendorPromotionsMiddlewares } from "./promotions/middlewares"
 import { vendorRegionsMiddlewares } from "./regions/middlewares"
 import { vendorRefundReasonsMiddlewares } from "./refund-reasons/middlewares"
@@ -33,11 +34,10 @@ import { vendorShippingOptionTypesMiddlewares } from "./shipping-option-types/mi
 import { vendorShippingProfilesMiddlewares } from "./shipping-profiles/middlewares"
 import { vendorStockLocationsMiddlewares } from "./stock-locations/middlewares"
 import { vendorStoresMiddlewares } from "./stores/middlewares"
-import { vendorSubscriptionMiddlewares } from "./subscription/middlewares"
 import { vendorUploadsMiddlewares } from "./uploads/middlewares"
 import { ensureSellerMiddleware, scanUnauthenticatedRoutes, unlessBaseUrl, vendorCorsMiddleware } from "../utils"
+import { vendorProductAttributesMiddlewares } from "./product-attributes/middlewares"
 import { vendorProductTagsMiddlewares } from "./product-tags/middlewares"
-import { vendorAttributesMiddlewares } from "./attributes/middlewares"
 
 const unauthenticatedRoutes = [
   /^\/vendor\/sellers$/,
@@ -91,6 +91,7 @@ export const vendorMiddlewares: MiddlewareRoute[] = [
   ...vendorFulfillmentProvidersMiddlewares,
   ...vendorFulfillmentSetsMiddlewares,
   ...vendorInventoryItemsMiddlewares,
+  ...vendorOffersMiddlewares,
   ...vendorOrdersMiddlewares,
   ...vendorPaymentsMiddlewares,
   ...vendorPayoutsMiddlewares,
@@ -98,9 +99,10 @@ export const vendorMiddlewares: MiddlewareRoute[] = [
   ...vendorPriceListsMiddlewares,
   ...vendorPricePreferencesMiddlewares,
   ...vendorProductCategoriesMiddlewares,
+  ...vendorProductAttributesMiddlewares,
   ...vendorProductsMiddlewares,
-  ...vendorProductVariantsMiddlewares,
   ...vendorProductTypesMiddlewares,
+  ...vendorProductVariantsMiddlewares,
   ...vendorPromotionsMiddlewares,
   ...vendorRegionsMiddlewares,
   ...vendorRefundReasonsMiddlewares,
@@ -115,6 +117,4 @@ export const vendorMiddlewares: MiddlewareRoute[] = [
   ...vendorStoresMiddlewares,
   ...vendorUploadsMiddlewares,
   ...vendorProductTagsMiddlewares,
-  ...vendorSubscriptionMiddlewares,
-  ...vendorAttributesMiddlewares,
 ]

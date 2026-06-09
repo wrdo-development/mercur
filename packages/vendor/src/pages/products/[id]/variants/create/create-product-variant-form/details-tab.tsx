@@ -1,21 +1,28 @@
 import { Heading, Input } from "@medusajs/ui"
-import { UseFormReturn } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 
-import { ExtendedAdminProduct } from "@custom-types/products"
+import { HttpTypes } from "@medusajs/types"
+import { ProductDTO, AttributeType } from "@mercurjs/types"
 
 import { Form } from "@components/common/form"
-import { Combobox } from "@components/inputs/combobox"
+import { AttributeValueInput } from "@components/inputs/attribute-value-input"
+import { useTabbedForm } from "@components/tabbed-form/tabbed-form"
+import { defineTabMeta } from "@components/tabbed-form/types"
 import { CreateProductVariantSchema } from "./constants"
 
 type DetailsTabProps = {
-  product: ExtendedAdminProduct
-  form: UseFormReturn<z.infer<typeof CreateProductVariantSchema>>
+  product: HttpTypes.AdminProduct
 }
 
-function DetailsTab({ form, product }: DetailsTabProps) {
+function DetailsTab({ product }: DetailsTabProps) {
   const { t } = useTranslation()
+  const form = useTabbedForm<z.infer<typeof CreateProductVariantSchema>>()
+
+  const variantAttributes =
+    (
+      product as HttpTypes.AdminProduct & Pick<ProductDTO, "attributes">
+    ).attributes?.filter((a) => a.is_variant_axis) ?? []
 
   return (
     <div className="flex flex-1 flex-col items-center overflow-y-auto">
@@ -55,68 +62,45 @@ function DetailsTab({ form, product }: DetailsTabProps) {
             }}
           />
 
-          {(product.options || []).map((option: any) => (
-            <Form.Field
-              key={option.id}
-              control={form.control}
-              name={`options.${option.title}`}
-              render={({ field: { value, onChange, ...field } }) => {
-                return (
-                  <Form.Item>
-                    <Form.Label>{option.title}</Form.Label>
-                    <Form.Control>
-                      <Combobox
-                        value={value}
-                        onChange={(v) => {
-                          onChange(v)
-                        }}
-                        {...field}
-                        options={option.values.map((v: any) => ({
-                          label: v.value,
-                          value: v.value,
-                        }))}
-                      />
-                    </Form.Control>
-                  </Form.Item>
-                )
-              }}
-            />
-          ))}
+          {variantAttributes.map((attribute) => {
+            const fieldKey = attribute.handle ?? attribute.id
+            return (
+              <Form.Field
+                key={attribute.id}
+                control={form.control}
+                name={`options.${fieldKey}`}
+                render={({ field: { value, onChange } }) => {
+                  return (
+                    <Form.Item>
+                      <Form.Label>{attribute.name}</Form.Label>
+                      <Form.Control>
+                        <AttributeValueInput
+                          type={AttributeType.SINGLE_SELECT}
+                          value={typeof value === "string" ? value : ""}
+                          onChange={onChange}
+                          availableValues={(attribute.values ?? []).map((v) => ({
+                            id: v.id,
+                            name: v.name,
+                          }))}
+                        />
+                      </Form.Control>
+                      <Form.ErrorMessage />
+                    </Form.Item>
+                  )
+                }}
+              />
+            )
+          })}
         </div>
-        {/* <div className="flex flex-col gap-y-4">
-          <Form.Field
-            control={form.control}
-            name="inventory_kit"
-            render={({ field: { value, onChange, ...field } }) => {
-              return (
-                <Form.Item>
-                  <div className="bg-ui-bg-component shadow-elevation-card-rest flex gap-x-3 rounded-lg p-4">
-                    <Form.Control>
-                      <Switch
-                        checked={value}
-                        onCheckedChange={(checked) => onChange(!!checked)}
-                        {...field}
-                        disabled={!manageInventoryEnabled}
-                      />
-                    </Form.Control>
-                    <div className="flex flex-col">
-                      <Form.Label>
-                        {t("products.variant.inventory.inventoryKit")}
-                      </Form.Label>
-                      <Form.Hint>
-                        {t("products.variant.inventory.inventoryKitHint")}
-                      </Form.Hint>
-                    </div>
-                  </div>
-                  <Form.ErrorMessage />
-                </Form.Item>
-              )
-            }}
-          />
-        </div> */}
       </div>
     </div>
   )
 }
+
+DetailsTab._tabMeta = defineTabMeta<z.infer<typeof CreateProductVariantSchema>>({
+  id: "detail",
+  labelKey: "priceLists.create.tabs.details",
+  validationFields: ["title", "sku", "options"],
+})
 
 export default DetailsTab

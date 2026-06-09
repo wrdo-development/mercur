@@ -3,10 +3,27 @@ import {
   MedusaNextFunction,
   MedusaRequest,
   MedusaResponse,
+  MiddlewareRoute,
 } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { MiddlewareRoute } from "@medusajs/medusa"
-import { SellerStatus } from "@mercurjs/types"
+import { validateAndTransformQuery } from "@medusajs/framework"
+
+import { storeProductQueryConfig } from "./query-config"
+import {
+  StoreGetProductParams,
+  StoreGetProductsParams,
+} from "./validators"
+import { SellerStatus, ProductStatus } from "@mercurjs/types"
+
+const applyProductFilters = (
+  req: MedusaRequest,
+  _res: MedusaResponse,
+  next: MedusaNextFunction
+) => {
+  req.filterableFields = req.filterableFields ?? {}
+  req.filterableFields.status = ProductStatus.PUBLISHED
+  next()
+}
 
 /**
  * Resolve sellers that are currently OPEN and not within an active
@@ -41,23 +58,40 @@ async function applyVisibleSellerIdsFilter(
 
   next()
 }
+
 export const storeProductsMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
     matcher: "/store/products",
-    middlewares: [applyVisibleSellerIdsFilter, maybeApplyLinkFilter({
-      entryPoint: "product_seller",
-      resourceId: "product_id",
-      filterableField: "seller_id",
-    })],
+    middlewares: [
+      validateAndTransformQuery(
+        StoreGetProductsParams,
+        storeProductQueryConfig.list
+      ),
+      applyProductFilters,
+      applyVisibleSellerIdsFilter,
+      maybeApplyLinkFilter({
+        entryPoint: "product_seller",
+        resourceId: "product_id",
+        filterableField: "seller_id",
+      }),
+    ],
   },
   {
     method: ["GET"],
     matcher: "/store/products/:id",
-    middlewares: [applyVisibleSellerIdsFilter, maybeApplyLinkFilter({
-      entryPoint: "product_seller",
-      resourceId: "product_id",
-      filterableField: "seller_id",
-    })],
+    middlewares: [
+      validateAndTransformQuery(
+        StoreGetProductParams,
+        storeProductQueryConfig.retrieve
+      ),
+      applyProductFilters,
+      applyVisibleSellerIdsFilter,
+      maybeApplyLinkFilter({
+        entryPoint: "product_seller",
+        resourceId: "product_id",
+        filterableField: "seller_id",
+      }),
+    ],
   },
 ]

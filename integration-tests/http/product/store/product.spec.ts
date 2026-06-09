@@ -90,17 +90,20 @@ medusaIntegrationTestRunner({
                     {
                         title: "Test Product",
                         status: "published",
-                        options: [{ title: "Size", values: ["M"] }],
+                        variant_attributes: [
+                            {
+                                name: "Size",
+                                type: "multi_select",
+                                is_variant_axis: true,
+                                values: ["M"],
+                            },
+                        ],
                         variants: [
                             {
                                 title: "M",
-                                options: { Size: "M" },
-                                prices: [
-                                    { currency_code: "usd", amount: 1000 },
-                                ],
+                                attribute_values: { Size: "M" },
                             },
                         ],
-                        sales_channels: [{ id: salesChannel.id }],
                         ...overrides,
                     },
                     headers
@@ -274,6 +277,30 @@ medusaIntegrationTestRunner({
                     expect(response.data.product.title).toEqual(
                         "Single Product"
                     )
+                })
+
+                it("surfaces linked attributes on product.attributes", async () => {
+                    const product = await createProduct(approvedSellerHeaders, {
+                        title: "Product with attribute",
+                    })
+
+                    const response = await api.get(
+                        `/store/products/${product.id}`,
+                        storeHeaders
+                    )
+
+                    expect(response.status).toEqual(200)
+                    // The inline-custom `Size` axis added by `createProduct`
+                    // should round-trip through the storefront response.
+                    const attrs = response.data.product.attributes
+                    expect(Array.isArray(attrs)).toBe(true)
+                    const sizeAttr = attrs.find(
+                        (a: any) => a.name === "Size"
+                    )
+                    expect(sizeAttr).toBeDefined()
+                    expect(
+                        sizeAttr.values.map((v: any) => v.name)
+                    ).toEqual(["M"])
                 })
 
                 it("should return 404 for a non-existent product", async () => {

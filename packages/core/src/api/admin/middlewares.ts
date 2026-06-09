@@ -10,30 +10,16 @@ import { validateAndTransformQuery } from "@medusajs/framework"
 import { adminOrderGroupsMiddlewares } from "./order-groups/middlewares"
 import { adminOrderGroupQueryConfig } from "./order-groups/query-config"
 import { AdminGetOrderGroupParams } from "./order-groups/validators"
+import { adminOffersMiddlewares } from "./offers/middlewares"
 import { adminPayoutsMiddlewares } from "./payouts/middlewares"
 import { adminSellersMiddlewares } from "./sellers/middlewares"
 import { adminMembersMiddlewares } from "./members/middlewares"
-import { adminAttributeMiddlewares } from "./attributes/middlewares"
 import { adminCommissionRatesMiddlewares } from "./commission-rates/middlewares"
-import { adminSubscriptionPlanRoutesMiddlewares } from "./subscription-plans/middlewares"
 
-const maybeApplySellerProductFilter = (
-  req: AuthenticatedMedusaRequest,
-  res: MedusaResponse,
-  next: MedusaNextFunction
-) => {
-  if (!req.query.seller_id) {
-    return next()
-  }
-
-  req.filterableFields.seller_id = req.query.seller_id
-
-  return maybeApplyLinkFilter({
-    entryPoint: "product_seller",
-    resourceId: "product_id",
-    filterableField: "seller_id",
-  })(req, res, next)
-}
+import { adminProductsMiddlewares } from "./products/middlewares"
+import { adminProductCategoriesMiddlewares } from "./product-categories/middlewares"
+import { adminProductAttributesMiddlewares } from "./product-attributes/middlewares"
+import { adminProductChangesMiddlewares } from "./product-changes/middlewares"
 
 const maybeApplySellerOrderFilter = (
   req: AuthenticatedMedusaRequest,
@@ -54,7 +40,6 @@ const maybeApplySellerOrderFilter = (
 }
 
 export const adminMiddlewares: MiddlewareRoute[] = [
-  ...adminAttributeMiddlewares,
   ...adminOrderGroupsMiddlewares,
   {
     method: ["GET"],
@@ -66,23 +51,18 @@ export const adminMiddlewares: MiddlewareRoute[] = [
       ),
     ],
   },
+  ...adminOffersMiddlewares,
   ...adminPayoutsMiddlewares,
   ...adminSellersMiddlewares,
   ...adminMembersMiddlewares,
   ...adminCommissionRatesMiddlewares,
-  ...adminSubscriptionPlanRoutesMiddlewares,
-  {
-    method: ["GET"],
-    matcher: "/admin/products",
-    middlewares: [
-      maybeApplySellerProductFilter,
-    ],
-  },
+  ...adminProductsMiddlewares,
+  ...adminProductCategoriesMiddlewares,
+  ...adminProductAttributesMiddlewares,
+  ...adminProductChangesMiddlewares,
   {
     method: ["GET"],
     matcher: "/admin/orders",
-    middlewares: [
-      maybeApplySellerOrderFilter,
-    ],
+    middlewares: [maybeApplySellerOrderFilter],
   },
 ]
