@@ -1,10 +1,3 @@
-import {
-  ArrowPath,
-  ArrowUturnLeft,
-  ExclamationCircle,
-  PencilSquare,
-  XCircle,
-} from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import {
   Container,
@@ -12,12 +5,8 @@ import {
   Heading,
   StatusBadge,
   Text,
-  toast,
-  usePrompt,
 } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
-import { ActionMenu } from "../../../../../components/common/action-menu"
-import { useCancelOrder } from "../../../../../hooks/api/orders"
 import { useDate } from "../../../../../hooks/use-date"
 import {
   getCanceledOrderStatus,
@@ -31,34 +20,7 @@ type OrderGeneralSectionProps = {
 
 export const OrderGeneralSection = ({ order }: OrderGeneralSectionProps) => {
   const { t } = useTranslation()
-  const prompt = usePrompt()
   const { getFullDate } = useDate()
-
-  const { mutateAsync: cancelOrder } = useCancelOrder(order.id)
-
-  const handleCancel = async () => {
-    const res = await prompt({
-      title: t("general.areYouSure"),
-      description: t("orders.cancelWarning", {
-        id: `#${order.display_id}`,
-      }),
-      confirmText: t("actions.continue"),
-      cancelText: t("actions.cancel"),
-    })
-
-    if (!res) {
-      return
-    }
-
-    await cancelOrder(undefined, {
-      onSuccess: () => {
-        toast.success(t("orders.orderCanceled"))
-      },
-      onError: (e) => {
-        toast.error(e.message)
-      },
-    })
-  }
 
   return (
     <Container className="flex items-center justify-between px-6 py-4" data-testid="order-general-section">
@@ -74,55 +36,10 @@ export const OrderGeneralSection = ({ order }: OrderGeneralSectionProps) => {
           })}
         </Text>
       </div>
-      <div className="flex items-center gap-x-4" data-testid="order-general-section-badges-container">
-        <div className="flex items-center gap-x-1.5" data-testid="order-general-section-badges">
-          <OrderBadge order={order} />
-          <PaymentBadge order={order} />
-          <FulfillmentBadge order={order} />
-        </div>
-        <ActionMenu
-          groups={[
-            {
-              actions: [
-                {
-                  label: t("orders.edits.create"),
-                  to: "edits",
-                  disabled: order.status === "canceled",
-                  icon: <PencilSquare />,
-                },
-                {
-                  label: t("orders.returns.create"),
-                  to: "returns",
-                  disabled: order.status === "canceled",
-                  icon: <ArrowUturnLeft />,
-                },
-                {
-                  label: t("orders.exchanges.create"),
-                  to: "exchanges",
-                  disabled: order.status === "canceled",
-                  icon: <ArrowPath />,
-                },
-                {
-                  label: t("orders.claims.create"),
-                  to: "claims",
-                  disabled: order.status === "canceled",
-                  icon: <ExclamationCircle />,
-                },
-              ],
-            },
-            {
-              actions: [
-                {
-                  label: t("actions.cancel"),
-                  onClick: handleCancel,
-                  disabled: order.status === "canceled",
-                  icon: <XCircle />,
-                },
-              ],
-            },
-          ]}
-          data-testid="order-general-section-action-menu"
-        />
+      <div className="flex items-center gap-x-1.5" data-testid="order-general-section-badges">
+        <OrderBadge order={order} />
+        <PaymentBadge order={order} />
+        <FulfillmentBadge order={order} />
       </div>
     </Container>
   )
