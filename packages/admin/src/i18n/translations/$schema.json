@@ -4213,6 +4213,35 @@
         "return": {
           "type": "string"
         },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "edit": {
+                  "type": "string"
+                },
+                "return": {
+                  "type": "string"
+                },
+                "exchange": {
+                  "type": "string"
+                },
+                "claim": {
+                  "type": "string"
+                }
+              },
+              "required": ["label", "edit", "return", "exchange", "claim"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["request"],
+          "additionalProperties": false
+        },
         "cancelWarning": {
           "type": "string"
         },
@@ -5969,6 +5998,7 @@
         "claim",
         "exchange",
         "return",
+        "filters",
         "cancelWarning",
         "orderCanceled",
         "onDateFromSalesChannel",

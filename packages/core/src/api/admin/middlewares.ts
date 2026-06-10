@@ -23,6 +23,7 @@ import { adminProductChangesMiddlewares } from "./product-changes/middlewares"
 import { adminStockLocationsMiddlewares } from "./stock-locations/middlewares"
 import { adminShippingOptionsMiddlewares } from "./shipping-options/middlewares"
 import { adminShippingProfilesMiddlewares } from "./shipping-profiles/middlewares"
+import { applyRequestFilter } from "./orders/apply-request-filter"
 
 const maybeApplySellerOrderFilter = (
   req: AuthenticatedMedusaRequest,
@@ -69,6 +70,6 @@ export const adminMiddlewares: MiddlewareRoute[] = [
   {
     method: ["GET"],
     matcher: "/admin/orders",
-    middlewares: [maybeApplySellerOrderFilter],
+    middlewares: [maybeApplySellerOrderFilter, applyRequestFilter],
   },
 ]

@@ -1178,6 +1178,15 @@
     "claim": "Claim",
     "exchange": "Exchange",
     "return": "Return",
+    "filters": {
+      "request": {
+        "label": "Request",
+        "edit": "Edit",
+        "return": "Return",
+        "exchange": "Exchange",
+        "claim": "Claim"
+      }
+    },
     "cancelWarning": "You are about to cancel the order {{id}}. This action cannot be undone.",
     "orderCanceled": "Order canceled successfully",
     "onDateFromSalesChannel": "{{date}} from {{salesChannel}}",
