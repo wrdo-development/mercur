@@ -1,10 +1,8 @@
 import {
   ContainerRegistrationKeys,
   MedusaError,
-  Modules,
 } from "@medusajs/framework/utils"
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { MercurModules } from "@mercurjs/types"
 
 /**
  * Throws `NOT_FOUND` (rather than `NOT_ALLOWED`) when the seller does

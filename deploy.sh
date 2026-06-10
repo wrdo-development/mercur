@@ -30,14 +30,12 @@ flock -n 9 || { echo "Another deploy is already running"; exit 1; }
 
 log() { echo "[$(date +'%F %T')] $*"; }
 
-# 1. Pull upstream.
-#    Use an explicit refspec so the remote-tracking ref always updates.
-#    Plain `git fetch origin <branch>` relies on remote.origin.fetch being
-#    configured; on this VPS it isn't, so the loose ref stayed stuck and
-#    `reset --hard origin/$BRANCH` landed on a stale commit.
+# 1. Pull upstream
 log "Fetching $BRANCH"
 cd "$SOURCE_DIR"
-git fetch --force origin "+$BRANCH:refs/remotes/origin/$BRANCH"
+# Explicit refspec so the remote-tracking ref updates (a bare
+# `git fetch origin <branch>` only writes FETCH_HEAD on some setups).
+git fetch --prune origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH"
 git reset --hard "origin/$BRANCH"
 log "Now at $(git rev-parse --short HEAD) — $(git log -1 --pretty=%s)"
 
@@ -47,6 +45,9 @@ log "Syncing templates/basic → $DEPLOY_DIR"
 rsync -a --delete \
   --exclude='node_modules/' \
   --exclude='.medusa/' \
+  --exclude='.yarn/' \
+  --exclude='.yarnrc.yml' \
+  --exclude='.pnp.*' \
   --exclude='packages/api/.env' \
   --exclude='packages/api/.env.local' \
   --exclude='yarn.lock' \
@@ -60,9 +61,16 @@ rsync -a --delete \
 # output that references route modules absent from the package; running real
 # codegen would just re-introduce the broken references. The Routes type is
 # only used for client-side type inference at build time — runtime unaffected.
-# packages/api's exports map points "./_generated" at routes.d.ts.
+# `@acme/api`'s package.json exports `./_generated` -> `./.mercur/_generated/routes.d.ts`,
+# so write the stub there (an extra index.ts is harmless for tools that
+# fall back to it).
 mkdir -p "$DEPLOY_DIR/packages/api/.mercur/_generated"
 cat > "$DEPLOY_DIR/packages/api/.mercur/_generated/routes.d.ts" <<'STUB'
+// Stubbed at deploy time — see deploy.sh
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Routes = any
+STUB
+cat > "$DEPLOY_DIR/packages/api/.mercur/_generated/index.ts" <<'STUB'
 // Stubbed at deploy time — see deploy.sh
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Routes = any
@@ -111,14 +119,69 @@ for v in ['MERCUR_BACKEND_URL', 'NODE_ENV']:
 with open('$DEPLOY_DIR/turbo.json', 'w') as f: json.dump(t, f, indent=2)
 "
 
-# 3. Install + build the workspace.
-#    Force the node-modules linker so packages land on disk where the
-#    rest of the toolchain (medusa CLI, tsc, vite) expects them. Without
-#    this, yarn berry defaults to PnP and loads everything out of
-#    .yarn/berry/cache/*.zip — medusa-cli then crashes with "cmd is not
-#    a function" and tsc can't find type roots like vite/client.
+# 3. Install + build the workspace
 cd "$DEPLOY_DIR"
-echo "nodeLinker: node-modules" > "$DEPLOY_DIR/.yarnrc.yml"
+
+# Normalize package.json for yarn 4 + turbo:
+#   1. Rewrite the root `packageManager` from bun to the installed yarn
+#      version. Yarn 4 hard-fails on a non-yarn value and turbo refuses
+#      to resolve workspaces without the field.
+#   2. Rewrite intra-workspace deps to `workspace:*`. Bun accepts bare
+#      `*` for workspace packages; yarn 4 treats it as a registry lookup
+#      and 404s on `@acme/api`.
+# Bun usage in dev is unaffected because this only mutates the synced
+# copy under $DEPLOY_DIR.
+# Hardcoded — `yarn --version` itself trips the bun packageManager check
+# we are about to remove, so we cannot derive it before rewriting.
+YARN_VERSION="4.15.0"
+log "Normalizing package.json for yarn ($YARN_VERSION)"
+YARN_VERSION="$YARN_VERSION" python3 - <<'PY'
+import json, os, glob
+yarn_version = os.environ["YARN_VERSION"]
+roots = ["package.json"] + glob.glob("packages/*/package.json") + glob.glob("apps/*/package.json")
+workspace_names = set()
+for path in roots:
+    if os.path.exists(path):
+        with open(path) as f:
+            workspace_names.add(json.load(f).get("name"))
+workspace_names.discard(None)
+for path in roots:
+    if not os.path.exists(path):
+        continue
+    with open(path) as f:
+        data = json.load(f)
+    changed = False
+    if path == "package.json":
+        target = f"yarn@{yarn_version}"
+        if data.get("packageManager") != target:
+            data["packageManager"] = target
+            changed = True
+    elif "packageManager" in data:
+        data.pop("packageManager")
+        changed = True
+    for key in ("dependencies", "devDependencies", "peerDependencies", "optionalDependencies"):
+        deps = data.get(key) or {}
+        for name, spec in list(deps.items()):
+            if name in workspace_names and spec == "*":
+                deps[name] = "workspace:*"
+                changed = True
+    if changed:
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
+PY
+
+# Force node-modules linker. The apps/admin and apps/vendor workspaces
+# import vite, @vitejs/plugin-react, and @mercurjs/dashboard-sdk from
+# vite.config.ts but only declare them at the workspace root. PnP
+# (yarn's default) refuses to resolve undeclared imports per-workspace;
+# node-modules hoists root devDeps and matches bun's behavior.
+log "Pinning nodeLinker=node-modules"
+cat > "$DEPLOY_DIR/.yarnrc.yml" <<'YRC'
+nodeLinker: node-modules
+enableImmutableInstalls: false
+YRC
+
 log "yarn install (workspace)"
 yarn install >/tmp/mercur-yarn.log 2>&1 || { tail -n 40 /tmp/mercur-yarn.log; exit 1; }
 

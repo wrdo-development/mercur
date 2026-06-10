@@ -5,7 +5,8 @@
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "oxlint --quiet",
-    "test:integration:http": "cd integration-tests && bun run test:integration:http"
+    "test:integration:http": "cd integration-tests && bun run test:integration:http",
+    "test:e2e": "cd e2e-tests && bun run test"
   },
   "dependencies": {
     "@mercurjs/core": "workspace:*"
@@ -28,7 +29,8 @@
     "apps/*",
     "packages/*",
     "packages/providers/*",
-    "integration-tests"
+    "integration-tests",
+    "e2e-tests"
   ],
   "overrides": {
     "@medusajs/admin-bundler": "2.13.4",

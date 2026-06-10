@@ -11,7 +11,9 @@ import { HttpTypes } from "@mercurjs/types"
 import {
   deleteProductAttributesWorkflow,
   detachProductAttributeWorkflow,
+  updateProductAttributeWorkflow,
 } from "../../../../../../workflows/product-attribute"
+import { AdminUpdateProductAttributeType } from "../../../validators"
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
@@ -59,6 +61,40 @@ export const GET = async (
   }
 
   res.json({ product_attribute })
+}
+
+/**
+ * Replaces the value set of a product attribute in one round-trip.
+ * Admin operates directly on the catalogue (no ProductChange staging
+ * like the vendor surface), so the handler delegates to
+ * `updateProductAttributeWorkflow` which composes detach + add inside
+ * a single workflow run and re-reads the refreshed attribute payload.
+ */
+export const POST = async (
+  req: AuthenticatedMedusaRequest<AdminUpdateProductAttributeType>,
+  res: MedusaResponse<HttpTypes.AdminProductAttributeResponse>
+) => {
+  const productId = req.params.id
+  const attributeId = req.params.attribute_id
+  const body = req.validatedBody
+
+  const { result } = await updateProductAttributeWorkflow(req.scope).run({
+    input: {
+      product_id: productId,
+      attribute_id: attributeId,
+      value_ids: body.attribute_value_ids,
+      values: body.values,
+    },
+  })
+
+  if (!result.product_attribute) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_FOUND,
+      `Attribute with id ${attributeId} was not found on product ${productId}`
+    )
+  }
+
+  res.json({ product_attribute: result.product_attribute })
 }
 
 export const DELETE = async (

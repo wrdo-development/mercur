@@ -57,8 +57,8 @@ export const CreateAttributeForm = ({
   const schema = useMemo(
     () =>
       buildSchema({
-        title: t("products.create.attributes.add.title.required"),
-        values: t("products.create.attributes.add.values.required"),
+        title: t("products.create.attributes.errors.titleRequired"),
+        values: t("products.create.attributes.errors.valuesRequired"),
       }),
     [t]
   )
@@ -117,12 +117,17 @@ export const CreateAttributeForm = ({
                 <Form.Field
                   control={form.control}
                   name="title"
-                  render={({ field }) => (
+                  render={({ field, fieldState }) => (
                     <Form.Item>
                       <Form.Control>
                         <Input
                           {...field}
-                          className="bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
+                          aria-invalid={fieldState.invalid ? "true" : undefined}
+                          className={
+                            fieldState.invalid
+                              ? "bg-ui-bg-field-component shadow-borders-error focus:shadow-borders-error"
+                              : "bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
+                          }
                           placeholder={t(
                             "products.create.attributes.titlePlaceholder"
                           )}
@@ -145,7 +150,7 @@ export const CreateAttributeForm = ({
                 <Form.Field
                   control={form.control}
                   name="values"
-                  render={({ field: { onChange, value, ...field } }) => (
+                  render={({ field: { onChange, value, ...field }, fieldState }) => (
                     <Form.Item>
                       <Form.Control>
                         {useForVariants ? (
@@ -154,6 +159,14 @@ export const CreateAttributeForm = ({
                             variant="contrast"
                             value={Array.isArray(value) ? value : []}
                             onChange={onChange}
+                            aria-invalid={
+                              fieldState.invalid ? "true" : undefined
+                            }
+                            className={
+                              fieldState.invalid
+                                ? "shadow-borders-error focus-within:!shadow-borders-error"
+                                : undefined
+                            }
                             placeholder={t(
                               "products.create.attributes.valuePlaceholder"
                             )}
@@ -161,7 +174,14 @@ export const CreateAttributeForm = ({
                         ) : (
                           <Textarea
                             {...field}
-                            className="bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
+                            aria-invalid={
+                              fieldState.invalid ? "true" : undefined
+                            }
+                            className={
+                              fieldState.invalid
+                                ? "bg-ui-bg-field-component shadow-borders-error focus:shadow-borders-error"
+                                : "bg-ui-bg-field-component hover:bg-ui-bg-field-component-hover"
+                            }
                             value={
                               Array.isArray(value)
                                 ? value.join(", ")
@@ -230,7 +250,7 @@ export const CreateAttributeForm = ({
               size="small"
               type="submit"
               isLoading={isPending}
-              data-testid="create-attribute-submit"
+              data-testid="create-attribute-submit-button"
             >
               {t("actions.save")}
             </Button>

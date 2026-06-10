@@ -10,7 +10,7 @@ import { HttpTypes, ProductChangeDTO } from "@mercurjs/types"
 
 import { productEditUpdateAttributesWorkflow } from "../../../../../../workflows/product-edit/workflows/product-edit-update-attributes"
 import { groupProductAttributeValues } from "../../../../../utils/format-product-attributes"
-import { ensureSellerOwnsProduct } from "../../../helpers"
+import { VendorUpdateProductAttributeType } from "../../../validators"
 
 export const GET = async (
   req: AuthenticatedMedusaRequest,
@@ -62,6 +62,51 @@ export const GET = async (
 }
 
 /**
+ * Stages a `remove + add` pair on a single product-change so the new
+ * value set replaces the old one atomically. The apply dispatcher
+ * processes removes before adds (see
+ * `applyProductAttributeChangeActionsWorkflow`), so callers don't have
+ * to choreograph two separate requests — and auto-confirm reaches the
+ * same end state as the existing DELETE-then-POST integration path.
+ */
+export const POST = async (
+  req: AuthenticatedMedusaRequest<VendorUpdateProductAttributeType>,
+  res: MedusaResponse<{ product_change: ProductChangeDTO }>
+) => {
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const sellerId = req.seller_context!.seller_id
+  const productId = req.params.id
+  const attributeId = req.params.attribute_id
+  const body = req.validatedBody
+
+  const { result } = await productEditUpdateAttributesWorkflow(req.scope).run({
+    input: {
+      product_id: productId,
+      created_by: sellerId,
+      operations: [
+        { type: "remove", attribute_id: attributeId },
+        {
+          type: "add",
+          attribute_id: attributeId,
+          value_ids: body.attribute_value_ids,
+          values: body.values,
+        },
+      ],
+    },
+  })
+
+  const {
+    data: [product_change],
+  } = await query.graph({
+    entity: "product_change",
+    fields: ["*", "actions.*"],
+    filters: { id: result.id },
+  })
+
+  res.status(202).json({ product_change: product_change ?? result })
+}
+
+/**
  * Stages an `ATTRIBUTE_REMOVE` action. Auto-confirm dismisses the
  * remote links inline when the flag is off.
  */
@@ -73,8 +118,6 @@ export const DELETE = async (
   const sellerId = req.seller_context!.seller_id
   const productId = req.params.id
   const attributeId = req.params.attribute_id
-
-  await ensureSellerOwnsProduct(req.scope, sellerId, productId)
 
   const { result } = await productEditUpdateAttributesWorkflow(req.scope).run({
     input: {

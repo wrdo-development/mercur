@@ -12,7 +12,6 @@ import { HttpTypes, ProductChangeDTO } from "@mercurjs/types"
 import { productEditDeleteProductWorkflow } from "../../../../workflows/product-edit/workflows/product-edit-delete-product"
 import { productEditUpdateFieldsWorkflow } from "../../../../workflows/product-edit/workflows/product-edit-update-fields"
 import { enrichProductAttributes } from "../../../utils"
-import { ensureSellerOwnsProduct } from "../helpers"
 import { VendorUpdateProductType } from "../validators"
 
 export const GET = async (
@@ -57,8 +56,6 @@ export const POST = async (
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const sellerId = req.seller_context!.seller_id
 
-  await ensureSellerOwnsProduct(req.scope, sellerId, req.params.id)
-
   const { additional_data: _ad, ...update } = req.validatedBody
 
   const { result } = await productEditUpdateFieldsWorkflow(req.scope).run({
@@ -91,8 +88,6 @@ export const DELETE = async (
 ) => {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const sellerId = req.seller_context!.seller_id
-  await ensureSellerOwnsProduct(req.scope, sellerId, req.params.id)
-
   const { result } = await productEditDeleteProductWorkflow(req.scope).run({
     input: {
       product_id: req.params.id,

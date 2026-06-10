@@ -559,6 +559,63 @@ medusaIntegrationTestRunner({
           expect(attrs[0].values.map((v: any) => v.name)).toEqual(["S"])
         })
 
+        // MER-134 — atomic value-set replacement through the dedicated
+        // PATCH-style endpoint stages remove + add on one product-change,
+        // so the new selection is the only one visible afterwards.
+        it("POST /attributes/:attribute_id replaces values atomically", async () => {
+          const size = await createGlobalAttribute({
+            name: "Size",
+            type: "multi_select",
+            is_variant_axis: true,
+            values: ["S", "M", "L"],
+          })
+
+          const create = await api.post(
+            `/vendor/products`,
+            {
+              title: "Edit attribute",
+              variants: [
+                { title: "S", attribute_values: { Size: "S" } },
+                { title: "M", attribute_values: { Size: "M" } },
+                { title: "L", attribute_values: { Size: "L" } },
+              ],
+              variant_attributes: [
+                {
+                  attribute_id: size.attribute_id,
+                  value_ids: [
+                    size.byName.get("S")!,
+                    size.byName.get("M")!,
+                    size.byName.get("L")!,
+                  ],
+                },
+              ],
+            },
+            seller1Headers,
+          )
+          const productId = create.data.product.id
+
+          await api.post(
+            `/vendor/products/${productId}/attributes/${size.attribute_id}`,
+            {
+              attribute_value_ids: [
+                size.byName.get("M")!,
+                size.byName.get("L")!,
+              ],
+            },
+            seller1Headers,
+          )
+
+          const got = await api.get(
+            `/vendor/products/${productId}`,
+            seller1Headers,
+          )
+          const attrs = got.data.product.attributes
+          expect(attrs).toHaveLength(1)
+          expect(
+            attrs[0].values.map((v: any) => v.name).sort(),
+          ).toEqual(["L", "M"])
+        })
+
         // Round-trip: a product first created with an inline-custom
         // attribute should NOT materialise a second ProductAttribute row
         // when the UI re-sends it as an existing reference (i.e. uses the

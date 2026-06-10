@@ -471,3 +471,20 @@ export const AdminAddProductAttribute = z
       path: ["type"],
     },
   )
+
+/**
+ * `POST /admin/products/:id/attributes/:attribute_id` — atomic value-set
+ * replacement for an attribute on a product. Admin goes direct against
+ * `detachProductAttributeWorkflow` + `addProductAttributeWorkflow`
+ * (no staging — operators don't go through the ProductChange flow that
+ * sellers do), so the route handler chains both calls.
+ */
+export type AdminUpdateProductAttributeType = z.infer<
+  typeof AdminUpdateProductAttribute
+>
+export const AdminUpdateProductAttribute = z
+  .object({
+    attribute_value_ids: z.array(z.string()).optional(),
+    values: z.array(z.string()).optional(),
+  })
+  .strict()

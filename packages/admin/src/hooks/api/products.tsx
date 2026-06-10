@@ -497,6 +497,35 @@ export const useAddAttributeToProduct = (
   });
 };
 
+export const useUpdateAttributeOnProduct = (
+  productId: string,
+  attributeId: string,
+  options?: UseMutationOptions<
+    HttpTypes.AdminProductAttributeResponse,
+    ClientError,
+    Record<string, any>
+  >,
+) => {
+  return useMutation({
+    mutationFn: (payload) =>
+      sdk.admin.products.$id.attributes.$attributeId.mutate({
+        $id: productId,
+        $attributeId: attributeId,
+        ...payload,
+      }),
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({
+        queryKey: scopedProductAttributesQueryKeys.lists(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: productsQueryKeys.detail(productId),
+      });
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};
+
 export const useRemoveAttributeFromProduct = (
   productId: string,
   attributeId: string,

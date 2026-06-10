@@ -430,6 +430,27 @@ export const VendorAddProductAttribute = z
     },
   )
 
+/**
+ * `PATCH /vendor/products/:id/attributes/:attribute_id` — atomic
+ * value-set replacement for a product attribute. Stages `remove + add`
+ * in a single product-change so the new value set replaces the old
+ * one in one round-trip (the apply dispatcher processes removes first,
+ * then adds — see `applyProductAttributeChangeActionsWorkflow`).
+ *
+ * Mirrors the existing-attribute branch of `VendorAddProductAttribute`:
+ * caller may pass pre-resolved `attribute_value_ids` or names via
+ * `values` (free-form values upsert; select-type misses error out).
+ */
+export type VendorUpdateProductAttributeType = z.infer<
+  typeof VendorUpdateProductAttribute
+>
+export const VendorUpdateProductAttribute = z
+  .object({
+    attribute_value_ids: z.array(z.string()).optional(),
+    values: z.array(z.string()).optional(),
+  })
+  .strict()
+
 export type VendorCancelProductChangeType = z.infer<
   typeof VendorCancelProductChange
 >

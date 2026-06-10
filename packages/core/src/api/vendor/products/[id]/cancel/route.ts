@@ -9,7 +9,6 @@ import {
 import { ProductChangeDTO, ProductChangeStatus } from "@mercurjs/types"
 
 import { cancelProductChangeWorkflow } from "../../../../../workflows/product-edit/workflows/cancel-product-change"
-import { ensureSellerOwnsProduct } from "../../helpers"
 
 /**
  * Vendor-side cancel of the seller's own pending `ProductChange`.
@@ -24,8 +23,6 @@ export const POST = async (
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const sellerId = req.seller_context!.seller_id
   const productId = req.params.id
-
-  await ensureSellerOwnsProduct(req.scope, sellerId, productId)
 
   const { data: changes } = await query.graph({
     entity: "product_change",

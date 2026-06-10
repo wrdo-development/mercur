@@ -13,7 +13,7 @@ import {
   toast,
 } from "@medusajs/ui";
 import { ProductAttributeDTO, AttributeType } from "@mercurjs/types";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
@@ -27,7 +27,8 @@ import { Form } from "../../../components/common/form";
 import { RouteFocusModal, useRouteModal } from "../../../components/modals";
 import { KeyboundForm } from "../../../components/utilities/keybound-form";
 import { useProductAttributes } from "../../../hooks/api";
-import { useBatchProductAttributes } from "../../../hooks/api/products";
+import { useBatchProductAttributes, useProduct } from "../../../hooks/api/products";
+import { PRODUCT_DETAIL_QUERY } from "../constants";
 import { useAttributeTableQuery } from "../../../hooks/table/query/use-attribute-table-query";
 import { useAttributeTableFilters } from "../../../hooks/table/filters/use-attribute-table-filters";
 
@@ -100,6 +101,41 @@ const Content = ({ productId }: { productId: string }) => {
       placeholderData: keepPreviousData,
     });
 
+  const { product } = useProduct(productId, PRODUCT_DETAIL_QUERY);
+
+  const assignedIds = useMemo(
+    () =>
+      new Set(
+        ((product as any)?.attributes ?? []).map(
+          (a: ProductAttributeDTO) => a.id
+        )
+      ),
+    [product]
+  );
+
+  const lockedIds = useMemo(() => {
+    const ids = new Set<string>(assignedIds as Set<string>);
+    for (const attr of product_attributes ?? []) {
+      if ((attr as ProductAttributeDTO).is_required) ids.add(attr.id);
+    }
+    return ids;
+  }, [assignedIds, product_attributes]);
+
+  useEffect(() => {
+    if (!lockedIds.size) return;
+    setRowSelection((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const id of lockedIds) {
+        if (!next[id]) {
+          next[id] = true;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [lockedIds]);
+
   const { mutateAsync, isPending } = useBatchProductAttributes(productId);
 
   const form = useForm<AddExistingFormValues>({
@@ -121,7 +157,7 @@ const Content = ({ productId }: { productId: string }) => {
 
   const handleContinue = () => {
     const selectedIds = Object.keys(rowSelection).filter(
-      (id) => rowSelection[id]
+      (id) => rowSelection[id] && !lockedIds.has(id)
     );
     if (!selectedIds.length) return;
 
@@ -222,6 +258,7 @@ const Content = ({ productId }: { productId: string }) => {
               rowSelection={{
                 state: rowSelection,
                 onRowSelectionChange: setRowSelection,
+                enableRowSelection: (row) => !lockedIds.has(row.original.id),
               }}
               isLoading={isLoading}
               layout="fill"
@@ -239,7 +276,11 @@ const Content = ({ productId }: { productId: string }) => {
                 size="small"
                 type="button"
                 onClick={handleContinue}
-                disabled={!Object.values(rowSelection).some(Boolean)}
+                disabled={
+                  !Object.entries(rowSelection).some(
+                    ([id, selected]) => selected && !lockedIds.has(id)
+                  )
+                }
               >
                 {t("actions.continue")}
               </Button>

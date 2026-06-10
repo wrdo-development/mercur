@@ -158,6 +158,13 @@ export function getRouteMap({
                               import("./pages/products/[id]/attributes/add"),
                           },
                           {
+                            path: "attributes/:attribute_id/edit",
+                            lazy: () =>
+                              import(
+                                "./pages/products/[id]/attributes/[attribute_id]/edit"
+                              ),
+                          },
+                          {
                             path: "metadata",
                             lazy: () =>
                               import("./pages/products/[id]/metadata"),
@@ -231,6 +238,44 @@ export function getRouteMap({
                             path: ":f_id/create-shipment",
                             lazy: () =>
                               import("./pages/orders/[id]/shipment"),
+                          },
+                          {
+                            path: "returns/create",
+                            lazy: () =>
+                              import(
+                                "./pages/orders/[id]/returns/create"
+                              ),
+                          },
+                          {
+                            path: "returns/:return_id/receive",
+                            lazy: () =>
+                              import(
+                                "./pages/orders/[id]/returns/[return_id]/receive"
+                              ),
+                          },
+                          {
+                            path: "refund",
+                            lazy: () =>
+                              import("./pages/orders/[id]/refund"),
+                          },
+                          {
+                            path: "edit",
+                            lazy: () =>
+                              import("./pages/orders/[id]/edit"),
+                          },
+                          {
+                            path: "exchanges/create",
+                            lazy: () =>
+                              import(
+                                "./pages/orders/[id]/exchanges/create"
+                              ),
+                          },
+                          {
+                            path: "claims/create",
+                            lazy: () =>
+                              import(
+                                "./pages/orders/[id]/claims/create"
+                              ),
                           },
                         ],
                       },

@@ -182,7 +182,7 @@ export const OrderSummarySection = ({ order }: OrderSummarySectionProps) => {
 
   return (
     <Container
-      className="divide-y divide-dashed p-0"
+      className="divide-y p-0"
       data-testid="order-summary-section"
     >
       <Header order={order} orderPreview={orderPreview} />

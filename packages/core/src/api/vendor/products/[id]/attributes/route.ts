@@ -9,7 +9,6 @@ import {
 import { AttributeType, HttpTypes, ProductChangeDTO } from "@mercurjs/types"
 
 import { productEditUpdateAttributesWorkflow } from "../../../../../workflows/product-edit/workflows/product-edit-update-attributes"
-import { ensureSellerOwnsProduct } from "../../helpers"
 import { VendorAddProductAttributeType } from "../../validators"
 
 export const GET = async (
@@ -68,27 +67,25 @@ export const POST = async (
   const productId = req.params.id
   const body = req.validatedBody
 
-  await ensureSellerOwnsProduct(req.scope, sellerId, productId)
-
   const op =
     body.attribute_id !== undefined
       ? ({
-          type: "add" as const,
-          attribute_id: body.attribute_id,
-          value_ids: body.attribute_value_ids,
-          values: body.values,
-        })
+        type: "add" as const,
+        attribute_id: body.attribute_id,
+        value_ids: body.attribute_value_ids,
+        values: body.values,
+      })
       : ({
-          type: "add" as const,
-          name: body.name!,
-          attribute_type: body.type as AttributeType,
-          values: body.values ?? [],
-          is_variant_axis: body.is_variant_axis,
-          is_filterable: body.is_filterable,
-          is_required: body.is_required,
-          description: body.description ?? null,
-          metadata: body.metadata ?? null,
-        })
+        type: "add" as const,
+        name: body.name!,
+        attribute_type: body.type as AttributeType,
+        values: body.values ?? [],
+        is_variant_axis: body.is_variant_axis,
+        is_filterable: body.is_filterable,
+        is_required: body.is_required,
+        description: body.description ?? null,
+        metadata: body.metadata ?? null,
+      })
 
   const { result } = await productEditUpdateAttributesWorkflow(req.scope).run({
     input: {

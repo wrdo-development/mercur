@@ -1,4 +1,10 @@
-import { XCircle } from "@medusajs/icons"
+import {
+  ArrowPath,
+  ArrowUturnLeft,
+  ExclamationCircle,
+  PencilSquare,
+  XCircle,
+} from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import {
   Container,
@@ -79,9 +85,37 @@ export const OrderGeneralSection = ({ order }: OrderGeneralSectionProps) => {
             {
               actions: [
                 {
+                  label: t("orders.edits.create"),
+                  to: "edits",
+                  disabled: order.status === "canceled",
+                  icon: <PencilSquare />,
+                },
+                {
+                  label: t("orders.returns.create"),
+                  to: "returns",
+                  disabled: order.status === "canceled",
+                  icon: <ArrowUturnLeft />,
+                },
+                {
+                  label: t("orders.exchanges.create"),
+                  to: "exchanges",
+                  disabled: order.status === "canceled",
+                  icon: <ArrowPath />,
+                },
+                {
+                  label: t("orders.claims.create"),
+                  to: "claims",
+                  disabled: order.status === "canceled",
+                  icon: <ExclamationCircle />,
+                },
+              ],
+            },
+            {
+              actions: [
+                {
                   label: t("actions.cancel"),
                   onClick: handleCancel,
-                  disabled: !!order.canceled_at,
+                  disabled: order.status === "canceled",
                   icon: <XCircle />,
                 },
               ],

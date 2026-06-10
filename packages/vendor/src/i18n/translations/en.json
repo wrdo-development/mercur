@@ -561,7 +561,11 @@
         "selectValuePlaceholder": "Select value",
         "requiredTooltip": "This attribute is required by the Marketplace and can't be deselected.",
         "noAttributesTitle": "No product attributes yet",
-        "noAttributesDescription": "There are no attributes defined by the Marketplace."
+        "noAttributesDescription": "There are no attributes defined by the Marketplace.",
+        "errors": {
+          "titleRequired": "Please enter a title",
+          "valuesRequired": "Please enter at least one value"
+        }
       }
     },
     "export": {
@@ -623,13 +627,16 @@
     "attributeVariantsDescription": "Attributes used for variations",
     "attributeProductInformation": "Product Information",
     "attributeProductInformationDescription": "Attributes used for informational purposes",
-    "attributeRequiredByMarketplace": "This attribute is required by marketplace",
+    "attributeRequiredByMarketplace": "This attribute is required by the Marketplace",
+    "attributeRequiredDeleteDisabledTooltip": "Required attributes cannot be removed.",
     "addAttribute": "Add Attribute",
     "deleteAttributeWarning": "Are you sure you want to delete the attribute \"{{title}}\"? This action cannot be undone.",
     "attributesSection": {
       "removeWarning": "You are about to remove this attribute from the product. This action cannot be undone."
     },
     "editAttributes": "Edit Attributes",
+    "editAttribute": "Edit Attribute",
+    "editAttributeHint": "Update the values selected for this attribute on the product.",
     "editOptions": "Edit Options",
     "media": {
       "label": "Media",
@@ -1321,6 +1328,18 @@
     "claim": "Claim",
     "exchange": "Exchange",
     "return": "Return",
+    "filters": {
+      "request": {
+        "label": "Request",
+        "edit": "Edit",
+        "return": "Return",
+        "exchange": "Exchange",
+        "claim": "Claim"
+      }
+    },
+    "actions": {
+      "cancelDisabledFulfilled": "Cannot cancel an order that has fulfilled items."
+    },
     "cancelWarning": "You are about to cancel the order {{id}}. This action cannot be undone.",
     "orderCanceled": "Order canceled successfully",
     "onDateFromSalesChannel": "{{date}} from {{salesChannel}}",
@@ -1406,7 +1425,13 @@
       "createRefundWrongQuantity": "Quantity should be a number between 1 and {{number}}",
       "refundAmount": "Refund {{ amount }}",
       "paymentLink": "Copy payment link for {{ amount }}",
-      "selectPaymentToRefund": "Select payment to refund"
+      "copyPaymentLink": "Copy payment link for {{ amount }}",
+      "copyLinkSuccess": "Payment link copied to clipboard",
+      "copyLinkError": "Failed to copy payment link",
+      "copyLinkMissing": "No payment link available for this order",
+      "markAsPaidSuccess": "Payment collection marked as paid",
+      "selectPaymentToRefund": "Select payment to refund",
+      "outstandingAmount": "Outstanding amount"
     },
     "edits": {
       "title": "Edit order",
@@ -1432,11 +1457,13 @@
       },
       "toast": {
         "canceledSuccessfully": "Order edit cancelled",
-        "confirmedSuccessfully": "Order edit confirmed"
+        "confirmedSuccessfully": "Order edit confirmed",
+        "requestSent": "Edit request sent to customer"
       },
       "validation": {
         "quantityLowerThanFulfillment": "Cannot set quantity to be less then or equal to fulfilled quantity"
-      }
+      },
+      "removeBlockedFulfilledOrReturned": "Cannot remove items that were fulfilled or returned."
     },
     "edit": {
       "email": {
@@ -1454,6 +1481,10 @@
     },
     "returns": {
       "create": "Create Return",
+      "policyHint": "Returns are accepted within {{days}} days of delivery.",
+      "outOfPolicy": "Returns are accepted within {{days}} days of delivery.",
+      "restockPreview": "Receiving {{quantity}} × {{offerSku}} → +{{delta}} to {{inventoryItem}} at {{location}}",
+      "noItemsSelected": "Select at least one item to return.",
       "confirm": "Confirm Return",
       "confirmText": "You are about to confirm a Return. This action cannot be undone.",
       "inbound": "Inbound",
@@ -1524,6 +1555,34 @@
     },
     "claims": {
       "create": "Create Claim",
+      "title": "Create Claim",
+      "description": "Choose claim type and select items the customer wants to claim.",
+      "policyHint": "Claims are accepted within {{days}} days of delivery.",
+      "outOfPolicy": "Claims are accepted within {{days}} days of delivery.",
+      "location": "Location",
+      "locationHint": "Stock location where the returned items will be received.",
+      "inboundShipping": "Return shipping (optional)",
+      "inboundShippingHint": "Shipping method the customer will use to return the items.",
+      "typeLabel": "Claim type",
+      "typeRefund": "Refund — no replacement shipment",
+      "typeReplace": "Replace — ship replacement items",
+      "typeLockedAfterStart": "Claim type is locked once a draft is started. Cancel and reopen to switch.",
+      "claimItems": "Items to claim",
+      "noClaimableItems": "No claimable items on this order.",
+      "outboundItems": "Items to send",
+      "noOutboundItems": "No replacement items added yet.",
+      "addOutboundItems": "Add items",
+      "addOutboundItemsDescription": "Pick variants to send as replacements for the claimed items.",
+      "remainingQty": "{{count}} claimable",
+      "reasonPlaceholder": "Choose a reason",
+      "itemNotePlaceholder": "Add a note (optional)",
+      "reasons": {
+        "missing_item": "Missing item",
+        "wrong_item": "Wrong item",
+        "production_failure": "Production failure",
+        "other": "Other"
+      },
+      "noteHint": "Add an internal note for this claim (visible only to your team).",
       "confirm": "Confirm Claim",
       "confirmText": "You are about to confirm a Claim. This action cannot be undone.",
       "manage": "Manage Claim",
@@ -1557,6 +1616,31 @@
     },
     "exchanges": {
       "create": "Create Exchange",
+      "title": "Create Exchange",
+      "description": "Select returnable items and confirm to create an exchange request.",
+      "policyHint": "Exchanges are accepted within {{days}} days of delivery.",
+      "outOfPolicy": "Exchanges are accepted within {{days}} days of delivery.",
+      "inboundItems": "Items to return",
+      "noReturnableItems": "No returnable items on this order.",
+      "outboundItems": "Items to send",
+      "noOutboundItems": "No replacement items added yet.",
+      "addOutboundItems": "Add items",
+      "addOutboundItemsDescription": "Pick variants to send as replacements for the returned items.",
+      "location": "Return location",
+      "locationHint": "Choose which location you want the returned items to ship to.",
+      "locationPlaceholder": "Choose a location",
+      "inboundShipping": "Return shipping (Optional)",
+      "inboundShippingHint": "Choose which method to use for the inbound shipment.",
+      "inboundShippingPlaceholder": "Choose a shipping option",
+      "inboundShippingLockedPlaceholder": "Pick a location first",
+      "reasonPlaceholder": "Choose a reason",
+      "itemNotePlaceholder": "Add a note (optional)",
+      "remainingQty": "{{count}} returnable",
+      "noteHint": "Add an internal note for this exchange (visible only to your team).",
+      "toast": {
+        "confirmedSuccessfully": "Exchange request confirmed.",
+        "canceledSuccessfully": "Exchange draft discarded."
+      },
       "manage": "Manage Exchange",
       "confirm": "Confirm Exchange",
       "confirmText": "You are about to confirm an Exchange. This action cannot be undone.",
@@ -1613,7 +1697,7 @@
       }
     },
     "shipment": {
-      "title": "Mark fulfillment shipped",
+      "title": "Mark Fulfillment as Shipped",
       "trackingNumber": "Tracking number",
       "trackingUrl": "Tracking URL",
       "labelUrl": "Label URL",
@@ -1621,7 +1705,7 @@
       "addTrackingUrl": "Add tracking URL",
       "trackingUrlPlaceholder": "https://www.dhl.com/shipment/1234567890",
       "sendNotification": "Send notification",
-      "sendNotificationHint": "Notify the customer about this shipment.",
+      "sendNotificationHint": "Notify the customer about shipment",
       "toastCreated": "Shipment created successfully."
     },
     "fulfillment": {
