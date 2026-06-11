@@ -5,6 +5,7 @@ import {
     MedusaContainer,
 } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { MercurModules, SellerStatus } from "@mercurjs/types"
 import { createSellerUser } from "../../../helpers/create-seller-user"
 import { createCustomerUser } from "../../../helpers/create-customer-user"
 import { generatePublishableKey, generateStoreHeaders } from "../../../helpers/create-admin-user"
@@ -25,8 +26,18 @@ medusaIntegrationTestRunner({
             let salesChannel: any
             let product1: any
             let product2: any
+            let offer1: any
+            let offer2: any
             let _shippingOption1: any
             let _shippingOption2: any
+
+            const approveSeller = async (sellerId: string) => {
+                const sellerModule: any = appContainer.resolve(MercurModules.SELLER)
+                await sellerModule.updateSellers({
+                    id: sellerId,
+                    status: SellerStatus.OPEN,
+                })
+            }
 
             beforeAll(async () => {
                 appContainer = getContainer()
@@ -48,6 +59,9 @@ medusaIntegrationTestRunner({
                 })
                 seller2 = seller2Result.seller
                 seller2Headers = seller2Result.headers
+
+                await approveSeller(seller1.id)
+                await approveSeller(seller2.id)
 
                 // Create customer
                 const customerResult = await createCustomerUser(appContainer, {
@@ -205,6 +219,60 @@ medusaIntegrationTestRunner({
                     seller2Headers
                 )
                 _shippingOption2 = shippingOption2Response.data.shipping_option
+
+                // Create offer for seller 1
+                const offer1Response = await api.post(
+                    `/vendor/offers`,
+                    {
+                        sku: `OF-SELLER1-${Date.now()}`,
+                        variant_id: product1.variants[0].id,
+                        shipping_profile_id: shippingPrerequisites1.shippingProfile.id,
+                        inventory_items: [
+                            {
+                                title: "Seller 1 Inventory",
+                                required_quantity: 1,
+                                stock_levels: [
+                                    {
+                                        location_id: shippingPrerequisites1.stockLocation.id,
+                                        stocked_quantity: 100,
+                                    },
+                                ],
+                            },
+                        ],
+                        prices: [
+                            { amount: 1000, currency_code: "usd" },
+                        ],
+                    },
+                    seller1Headers
+                )
+                offer1 = offer1Response.data.offer
+
+                // Create offer for seller 2
+                const offer2Response = await api.post(
+                    `/vendor/offers`,
+                    {
+                        sku: `OF-SELLER2-${Date.now()}`,
+                        variant_id: product2.variants[0].id,
+                        shipping_profile_id: shippingPrerequisites2.shippingProfile.id,
+                        inventory_items: [
+                            {
+                                title: "Seller 2 Inventory",
+                                required_quantity: 1,
+                                stock_levels: [
+                                    {
+                                        location_id: shippingPrerequisites2.stockLocation.id,
+                                        stocked_quantity: 100,
+                                    },
+                                ],
+                            },
+                        ],
+                        prices: [
+                            { amount: 1500, currency_code: "usd" },
+                        ],
+                    },
+                    seller2Headers
+                )
+                offer2 = offer2Response.data.offer
             })
 
             let prerequisiteCounter = 0
@@ -303,7 +371,7 @@ medusaIntegrationTestRunner({
                     const addItem1Response = await api.post(
                         `/store/carts/${cart.id}/line-items`,
                         {
-                            variant_id: product1.variants[0].id,
+                            offer_id: offer1.id,
                             quantity: 2,
                         },
                         storeHeaders
@@ -314,7 +382,7 @@ medusaIntegrationTestRunner({
                     const addItem2Response = await api.post(
                         `/store/carts/${cart.id}/line-items`,
                         {
-                            variant_id: product2.variants[0].id,
+                            offer_id: offer2.id,
                             quantity: 1,
                         },
                         storeHeaders
@@ -427,7 +495,7 @@ medusaIntegrationTestRunner({
                     const addItemResponse = await api.post(
                         `/store/carts/${cart.id}/line-items`,
                         {
-                            variant_id: product1.variants[0].id,
+                            offer_id: offer1.id,
                             quantity: 3,
                         },
                         storeHeaders
@@ -524,7 +592,7 @@ medusaIntegrationTestRunner({
                     await api.post(
                         `/store/carts/${cart.id}/line-items`,
                         {
-                            variant_id: product1.variants[0].id,
+                            offer_id: offer1.id,
                             quantity: 1,
                         },
                         storeHeaders
@@ -533,7 +601,7 @@ medusaIntegrationTestRunner({
                     await api.post(
                         `/store/carts/${cart.id}/line-items`,
                         {
-                            variant_id: product2.variants[0].id,
+                            offer_id: offer2.id,
                             quantity: 1,
                         },
                         storeHeaders

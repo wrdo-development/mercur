@@ -35,7 +35,16 @@ All packages are published under the `@mercurjs` scope on npm.
    - `templates/basic/apps/admin/package.json` — `@mercurjs/admin`
    - `templates/basic/apps/vendor/package.json` — `@mercurjs/vendor`
 
-3. Commit and tag:
+3. Refresh the lockfile so workspace versions match `package.json`:
+
+```bash
+bun install
+```
+
+   Commit the updated `bun.lock` together with the version bumps — CI runs
+   `bun install --frozen-lockfile` and will fail otherwise.
+
+4. Commit and tag:
 
 ```bash
 git add -A
@@ -44,7 +53,7 @@ git tag v2.X.Y
 git push origin main --tags
 ```
 
-4. The GitHub Action (`.github/workflows/release.yml`) triggers automatically and:
+5. The GitHub Action (`.github/workflows/release.yml`) triggers automatically and:
    - Generates a GitHub Release with changelog via `changelogithub`
    - Builds all packages with `bun run build` (Turborepo)
    - Publishes every non-private package to npm with `--tag latest`
@@ -66,7 +75,16 @@ Where `Z` is the next incremental number (0, 1, 2, ...).
    - `templates/basic/apps/admin/package.json` — `@mercurjs/admin`
    - `templates/basic/apps/vendor/package.json` — `@mercurjs/vendor`
 
-3. Commit and tag:
+3. Refresh the lockfile so workspace versions match `package.json`:
+
+```bash
+bun install
+```
+
+   Commit the updated `bun.lock` together with the version bumps — CI runs
+   `bun install --frozen-lockfile` and will fail otherwise.
+
+4. Commit and tag:
 
 ```bash
 git add -A
@@ -75,7 +93,7 @@ git tag v2.X.Y-canary.Z
 git push origin canary --tags
 ```
 
-4. The GitHub Action detects `canary` in the tag name and publishes with `--tag canary`.
+5. The GitHub Action detects `canary` in the tag name and publishes with `--tag canary`.
 
 ## Installing Packages
 
