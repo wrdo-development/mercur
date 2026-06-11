@@ -20,7 +20,7 @@ const respondEmpty = (req: AuthenticatedMedusaRequest, res: MedusaResponse) => {
     take?: number
   }
   res.json({
-    orders: [],
+    order_groups: [],
     count: 0,
     offset: pagination.skip ?? 0,
     limit: pagination.take ?? 0,
@@ -48,8 +48,8 @@ export const applyRequestFilter = async (
   next: MedusaNextFunction
 ) => {
   // Medusa's validator strips unknown query keys, so the value never lands in
-  // `filterableFields`. Read it from the raw query — same pattern used for
-  // `seller_id` in `maybeApplySellerOrderFilter`.
+  // `filterableFields`. Read it from the raw query — same pattern used on
+  // `/admin/orders`.
   const request = parseRequestParam(req.query.request)
   if (!request) {
     return next()
@@ -58,9 +58,9 @@ export const applyRequestFilter = async (
   const filterableFields = req.filterableFields ?? {}
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
-  // When admin also filters by seller, scope the request lookups to that
-  // seller's orders — otherwise every open order_change/return/exchange/claim
-  // row in the marketplace gets scanned and then narrowed after the join.
+  // Scope request lookups to the seller's orders when the caller also filters
+  // by seller — otherwise we scan every open order_change/return/exchange/claim
+  // row in the marketplace before narrowing.
   const sellerId = req.query.seller_id as string | string[] | undefined
   let sellerOrderIds: string[] | undefined
   if (sellerId) {
@@ -136,17 +136,44 @@ export const applyRequestFilter = async (
     return respondEmpty(req, res)
   }
 
+  // Resolve those orders back to their owning order_group via the link table.
+  const { data: links } = await query.graph({
+    entity: "order_group_order",
+    fields: ["order_group_id"],
+    filters: { order_id: matchingOrderIds },
+  })
+
+  const matchingOrderGroupIds = Array.from(
+    new Set<string>(
+      links.map((l: { order_group_id: string }) => l.order_group_id)
+    )
+  )
+
+  if (matchingOrderGroupIds.length === 0) {
+    return respondEmpty(req, res)
+  }
+
   const existingId = filterableFields.id
 
   if (existingId !== undefined) {
     filterableFields.$and = [
       { id: existingId },
-      { id: { $in: matchingOrderIds } },
+      { id: matchingOrderGroupIds },
     ]
     delete filterableFields.id
   } else {
-    filterableFields.id = { $in: matchingOrderIds }
+    // Medusa's QueryGraph for `order_group` treats a plain array as IN.
+    // `{$in: [...]}` returns no matches here (the entity doesn't honour
+    // the operator map for the primary key) — pass the array directly.
+    filterableFields.id = matchingOrderGroupIds
   }
+
+  // The raw `request` query param landed on `filterableFields` via the
+  // validator; the underlying order_group query doesn't recognise it.
+  // Strip it now that the filter has been turned into an `id` lookup —
+  // otherwise Medusa's QueryGraph silently filters on an unknown field and
+  // returns nothing.
+  delete filterableFields.request
 
   req.filterableFields = filterableFields
 
