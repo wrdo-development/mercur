@@ -7,15 +7,13 @@ import {
 import { confirmOrderEditRequestWorkflow } from "../../../../../workflows/order/workflows"
 
 /**
- * `POST /vendor/order-edits/:id/confirm` — mirrors
- * `POST /admin/order-edits/:id/confirm`. Flips a requested edit to
- * `confirmed` and applies its actions. `confirmed_by` is stamped with
- * the seller's id (vendor equivalent of admin's `actor_id`).
+ * Mercur override of Medusa's `POST /admin/order-edits/:id/confirm`.
  *
  * Calls the Mercur wrapper around `confirmOrderEditRequestWorkflow` so
  * reservations created on added / qty-bumped items are adjusted to the
- * offer's `inventory_item_link.required_quantity` (matches the exchange
- * and claim confirm flows).
+ * offer's `inventory_item_link.required_quantity` — same fix the vendor
+ * confirm route uses. `confirmed_by` is stamped with `auth_context.actor_id`
+ * (admin equivalent of the vendor route's `seller_context.seller_id`).
  */
 export const POST = async (
   req: AuthenticatedMedusaRequest,
@@ -26,7 +24,7 @@ export const POST = async (
   const { result } = await confirmOrderEditRequestWorkflow(req.scope).run({
     input: {
       order_id: id,
-      confirmed_by: req.seller_context!.seller_id,
+      confirmed_by: req.auth_context.actor_id,
     },
   })
 
