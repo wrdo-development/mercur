@@ -76,30 +76,69 @@ export const ProductCreateForm = ({
     values: ProductCreateSchemaType,
     isDraftSubmission: boolean
   ) => {
-    const media = values.media || []
-    const payload = { ...values, media: undefined }
+    const productMedia = values.media || []
+    const variants = values.variants || []
+
+    // Tag every file to upload by origin so the returned urls can be
+    // routed back to the product image pool or the right variant.
+    type UploadTag =
+      | { kind: "product"; isThumbnail: boolean }
+      | { kind: "variant"; variantIndex: number }
+    const pendingUploads: { file: File; tag: UploadTag }[] = []
+
+    productMedia.forEach((m) => {
+      if (m.file) {
+        pendingUploads.push({
+          file: m.file,
+          tag: { kind: "product", isThumbnail: m.isThumbnail },
+        })
+      }
+    })
+    variants.forEach((variant, variantIndex) => {
+      ;(variant.media ?? []).forEach((m) => {
+        if (m.file) {
+          pendingUploads.push({ file: m.file, tag: { kind: "variant", variantIndex } })
+        }
+      })
+    })
 
     let uploadedMedia: (UploadedFile & { isThumbnail: boolean })[] = []
+    const uploadedVariantUrls: Record<number, string[]> = {}
     try {
-      const filesToUpload = media
-        .map((m, i) => ({ file: m.file, isThumbnail: m.isThumbnail, index: i }))
-        .filter((m) => !!m.file)
-
-      if (filesToUpload.length) {
+      if (pendingUploads.length) {
         const result = await uploadFilesQuery(
-          filesToUpload.map(({ file }) => ({ file }))
+          pendingUploads.map(({ file }) => ({ file }))
         )
         const uploadedFiles: UploadedFile[] = result?.files ?? []
-        uploadedMedia = uploadedFiles.map((file, i) => ({
-          ...file,
-          isThumbnail: filesToUpload[i].isThumbnail,
-        }))
+        uploadedFiles.forEach((file, i) => {
+          const tag = pendingUploads[i].tag
+          if (tag.kind === "product") {
+            uploadedMedia.push({ ...file, isThumbnail: tag.isThumbnail })
+          } else {
+            ;(uploadedVariantUrls[tag.variantIndex] ??= []).push(file.url)
+          }
+        })
       }
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message)
       }
     }
+
+    // Rebuild each variant's media into url-bearing entries: keep any
+    // media that already had a url, append the freshly uploaded urls.
+    const variantsWithMedia = variants.map((variant, variantIndex) => {
+      const kept = (variant.media ?? []).filter((m) => !m.file && m.url)
+      const fresh = (uploadedVariantUrls[variantIndex] ?? []).map((url) => ({
+        url,
+        isThumbnail: false,
+        file: null,
+      }))
+      const media = [...kept, ...fresh]
+      return { ...variant, media: media.length ? media : undefined }
+    })
+
+    const payload = { ...values, media: undefined, variants: variantsWithMedia }
 
     const submittedStatus = isDraftSubmission
       ? "draft"

@@ -28,6 +28,9 @@ const ProductCreateVariantSchema = z.object({
   sku: z.string().optional(),
   options: z.record(z.string(), z.string()).optional(),
   variant_rank: z.number(),
+  // SPEC-009: per-variant media. Uploaded on submit and sent as the
+  // variant's images; the backend materialises + links them.
+  media: z.array(MediaSchema).optional(),
 })
 
 export type ProductCreateVariantSchema = z.infer<

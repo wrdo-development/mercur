@@ -27,8 +27,10 @@ import { recordProductAuditChangeWorkflow } from "../../product-edit/workflows/r
 import {
   associateSellersWithProductStep,
   buildInlinePlan,
+  linkVariantImagesStep,
   resolveAttributeRefsStep,
   type AttributeRef,
+  type VariantImagePlanEntry,
 } from "../steps"
 import { ProductWorkflowEvents } from "../events"
 
@@ -45,8 +47,10 @@ export type CreateProductWorkflowInput = Omit<
   options?: ProductOptionInput[]
   variants?: Array<
     Record<string, unknown> & {
+      title?: string
       options?: Record<string, string>
       attribute_values?: Record<string, string | string[]> | string[]
+      images?: { url: string }[]
     }
   >
 }
@@ -199,8 +203,12 @@ export const createProductsWorkflow: ReturnWorkflow<
           // Rename variants[].attribute_values → variants[].options if it
           // came in as a name-map. Array-of-ids form is left alone (stock
           // ignores it; the variant-attribute link layer is not in scope).
+          // `images` is also stripped here — stock create has no
+          // variant.images field; the urls ride the product image pool
+          // below and are linked back to the variant after create
+          // (SPEC-009, linkVariantImagesStep).
           const stockVariants = (variants ?? []).map((v) => {
-            const { attribute_values, options: vopts, ...vrest } = v
+            const { attribute_values, options: vopts, images: _vi, ...vrest } = v
             const mapped =
               vopts ??
               (attribute_values && !Array.isArray(attribute_values)
@@ -218,6 +226,26 @@ export const createProductsWorkflow: ReturnWorkflow<
             }
           })
 
+          // SPEC-009: per-variant image urls are materialised as
+          // `ProductImage` rows by unioning them into the product image
+          // pool (deduped by url). The variant→image associations are
+          // written after create by linkVariantImagesStep.
+          const productImages =
+            (rest as { images?: { url: string }[] }).images ?? []
+          const seenImageUrls = new Set(productImages.map((im) => im.url))
+          const extraVariantImages: { url: string }[] = []
+          for (const v of variants ?? []) {
+            for (const im of v.images ?? []) {
+              if (im?.url && !seenImageUrls.has(im.url)) {
+                seenImageUrls.add(im.url)
+                extraVariantImages.push({ url: im.url })
+              }
+            }
+          }
+          const mergedImages = extraVariantImages.length
+            ? [...productImages, ...extraVariantImages]
+            : productImages
+
           // No variant axes were derived from the wrapper inputs. Stock
           // Medusa still requires every product to carry at least one
           // option, so we synthesise a `Default option`. Any variants the
@@ -230,6 +258,7 @@ export const createProductsWorkflow: ReturnWorkflow<
             }
             return {
               ...rest,
+              ...(mergedImages.length ? { images: mergedImages } : {}),
               options: [
                 { title: DEFAULT_OPTION_TITLE, values: [DEFAULT_OPTION_VALUE] },
               ],
@@ -247,6 +276,7 @@ export const createProductsWorkflow: ReturnWorkflow<
 
           return {
             ...rest,
+            ...(mergedImages.length ? { images: mergedImages } : {}),
             options: unionVariantOptionValues(options, stockVariants),
             ...(stockVariants.length ? { variants: stockVariants } : {}),
           }
@@ -259,6 +289,29 @@ export const createProductsWorkflow: ReturnWorkflow<
         additional_data: input.additional_data,
       },
     })
+
+    // SPEC-009: associate per-variant images (already materialised in the
+    // product image pool above) with their variants, matched by title.
+    const variantImagePlan = transform(
+      { input, createdProducts },
+      ({ input, createdProducts }) =>
+        input.products.reduce<VariantImagePlanEntry[]>((acc, p, idx) => {
+          const product_id = createdProducts[idx]?.id as string | undefined
+          if (!product_id) return acc
+
+          const variants = (p.variants ?? [])
+            .map((v) => ({
+              title: (v.title ?? "") as string,
+              urls: (v.images ?? []).map((im) => im.url).filter(Boolean),
+            }))
+            .filter((v) => v.title && v.urls.length)
+
+          if (variants.length) acc.push({ product_id, variants })
+          return acc
+        }, []),
+    )
+
+    linkVariantImagesStep({ plan: variantImagePlan })
 
     const inlinePlan = transform(
       { resolved, createdProducts },

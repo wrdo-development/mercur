@@ -31,6 +31,7 @@ export const vendorProductFields = [
   "*options.values",
   "*variants",
   "*variants.options",
+  "*variants.images",
   // Linked product-attribute value ids (Module Link alias). The GET
   // handler enriches these into `product.attributes` via separate
   // queries against the product-attribute module.
@@ -77,6 +78,7 @@ export const vendorProductVariantFields = [
   "manage_inventory",
   "allow_backorder",
   "*options",
+  "*images",
 ]
 
 export const vendorProductVariantQueryConfig = {

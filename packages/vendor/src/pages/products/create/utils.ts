@@ -60,11 +60,18 @@ export const normalizeVariants = (
     const opts = variant.options
     const hasOpts = opts && Object.keys(opts).length > 0
 
+    // SPEC-009: per-variant images. Files are uploaded before normalize,
+    // so each media entry carries a url by this point.
+    const images = (variant.media ?? [])
+      .filter((media) => !!media.url)
+      .map((media) => ({ url: media.url }))
+
     return {
       title: variant.title || (hasOpts ? Object.values(opts).join(" / ") : "Default variant"),
       options: hasOpts ? opts : undefined,
       sku: variant.sku || undefined,
       variant_rank: variant.variant_rank,
+      ...(images.length ? { images } : {}),
     }
   })
 }

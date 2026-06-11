@@ -1,5 +1,5 @@
 ---
-status: not_started
+status: in_progress
 canonical: false
 priority: 2
 area: vendor/products
@@ -106,6 +106,94 @@ Out of scope (here):
   variant" / "variant details"), which already have worktrees and touch
   the same variant surface.
 
+## Implementation Plan (evidence-backed)
+
+### Medusa mechanism (researched, 2.13.4)
+
+- Variant images are the native M2M `ProductVariant.images ⇄ ProductImage`
+  via the `ProductVariantProductImage` junction
+  (`@medusajs/product/dist/models/product-variant-product-image.d.ts`,
+  `product-variant.d.ts:212`, since 2.11.2). A variant image **is** a
+  `ProductImage` (same table as product images) that is additionally
+  linked to a variant.
+- The product module exposes
+  `addImageToVariant(data: { variant_id, image_id }[])` and
+  `removeImageFromVariant(...)`
+  (`product-module-service.d.ts:178-187`,
+  `VariantImageInput` at `product/dist/types/index.d.ts:34`). It links
+  **existing** `ProductImage` ids — there is no standalone
+  "create image" method and `CreateProductVariantDTO` has **no**
+  `images` field (`@medusajs/types .../product/common.d.ts`).
+- `ProductImage` rows are created from the product's `images: [{ url }]`
+  array during the stock create workflow.
+
+**Consequence:** variant image urls must be created as `ProductImage`
+rows (by including them in the product `images` array), then linked to
+the right variant by `image_id` in a post-create step. This keeps the
+correct Medusa semantics (variant images are product images assigned to
+a variant) and makes "upload per variant" a thin UX layer on top.
+
+### Backend (`packages/core`)
+
+1. **Validator** — `CreateProductVariant`
+   (`src/api/vendor/products/validators.ts`): add
+   `images: z.array(z.object({ url: z.string() })).optional()`. Widen the
+   update variant schema the same way for the edit path (separate slice
+   if needed).
+2. **Workflow** — `createProductsWorkflow`
+   (`src/workflows/product/workflows/create-products.ts`):
+   - In the `stockProducts` transform, **union** each variant's image
+     urls into the product-level `images` array (dedupe by url) so stock
+     create materialises every url as a `ProductImage`. Strip `images`
+     off the variant before handing it to stock (stock ignores unknown
+     fields).
+   - Keep a per-product map `variantIndex → image urls` in the transform
+     output (or recompute from `input.products`).
+   - After `stockCreateProductsWorkflow.runAsStep`, add a new
+     `linkVariantImagesStep` that: resolves the product module, reads
+     each created product's `images` (url → image_id), and calls
+     `addImageToVariant` with `{ variant_id, image_id }` rows for every
+     variant url. Match created variants to input variants by their
+     `options`/`title` (the same key the rest of the wrapper uses).
+   - Compensation: `removeImageFromVariant` for the rows it added.
+3. **Query/GET** — confirm `variant.images` is selectable on
+   `GET /vendor/products/:id` (Mercur `ProductVariantDTO.images` already
+   exists in `packages/types`); add `*variants.images` to the vendor
+   product query-config if not already returned.
+
+### Frontend (`packages/vendor`)
+
+4. **Schema** — `ProductCreateVariantSchema`
+   (`pages/products/create/constants.ts`): add
+   `media: z.array(MediaSchema).optional()` per variant (reuse the
+   existing `MediaSchema`).
+5. **UI** — variants step
+   (`product-create-variants-form.tsx`): add a Media affordance per
+   variant row (a `FileUpload`-backed cell / drawer) writing to
+   `variants.${i}.media`. Mirror the product-level Media section's
+   upload component.
+6. **Normalize/submit** —
+   (`product-create-form.tsx` + `utils.ts`): upload variant files via
+   `uploadFilesQuery` alongside product media, then send each variant's
+   resulting `images: [{ url }]` in the create payload
+   (`normalizeVariants`).
+
+### Tests
+
+7. Integration (`integration-tests/http/product/vendor/`): `POST
+   /vendor/products` with a variant carrying `images: [{ url }]`
+   persists + links the image to that variant only; `GET` returns the
+   variant with `images` populated and the other variant without it.
+
+### Risks / decisions
+
+- Variant images surface in the product image pool too (by the Medusa
+  model). Acceptable; if the gallery must hide variant-only images,
+  filter by the junction later.
+- Matching created variants to input variants relies on `options`
+  identity — the same key the wrapper already uses for option synthesis;
+  reuse it to avoid a second matching scheme.
+
 ## Verification
 
 1. `POST /vendor/products` with a variant carrying `images: [{ url }]`
@@ -119,9 +207,44 @@ Out of scope (here):
 
 ## Evidence
 
-_Not started._
+**Backend — done.**
+- Validator: `CreateProductVariant.images` added
+  (`packages/core/src/api/vendor/products/validators.ts`).
+- Workflow: variant image urls unioned into the product image pool +
+  `linkVariantImagesStep` (new) links them to the matching variant by
+  title, with compensation
+  (`packages/core/src/workflows/product/workflows/create-products.ts`,
+  `.../steps/link-variant-images.ts`).
+- Query-config: `*variants.images` exposed on list/retrieve + variant
+  endpoints (`packages/core/src/api/vendor/products/query-config.ts`).
+- Integration test `(A3)` in
+  `integration-tests/http/product/vendor/product.spec.ts`: a variant
+  carrying `images: [{ url }]` is materialised in the product image pool
+  and linked to that variant **only** — **green** (`1 passed, 27
+  skipped`). `bun run build` + `bun run lint` clean.
+
+**Frontend data-path — done (type-checked).**
+- Variant schema `media` field
+  (`pages/products/create/constants.ts`).
+- Submit uploads product + variant files in one batch and routes urls
+  back per variant
+  (`.../product-create-form/product-create-form.tsx`).
+- `normalizeVariants` emits per-variant `images`
+  (`pages/products/create/utils.ts`).
+
+**Remaining — the input widget (needs in-browser verification).**
+- A Media column in the variants DataGrid (thumbnail + add affordance,
+  per Figma) that manages `variants.${i}.media`. The DataGrid's cells
+  are tightly bound to its field/keyboard model (see
+  `data-grid-textarea-modal-cell.tsx` for the interactive-cell
+  precedent), so this layer must be built and verified live (upload,
+  open/close, focus, keyboard) rather than blind. Verification step 3
+  below covers it.
 
 ## Notes
 
-The MER-127 PR delivered the two contained fixes and referenced this
-spec for the deferred media work.
+The MER-127 PR (#968) delivered the two contained fixes (search +
+option-value create bug) and referenced this spec for the deferred media
+work. This branch (`viktorholik/spec-009-vendor-variant-media`) is
+stacked on the MER-127 branch and adds the variant-media backend +
+frontend data-path; the input widget is the only remaining piece.

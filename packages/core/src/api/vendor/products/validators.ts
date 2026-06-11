@@ -86,6 +86,12 @@ const CreateProductVariant = z
     origin_country: z.string().optional(),
     material: z.string().optional(),
     metadata: z.record(z.unknown()).optional(),
+    /**
+     * Per-variant images (SPEC-009). Each url is materialised as a
+     * `ProductImage` (unioned into the product image pool) and linked to
+     * this variant via the native variant-image junction after create.
+     */
+    images: z.array(z.object({ url: z.string() })).optional(),
     /** Stock Medusa: maps option title -> chosen value name (e.g. `{ Color: "Blue" }`). */
     options: z.record(z.string()).optional(),
     attribute_values: z

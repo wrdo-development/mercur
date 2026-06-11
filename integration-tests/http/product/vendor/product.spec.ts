@@ -231,6 +231,60 @@ medusaIntegrationTestRunner({
           expect(create.data.product.variants).toHaveLength(2)
         })
 
+        // SPEC-009: per-variant images. The wrapper materialises each
+        // variant's image urls in the product image pool and links them to
+        // the right variant (matched by title) via the native variant-image
+        // junction.
+        it("(A3) links per-variant images to the correct variant on create", async () => {
+          const size = await createGlobalAttribute({
+            name: "Size",
+            type: "multi_select",
+            is_variant_axis: true,
+            values: ["S", "M"],
+          })
+
+          const smallImg = "https://example.com/variant-small.jpg"
+          const create = await api.post(
+            `/vendor/products`,
+            {
+              title: "Vendor Variant Media",
+              variants: [
+                {
+                  title: "S",
+                  attribute_values: { Size: "S" },
+                  images: [{ url: smallImg }],
+                },
+                { title: "M", attribute_values: { Size: "M" } },
+              ],
+              variant_attributes: [
+                {
+                  attribute_id: size.attribute_id,
+                  value_ids: [size.byName.get("S")!, size.byName.get("M")!],
+                },
+              ],
+            },
+            seller1Headers,
+          )
+          expect(create.status).toBe(201)
+          const productId = create.data.product.id
+
+          // The variant url is materialised in the product image pool.
+          const got = await api.get(
+            `/vendor/products/${productId}?fields=*variants.images,*images`,
+            seller1Headers,
+          )
+          const product = got.data.product
+          expect(product.images.map((i: any) => i.url)).toContain(smallImg)
+
+          const small = product.variants.find((v: any) => v.title === "S")
+          const medium = product.variants.find((v: any) => v.title === "M")
+          // Image is linked to the "S" variant only.
+          expect((small.images ?? []).map((i: any) => i.url)).toEqual([
+            smallImg,
+          ])
+          expect(medium.images ?? []).toHaveLength(0)
+        })
+
         // --- Case B: inline custom variant-axis attribute ---
         it("(B) inline custom variant-axis: creates a product-scoped attribute, links values, hides it from the global catalogue", async () => {
           const create = await api.post(
