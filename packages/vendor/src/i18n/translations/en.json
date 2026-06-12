@@ -1065,18 +1065,22 @@
       "header": "Create offer",
       "successToast": "Offer was successfully published. Only offers with stock levels and prices set will be visible on the storefront.",
       "publish": "Publish",
+      "tipLabel": "Tip:",
       "tip": "Select all relevant products that match your inventory, then easily create offers for them by simply adding your stock levels and prices.",
       "addPrice": "Add price",
       "addInventoryItem": "Add inventory item",
       "stockLevelsWarning": "Offers created, but some stock levels could not be saved: {{message}}",
       "tabs": {
-        "catalogue": "Catalogue",
+        "catalogue": "Products",
         "stockLevelsAndPrices": "Stock Levels & Prices"
       }
     },
     "detail": {
       "offerLabel": "Offer",
       "productVariant": "Product Variant",
+      "offerVariant": "Offer Variant",
+      "associatedProduct": "Associated product",
+      "shippingConfiguration": "Shipping Configuration",
       "inventoryItems": "Inventory items",
       "manageKit": "Manage inventory kit",
       "noInventoryItems": "No inventory items attached. Open the inventory drawer to attach one.",
@@ -1114,12 +1118,14 @@
       "create": "Create",
       "manage_prices": "Manage prices",
       "manage_inventory": "Manage inventory",
+      "edit_prices": "Edit prices",
+      "edit_stock_levels": "Edit stock levels",
       "bulkDelete": "Delete selected"
     },
     "fields": {
       "sku": "SKU",
       "variant": "Master variant",
-      "shippingProfile": "Shipping profile",
+      "shippingProfile": "Shipping Profile",
       "ean": "EAN",
       "upc": "UPC",
       "requiredQuantity": "Required quantity",
