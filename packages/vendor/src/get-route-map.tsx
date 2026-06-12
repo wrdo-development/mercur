@@ -998,6 +998,13 @@ export function getRouteMap({
                         lazy: () =>
                           import("./pages/product-variants/product-variant-edit"),
                       },
+                      {
+                        path: "media",
+                        lazy: () =>
+                          import(
+                            "./pages/product-variants/product-variant-detail/media"
+                          ),
+                      },
                     ],
                   },
                 ],

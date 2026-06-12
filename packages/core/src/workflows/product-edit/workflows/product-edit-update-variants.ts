@@ -177,7 +177,6 @@ export const productEditUpdateVariantsWorkflow: ReturnWorkflow<
               const current = currentVariantsById.get(op.variant_id) ?? {}
               const changedFields: Record<string, unknown> = {}
               const previousFields: Record<string, unknown> = {}
-
               for (const [field, proposedValue] of Object.entries(
                 op.fields ?? {},
               )) {
@@ -192,6 +191,17 @@ export const productEditUpdateVariantsWorkflow: ReturnWorkflow<
                 if (field === "options") {
                   if (proposedValue !== undefined) {
                     changedFields.options = proposedValue
+                  }
+                  continue
+                }
+
+                // `images` is a relation (variant↔image links), not a
+                // scalar column we load for diffing. Forward it untouched
+                // so the apply step can reconcile the links; it carries no
+                // meaningful previous value and stays out of the preview.
+                if (field === "images") {
+                  if (proposedValue !== undefined) {
+                    changedFields.images = proposedValue
                   }
                   continue
                 }

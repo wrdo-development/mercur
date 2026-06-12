@@ -354,6 +354,16 @@ export const VendorUpdateProductVariant = z
     manage_inventory: z.boolean().optional(),
     metadata: z.record(z.unknown()).nullish(),
     options: z.record(z.string()).optional(),
+    // Variant-scoped media. Variant images are existing product images
+    // linked through the product↔variant junction; the vendor manages
+    // that link set by image id (selection only — uploading happens on
+    // the product media page), mirroring Medusa's batch add/remove.
+    images: z
+      .object({
+        add: z.array(z.string()).optional(),
+        remove: z.array(z.string()).optional(),
+      })
+      .optional(),
     attribute_values: z
       .union([z.array(z.string()), z.record(z.union([z.string(), z.array(z.string())]))])
       .optional(),
