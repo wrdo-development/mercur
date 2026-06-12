@@ -438,6 +438,8 @@ export const ProductActiveEditSection = ({
 
   const productId = product.id;
 
+  // The product-detail query carries variant identity (title · sku · images),
+  // so the request block resolves it inline — no extra per-variant fetch.
   const variantsById = useMemo(() => {
     const map = new Map<string, VariantInfo>();
     for (const variant of product.variants ?? []) {
