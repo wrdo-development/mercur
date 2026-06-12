@@ -1,5 +1,6 @@
 import { PencilSquare, Trash } from "@medusajs/icons";
 import { Container, Heading, StatusBadge, usePrompt } from "@medusajs/ui";
+import { HttpTypes } from "@medusajs/types";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -25,7 +26,7 @@ export const productStatusColor = (status: string) => {
 export const ProductGeneralSection = ({
   product,
 }: {
-  product: Record<string, any>;
+  product: HttpTypes.AdminProduct;
 }) => {
   const { t } = useTranslation();
   const prompt = usePrompt();
@@ -55,11 +56,20 @@ export const ProductGeneralSection = ({
   };
 
   return (
-    <Container className="divide-y p-0">
-      <div className="flex items-center justify-between px-6 py-4">
-        <Heading>{product.title}</Heading>
-        <div className="flex items-center gap-x-4">
-          <StatusBadge color={productStatusColor(product.status)}>
+    <Container className="divide-y p-0" data-testid="product-general-section">
+      <div
+        className="flex items-center justify-between px-6 py-4"
+        data-testid="product-general-header"
+      >
+        <Heading data-testid="product-general-title">{product.title}</Heading>
+        <div
+          className="flex items-center gap-x-4"
+          data-testid="product-general-actions"
+        >
+          <StatusBadge
+            color={productStatusColor(product.status)}
+            data-testid="product-status-badge"
+          >
             {t(`products.productStatus.${product.status}`)}
           </StatusBadge>
           <ActionMenu
@@ -83,22 +93,30 @@ export const ProductGeneralSection = ({
                 ],
               },
             ]}
+            data-testid="product-general-action-menu"
           />
         </div>
       </div>
 
       <SectionRow
         title={t("fields.description")}
-        value={product.description || "-"}
+        value={product.description}
+        data-testid="product-description-row"
       />
       <SectionRow
         title={t("fields.subtitle")}
-        value={product.subtitle || "-"}
+        value={product.subtitle}
+        data-testid="product-subtitle-row"
       />
-      <SectionRow title={t("fields.handle")} value={`/${product.handle}`} />
+      <SectionRow
+        title={t("fields.handle")}
+        value={`/${product.handle}`}
+        data-testid="product-handle-row"
+      />
       <SectionRow
         title={t("fields.discountable")}
-        value={product.discountable ? t("general.true") : t("general.false")}
+        value={product.discountable ? t("fields.true") : t("fields.false")}
+        data-testid="product-discountable-row"
       />
     </Container>
   );
