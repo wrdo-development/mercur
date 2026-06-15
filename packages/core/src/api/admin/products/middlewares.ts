@@ -1,11 +1,10 @@
-import {
-  MiddlewareRoute,
-} from "@medusajs/framework/http"
+import { MiddlewareRoute } from "@medusajs/framework/http"
 import {
   validateAndTransformBody,
   validateAndTransformQuery,
 } from "@medusajs/framework"
 
+import { applyOfferedProductsFilter } from "../../utils"
 import {
   adminProductQueryConfig,
   adminProductVariantQueryConfig,
@@ -45,6 +44,7 @@ export const adminProductsMiddlewares: MiddlewareRoute[] = [
         AdminGetProductsParams,
         adminProductQueryConfig.list
       ),
+      applyOfferedProductsFilter,
     ],
   },
   {

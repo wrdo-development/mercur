@@ -3,29 +3,24 @@ import { useLoaderData, useParams } from "react-router-dom"
 
 import { TwoColumnPageSkeleton } from "../../../components/common/skeleton"
 import { TwoColumnPage } from "../../../components/layout/pages"
-import { useOffer } from "../../../hooks/api/offers"
-import { OFFER_DETAIL_FIELDS } from "../common/constants"
-import { OfferDetail } from "../common/types"
+import { useProduct } from "../../../hooks/api/products"
+import { ProductMediaSection } from "../../products/product-detail/components/product-media-section/product-media-section"
+import { OFFER_PRODUCT_DETAIL_FIELDS } from "../common/constants"
+import { OfferProduct } from "../common/types"
 import {
-  OfferGeneralSection,
-  OfferInventorySection,
-  OfferPricingSection,
-  OfferStoreSidebar,
-  OfferVariantSection,
+  OfferAssociatedProductSection,
+  OfferDetailGeneralSection,
+  OfferVariantsSection,
 } from "./_components"
 import { loader } from "./loader"
 
 const Root = ({ children }: { children?: ReactNode }) => {
   const { id } = useParams()
   const initialData = useLoaderData() as Awaited<ReturnType<typeof loader>>
-  const {
-    offer,
-    isPending: isLoading,
-    isError,
-    error,
-  } = useOffer(
+
+  const { product, isLoading, isError, error } = useProduct(
     id!,
-    { fields: OFFER_DETAIL_FIELDS },
+    { fields: OFFER_PRODUCT_DETAIL_FIELDS },
     { initialData },
   )
 
@@ -33,26 +28,28 @@ const Root = ({ children }: { children?: ReactNode }) => {
     throw error
   }
 
-  if (isLoading || !offer) {
-    return <TwoColumnPageSkeleton mainSections={3} sidebarSections={3} />
+  if (isLoading || !product) {
+    return <TwoColumnPageSkeleton mainSections={3} sidebarSections={1} />
   }
 
-  const typedOffer = offer as unknown as OfferDetail
+  const typed = product as OfferProduct
 
   return (
     <>
       {Children.count(children) > 0 ? (
         children
       ) : (
-        <TwoColumnPage data={typedOffer} hasOutlet>
+        <TwoColumnPage data={typed} hasOutlet>
           <TwoColumnPage.Main>
-            <OfferGeneralSection offer={typedOffer} />
-            <OfferInventorySection offer={typedOffer} />
+            <OfferDetailGeneralSection product={typed} />
+            <ProductMediaSection product={typed} readOnly />
+            <OfferVariantsSection
+              variants={typed.variants}
+              thumbnail={typed.thumbnail}
+            />
           </TwoColumnPage.Main>
           <TwoColumnPage.Sidebar>
-            <OfferVariantSection offer={typedOffer} />
-            <OfferStoreSidebar offer={typedOffer} />
-            <OfferPricingSection offer={typedOffer} />
+            <OfferAssociatedProductSection product={typed} />
           </TwoColumnPage.Sidebar>
         </TwoColumnPage>
       )}
@@ -63,11 +60,10 @@ const Root = ({ children }: { children?: ReactNode }) => {
 export const OfferDetailPage = Object.assign(Root, {
   Main: TwoColumnPage.Main,
   Sidebar: TwoColumnPage.Sidebar,
-  General: OfferGeneralSection,
-  Inventory: OfferInventorySection,
-  Variant: OfferVariantSection,
-  StoreSidebar: OfferStoreSidebar,
-  Pricing: OfferPricingSection,
+  General: OfferDetailGeneralSection,
+  Media: ProductMediaSection,
+  Variants: OfferVariantsSection,
+  AssociatedProduct: OfferAssociatedProductSection,
 })
 
 export const Component = Root
