@@ -37,6 +37,10 @@ export const prepareSellerAdjustmentsFromPromotionActionsStep = createStep(
                 shippingMethodAdjustmentsToCreate: [],
                 shippingMethodAdjustmentIdsToRemove: [],
                 computedPromotionCodes: [],
+                // Medusa's PrepareAdjustmentsFromPromotionActionsStepOutput gained
+                // skippedPromoCodes in a newer core version than upstream Mercur
+                // 2.1.6 targets. Empty = none skipped. (wrdo fork patch)
+                skippedPromoCodes: [],
             } as PrepareAdjustmentsFromPromotionActionsStepOutput)
         }
 
@@ -161,6 +165,8 @@ export const prepareSellerAdjustmentsFromPromotionActionsStep = createStep(
             shippingMethodAdjustmentsToCreate,
             shippingMethodAdjustmentIdsToRemove,
             computedPromotionCodes,
+            // See note above — required by newer Medusa core type. (wrdo fork patch)
+            skippedPromoCodes: [],
         } as PrepareAdjustmentsFromPromotionActionsStepOutput)
     }
 )

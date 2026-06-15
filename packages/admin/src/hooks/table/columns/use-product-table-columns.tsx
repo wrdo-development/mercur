@@ -1,4 +1,4 @@
-import { createColumnHelper } from "@tanstack/react-table"
+import { ColumnDef, createColumnHelper } from "@tanstack/react-table"
 import { useMemo } from "react"
 
 import {
@@ -25,7 +25,8 @@ import { HttpTypes } from "@medusajs/types"
 
 const columnHelper = createColumnHelper<HttpTypes.AdminProduct>()
 
-export const useProductTableColumns = () => {
+// Explicit return type — TS2742 portability under pnpm symlinks. (wrdo fork patch)
+export const useProductTableColumns = (): ColumnDef<HttpTypes.AdminProduct>[] => {
   return useMemo(
     () => [
       columnHelper.display({

@@ -113,6 +113,12 @@ export const CreateAttribute = z.object({
 export const AdminCreateAttribute = WithAdditionalData(
   CreateAttribute,
   (schema) => {
+    // Medusa 2.15's WithAdditionalData types modifyCallback as
+    // (schema) => ZodObject, but .refine() returns ZodEffects. Upstream
+    // Mercur 2.1.6 pins @medusajs/medusa 2.13.4 where this compiled; the
+    // installed 2.15.x tightened it. The refinement runs unchanged at
+    // runtime — cast keeps the validation, satisfies the stricter type.
+    // (wrdo fork patch — remove when Mercur bumps to Medusa 2.15+.)
     return schema.refine(
       (data) =>
         data.ui_component !== AttributeUIComponent.SELECT ||
@@ -121,6 +127,7 @@ export const AdminCreateAttribute = WithAdditionalData(
         message: "Possible values are required when ui_component is SELECT",
         path: ["possible_values"],
       }
-    )
+      // biome-ignore lint/suspicious/noExplicitAny: see note above
+    ) as any
   }
 )

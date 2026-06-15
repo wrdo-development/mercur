@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "tsc --watch",
-		"build:registry": "bunx @mercurjs/cli@latest registry:build",
-		"codegen": "bunx @mercurjs/cli@latest registry:codegen",
+		"build:registry": "pnpm dlx @mercurjs/cli@latest registry:build",
+		"codegen": "pnpm dlx @mercurjs/cli@latest registry:codegen",
 		"test": "jest --config jest.config.cjs"
 	},
 	"dependencies": {
