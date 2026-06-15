@@ -181,10 +181,13 @@ YRC
 # their tarball URLs. Quarantine blocks `npm view <pkg>@<ver>` metadata for
 # up to 24h after publish, but the tarballs themselves are immutable and
 # downloadable at registry.npmjs.org/<pkg>/-/<basename>-<ver>.tgz.
-log "Rewriting quarantined @mercurjs/* deps to tarball URLs"
-python3 - <<'PY'
+# VERSION is derived from the just-synced source tree so we don't have to
+# bump deploy.sh on every release.
+VERSION=$(python3 -c "import json; print(json.load(open('$SOURCE_DIR/packages/core/package.json'))['version'])")
+log "Rewriting quarantined @mercurjs/* deps to tarball URLs (v$VERSION)"
+VERSION="$VERSION" python3 - <<'PY'
 import json, glob, os
-VERSION = "2.2.0-canary.16"
+VERSION = os.environ["VERSION"]
 SCOPE = "@mercurjs/"
 def tarball(name, ver):
     base = name.split("/", 1)[1]
