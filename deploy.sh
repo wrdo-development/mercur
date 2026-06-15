@@ -61,16 +61,11 @@ rsync -a --delete \
 # output that references route modules absent from the package; running real
 # codegen would just re-introduce the broken references. The Routes type is
 # only used for client-side type inference at build time — runtime unaffected.
-# `@acme/api`'s package.json exports `./_generated` -> `./.mercur/_generated/routes.d.ts`,
-# so write the stub there (an extra index.ts is harmless for tools that
-# fall back to it).
-mkdir -p "$DEPLOY_DIR/packages/api/.mercur/_generated"
-cat > "$DEPLOY_DIR/packages/api/.mercur/_generated/routes.d.ts" <<'STUB'
-// Stubbed at deploy time — see deploy.sh
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Routes = any
-STUB
-cat > "$DEPLOY_DIR/packages/api/.mercur/_generated/index.ts" <<'STUB'
+# Both the apps/{admin,vendor}/tsconfig.app.json `paths` mapping and
+# `@acme/api`'s package.json `exports` field resolve `@acme/api/_generated`
+# to `packages/api/.mercur/routes.d.ts`, so write the stub at that exact path.
+mkdir -p "$DEPLOY_DIR/packages/api/.mercur"
+cat > "$DEPLOY_DIR/packages/api/.mercur/routes.d.ts" <<'STUB'
 // Stubbed at deploy time — see deploy.sh
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Routes = any
