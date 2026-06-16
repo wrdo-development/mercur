@@ -2,7 +2,7 @@
  * Utility functions for the booking flow handler.
  */
 
-import type { ProviderMatch } from '../../tribe-booking/provider-matcher.service';
+import type { ProviderMatch } from '../_step1-stubs'; // Step-1: stubbed
 import {
   NO_DECLINE_PATTERN,
   PENDING_BOOKING_KEY_PREFIX,

@@ -122,7 +122,8 @@ export class FlowDispatcher {
  * `noUncheckedIndexedAccess` being enabled in the consumer's tsconfig.
  */
 function lookupScreen(map: Record<string, ScreenHandler>, key: string): ScreenHandler | undefined {
-  if (!Object.hasOwn(map, key)) {
+  if (!Object.prototype.hasOwnProperty.call(map, key)) {
+    // Step-1: replaced Object.hasOwn (ES2022) with hasOwnProperty.call (ES2021, Mercur 2.13 target)
     return undefined;
   }
   // eslint-disable-next-line security/detect-object-injection -- hasOwnProperty guard above

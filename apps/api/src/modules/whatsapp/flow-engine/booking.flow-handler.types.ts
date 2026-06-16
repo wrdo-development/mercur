@@ -2,7 +2,7 @@
  * Types, interfaces, and constants for the booking flow handler.
  */
 
-import type { ProviderMatch } from '../../tribe-booking/provider-matcher.service';
+import type { ProviderMatch } from '../_step1-stubs'; // Step-1: stubbed
 import type {
   ConversationState,
   ConversationStateService,

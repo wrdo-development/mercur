@@ -4,9 +4,8 @@
  */
 
 import { createAiClient } from '../../clients/ai-client/ai-client';
-import { TRIBE_DIRECTORY_MODULE } from '../tribe-directory';
-import { listProvidersByService } from '../tribe-directory/provider.repository';
-import type { IProviderDirectory } from '../tribe-directory/provider.types';
+import { TRIBE_DIRECTORY_MODULE, listProvidersByService } from './_step1-stubs'; // Step-1: stubbed
+import type { IProviderDirectory } from './_step1-stubs'; // Step-1: stubbed
 import { ConversationStateService } from '../tribe-sessions/conversation-state.service';
 import { DegradationService } from './degradation.service';
 import {
