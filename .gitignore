@@ -39,3 +39,8 @@ yarn-error.log*
 
 apps/backend/.medusa
 packages/modules/*
+
+# Yarn (corepack-managed; cache + local state not committed)
+.yarn/install-state.gz
+.yarn/cache
+.yarn/*.log

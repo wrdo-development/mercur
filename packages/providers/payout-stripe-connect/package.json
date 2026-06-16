@@ -2,7 +2,6 @@
   "name": "@mercurjs/payout-stripe-connect",
   "version": "2.1.6",
   "description": "Stripe Connect payment provider for Mercur",
-  "private": false,
   "type": "module",
   "repository": {
     "type": "git",

@@ -241,9 +241,18 @@ class SellerModuleService extends MedusaService({
   ): Promise<MemberInviteDTO> {
     let decoded: JwtPayload
     try {
-      decoded = jwt.verify(token, this.options_.jwt_secret, {
+      // @types/jsonwebtoken returns Jwt (not JwtPayload) when complete:true,
+      // so the overload rejects a direct JwtPayload cast. Cast through unknown
+      // — runtime behaviour unchanged. (wrdo fork patch; surfaced by Yarn's
+      // stricter type resolution vs the prior bun/pnpm hoisting.)
+      // jwt_secret is string|undefined on the options type but is always set
+      // at runtime (constructor falls back to projectConfig.http.jwtSecret).
+      // Non-null assertion satisfies jwt.verify's Secret param; complete:true
+      // returns Jwt so cast through unknown. (wrdo fork patch — surfaced by
+      // Yarn's stricter @types/jsonwebtoken resolution.)
+      decoded = jwt.verify(token, this.options_.jwt_secret!, {
         complete: true,
-      }) as JwtPayload
+      }) as unknown as JwtPayload
     } catch {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,

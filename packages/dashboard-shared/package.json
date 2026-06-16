@@ -23,7 +23,6 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@mercurjs/client": "2.1.6",
     "@ariakit/react": "^0.4.15",
     "@babel/runtime": "^7.26.10",
     "@dnd-kit/core": "^6.1.0",
@@ -35,6 +34,7 @@
     "@medusajs/dashboard": "^2.13.4",
     "@medusajs/icons": "2.13.4",
     "@medusajs/ui": "4.1.1",
+    "@mercurjs/client": "2.1.6",
     "@radix-ui/react-dialog": "1.1.4",
     "@radix-ui/react-dismissable-layer": "1.1.4",
     "@tanstack/react-query": "5.64.2",
@@ -63,13 +63,13 @@
     "zod": "3.25.76"
   },
   "devDependencies": {
-    "@mercurjs/types": "workspace:*",
     "@mercurjs/core": "workspace:*",
     "@mercurjs/dashboard-sdk": "workspace:*",
-    "tsup": "^8.0.2",
-    "typescript": "5.9.3",
+    "@mercurjs/types": "workspace:*",
     "@types/lodash.debounce": "^4.0.8",
     "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22"
+    "@types/react-dom": "^18.2.22",
+    "tsup": "^8.0.2",
+    "typescript": "5.9.3"
   }
 }
