@@ -19,7 +19,9 @@
   ],
   "scripts": {
     "build": "mercurjs build",
+    "predeploy": "medusa db:migrate && medusa exec ./src/scripts/seed-wrdo.ts",
     "seed": "medusa exec ./src/scripts/seed.ts",
+    "seed:wrdo": "medusa exec ./src/scripts/seed-wrdo.ts",
     "start": "mercurjs start",
     "dev": "mercurjs develop",
     "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
