@@ -35,5 +35,11 @@ module.exports = withMercur({
         disable: true
       }
     },
+    {
+      resolve: './src/modules/whatsapp',
+    },
+    {
+      resolve: './src/modules/tribe-sessions',
+    },
   ],
 })
