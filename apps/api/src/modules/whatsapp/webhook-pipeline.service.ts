@@ -177,8 +177,18 @@ export class WebhookPipelineService {
         }
         await this.processParsedResult(result);
         span.setStatus({ code: SpanStatusCode.OK });
-      } catch {
-        span.setStatus({ code: SpanStatusCode.ERROR, message: 'pipeline error swallowed' });
+      } catch (err) {
+        // WRDO-169: this catch was silently swallowing pipeline throws — the
+        // reason inbound 200s produced no reply with no visible error. Surface
+        // the actual error (stack) so the failing step is diagnosable, while
+        // still never throwing out of handlePayload (Meta needs the 200).
+        const e = err as Error;
+        const msg = e?.message ?? String(err);
+        // console.error reaches Cloud's log stream (the module's WhatsappLogger
+        // does not surface there). Never re-throw — Meta needs the 200.
+        // eslint-disable-next-line no-console
+        console.error('[whatsapp] pipeline error:', msg, e?.stack ?? '');
+        span.setStatus({ code: SpanStatusCode.ERROR, message: msg });
       } finally {
         span.end();
       }
