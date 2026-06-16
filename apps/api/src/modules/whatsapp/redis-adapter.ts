@@ -64,13 +64,21 @@ export function createRedisAdapter(): RedisAdapter {
   };
   // Hardened ioredis options (Upstash + Cloud): TLS is auto-enabled from a
   // rediss:// URL; lazyConnect avoids a connect storm at boot; bounded retries
-  // + offline-queue-off so a Redis hiccup degrades instead of hammering; and an
-  // 'error' handler so an unhandled ECONNRESET can't crash the whole backend
-  // (the module is meant to degrade gracefully without Redis). (wrdo fork)
+  // so a Redis hiccup degrades instead of hammering; and an 'error' handler so
+  // an unhandled ECONNRESET can't crash the whole backend (the module is meant
+  // to degrade gracefully without Redis). (wrdo fork)
+  //
+  // enableOfflineQueue MUST be true here: with lazyConnect the connection is not
+  // open until the first command, and offline-queue-off rejects any command
+  // issued before the socket is writable with "Stream isn't writeable and
+  // enableOfflineQueue options is false" — which is exactly the first webhook
+  // message after boot. The offline queue buffers that first command and flushes
+  // it once connected; maxRetriesPerRequest + connectTimeout still bound a truly
+  // dead Redis so it degrades rather than hangs. (WRDO-169)
   const redis = new Redis(url, {
     lazyConnect: true,
     maxRetriesPerRequest: 2,
-    enableOfflineQueue: false,
+    enableOfflineQueue: true,
     connectTimeout: 8000,
     retryStrategy: (times: number) => (times > 5 ? null : Math.min(times * 200, 2000)),
   });

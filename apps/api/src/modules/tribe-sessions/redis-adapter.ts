@@ -54,7 +54,10 @@ export function createConversationStateRedisAdapter(): ConversationStateRedisAda
   const redis = new Redis(url, {
     lazyConnect: true,
     maxRetriesPerRequest: 2,
-    enableOfflineQueue: false,
+    // MUST be true with lazyConnect — see whatsapp/redis-adapter.ts (WRDO-169):
+    // offline-queue-off rejects the first post-boot command before the socket
+    // is writable; the offline queue buffers it until connected.
+    enableOfflineQueue: true,
     connectTimeout: 8000,
     retryStrategy: (times: number) => (times > 5 ? null : Math.min(times * 200, 2000)),
   });
