@@ -48,9 +48,8 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
   const t0 = performance.now();
   const logger = req.scope.resolve<WebhookLogger>(ContainerRegistrationKeys.LOGGER);
 
-  // TEMP DIAGNOSTIC (WRDO-169 live-test): log env-var LENGTHS only (never values)
-  // to confirm the Cloud runtime received untruncated WhatsApp creds. Remove once
-  // the live phone test passes.
+  // TEMP DIAGNOSTIC (WRDO-169 live-test): log env-var LENGTHS only (never values).
+  // Remove once the live phone test passes.
   logger?.info('webhook.env_check', {
     accessTokenLen: (process.env.WHATSAPP_ACCESS_TOKEN ?? '').length,
     phoneNumberIdLen: (process.env.WHATSAPP_PHONE_NUMBER_ID ?? '').length,
@@ -59,6 +58,44 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
     redisUrlScheme: (process.env.REDIS_URL ?? '').slice(0, 8),
     aiEnabled: process.env.WRDO_AI_ENABLED ?? '(unset)',
   });
+
+  // TEMP DIAGNOSTIC (WRDO-169): when the x-wrdo-debug header is present, return
+  // env-var lengths AND the result of a real Meta send straight in the response
+  // body — so the cause of the silent send failure is visible without the Cloud
+  // log UI. Lengths only, never values. Header-gated. Remove after the test.
+  if (req.headers['x-wrdo-debug'] === '1') {
+    const at = process.env.WHATSAPP_ACCESS_TOKEN ?? '';
+    const pid = process.env.WHATSAPP_PHONE_NUMBER_ID ?? '';
+    const to = (req.headers['x-wrdo-debug-to'] as string | undefined) ?? '';
+    let send: unknown = 'no-to-header';
+    if (to !== '') {
+      try {
+        const r = await fetch(`https://graph.facebook.com/v21.0/${pid}/messages`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${at}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            to: to.replaceAll(/\D/g, ''),
+            type: 'text',
+            text: { body: 'WRDO container send probe' },
+          }),
+        });
+        send = { status: r.status, body: await r.json() };
+      } catch (e) {
+        send = { fetchError: e instanceof Error ? e.message : String(e) };
+      }
+    }
+    res.status(200).json({
+      env: {
+        accessTokenLen: at.length,
+        phoneNumberIdLen: pid.length,
+        appSecretLen: (process.env.WHATSAPP_APP_SECRET ?? '').length,
+        redisUrlScheme: (process.env.REDIS_URL ?? '').slice(0, 9),
+      },
+      send,
+    });
+    return;
+  }
 
   try {
     const rawBody: unknown = req.rawBody ?? req.body;
