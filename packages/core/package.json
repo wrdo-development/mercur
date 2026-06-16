@@ -60,7 +60,8 @@
     "http-proxy-middleware": "^3.0.3",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "@mercurjs/types": "workspace:*"
   },
   "devDependencies": {
     "cors": "^2.8.5",

@@ -700,6 +700,9 @@ importers:
       '@medusajs/medusa':
         specifier: ^2.13.4
         version: 2.15.5(@medusajs/admin-sdk@2.15.5)(@medusajs/cli@2.15.5(@types/node@20.19.43))(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@3.25.76))(@medusajs/icons@2.13.4(react@18.3.1))(@medusajs/test-utils@2.15.5)(@medusajs/ui@4.1.1(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3))(@swc/core@1.15.41(@swc/helpers@0.5.23))(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(awilix@8.0.1)(posthog-node@5.37.0(rxjs@7.8.2))(react-dom@18.3.1(react@18.3.1))(react-router-dom@6.30.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(tsx@4.22.4)(typescript@5.9.3)(yalc@1.0.0-pre.53)
+      '@mercurjs/types':
+        specifier: workspace:*
+        version: link:../types
       cors:
         specifier: ^2.8.5
         version: 2.8.6
@@ -737,9 +740,6 @@ importers:
       '@mercurjs/cli':
         specifier: workspace:*
         version: link:../cli
-      '@mercurjs/types':
-        specifier: workspace:*
-        version: link:../types
       '@swc/core':
         specifier: ^1.7.28
         version: 1.15.41(@swc/helpers@0.5.23)
