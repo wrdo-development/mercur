@@ -48,6 +48,18 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
   const t0 = performance.now();
   const logger = req.scope.resolve<WebhookLogger>(ContainerRegistrationKeys.LOGGER);
 
+  // TEMP DIAGNOSTIC (WRDO-169 live-test): log env-var LENGTHS only (never values)
+  // to confirm the Cloud runtime received untruncated WhatsApp creds. Remove once
+  // the live phone test passes.
+  logger?.info('webhook.env_check', {
+    accessTokenLen: (process.env.WHATSAPP_ACCESS_TOKEN ?? '').length,
+    phoneNumberIdLen: (process.env.WHATSAPP_PHONE_NUMBER_ID ?? '').length,
+    appSecretLen: (process.env.WHATSAPP_APP_SECRET ?? '').length,
+    verifyTokenLen: (process.env.WHATSAPP_VERIFY_TOKEN ?? '').length,
+    redisUrlScheme: (process.env.REDIS_URL ?? '').slice(0, 8),
+    aiEnabled: process.env.WRDO_AI_ENABLED ?? '(unset)',
+  });
+
   try {
     const rawBody: unknown = req.rawBody ?? req.body;
 
