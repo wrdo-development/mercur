@@ -165,13 +165,13 @@ importers:
         version: 2.15.5(@medusajs/admin-sdk@2.15.5)(@medusajs/cli@2.15.5(@types/node@20.19.43))(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0))(@medusajs/test-utils@2.15.5)(@swc/core@1.15.41(@swc/helpers@0.5.23))(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(awilix@8.0.1)(posthog-node@5.37.0(rxjs@7.8.2))(react-dom@18.3.1(react@18.3.1))(react-router-dom@6.30.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(yalc@1.0.0-pre.53)
       '@mercurjs/cli':
         specifier: '*'
-        version: 2.1.6(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(esbuild@0.28.1)(ioredis@5.11.1)
+        version: 2.1.6(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(ioredis@5.11.1)
       '@mercurjs/core':
-        specifier: '*'
-        version: 2.1.6(@medusajs/admin-sdk@2.15.5)(@medusajs/cli@2.15.5(@types/node@20.19.43))(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0))(@medusajs/medusa@2.15.5)(@medusajs/test-utils@2.15.5)(express@4.22.2)
+        specifier: workspace:*
+        version: link:../../packages/core
       '@mercurjs/types':
-        specifier: '*'
-        version: 2.1.6(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))
+        specifier: workspace:*
+        version: link:../../packages/types
       http-proxy-middleware:
         specifier: ^3.0.3
         version: 3.0.6
@@ -535,7 +535,7 @@ importers:
         version: 2.13.4(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
       '@medusajs/framework':
         specifier: 2.13.4
-        version: 2.13.4(@medusajs/cli@2.13.4(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@3.25.76)
+        version: 2.13.4(@medusajs/cli@2.15.5(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@3.25.76)
       '@mercurjs/dashboard-sdk':
         specifier: 2.1.6
         version: 2.1.6(esbuild@0.28.1)
@@ -675,7 +675,7 @@ importers:
     devDependencies:
       '@medusajs/framework':
         specifier: ^2.13.4
-        version: 2.13.4(@medusajs/cli@2.13.4(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@4.2.0)
+        version: 2.13.4(@medusajs/cli@2.15.5(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@4.2.0)
       '@types/qs':
         specifier: ^6.9.18
         version: 6.15.1
@@ -964,7 +964,7 @@ importers:
     devDependencies:
       '@medusajs/framework':
         specifier: 2.13.4
-        version: 2.13.4(@medusajs/cli@2.13.4(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@4.2.0)
+        version: 2.13.4(@medusajs/cli@2.15.5(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@4.2.0)
       '@mercurjs/types':
         specifier: workspace:*
         version: link:../../types
@@ -2715,11 +2715,6 @@ packages:
     peerDependencies:
       '@medusajs/framework': 2.15.5
 
-  '@medusajs/cli@2.13.4':
-    resolution: {integrity: sha512-kDtleMJ6YHCkU2VkkOEcZa/t3bKsdzEGfITKEif1dhb5cS9ZJXkHGgFK+zFL7BhNK5P5yL3wuL3mP57lfKtD8w==}
-    engines: {node: '>=20'}
-    hasBin: true
-
   '@medusajs/cli@2.15.5':
     resolution: {integrity: sha512-HQhNoM9r8ZSn3OSBRCsmytSPox4VhVO12ZCl/6WGzLFevNe+UhnQecqCbNNhala6/EJaEKSRKWF3hgBETwb4nA==}
     engines: {node: '>=20'}
@@ -3640,56 +3635,48 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@oxlint/binding-linux-arm64-musl@1.69.0':
     resolution: {integrity: sha512-xEPpNppTfN1l/nM7gYSf9iocscu/as+p/7vxkLeLEKnYU+09Dm+5V6IhDYDh+Uz6FajEupWwCLt5SOG0y1PCKg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@oxlint/binding-linux-ppc64-gnu@1.69.0':
     resolution: {integrity: sha512-Ug0+eU7HJBlek+SjklYH62IlOMirEJsdxpihH0kSqX0XdrDD4NdHpQc10fK1JC35yn6KrrcN+uYzlHD38XAf8Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@oxlint/binding-linux-riscv64-gnu@1.69.0':
     resolution: {integrity: sha512-iEyI3GIg0l/s3G4qy2TlaaWKdzj4PJJStwtlocpDTC00PY9hZueotf6OKUj9+yfQh0lrpBW/pLMgTztbAHKJEg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@oxlint/binding-linux-riscv64-musl@1.69.0':
     resolution: {integrity: sha512-NjHjpiI4WIKSMwuoJSZi5VToPeoYOS1FR52HLIDG6lidMdqquusgtODb4iLk0+lb1q3Z0nv2/aPRcC/olmpQGg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@oxlint/binding-linux-s390x-gnu@1.69.0':
     resolution: {integrity: sha512-Ai/prDewoItkDXbp38gwGZi41DycZbUTZJ3UidwoHgQC0/DaqC2TGdtBTQLJ6hSD+SAxASzh8+/eSBPmxfOacA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@oxlint/binding-linux-x64-gnu@1.69.0':
     resolution: {integrity: sha512-Gt3KHgp46mRKz4sJeaASmKvD8ayXookRw07RMf+NowhEztGGDZ7VrXpoW96XuKJLjFukWizOFVNjmYb/u7caNQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@oxlint/binding-linux-x64-musl@1.69.0':
     resolution: {integrity: sha512-7tQhJ2+p/oHv1zcfnjYI7YVzC/7iBaVOfIvFYtxdJ5F45mWgEdrCyXZXZGfiLey5t/5JhOhsaMnnv1kAzckd7g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@oxlint/binding-openharmony-arm64@1.69.0':
     resolution: {integrity: sha512-vmWz6TKp/3hfA4lksR0zHBv/6xuX1jhym6eqOjdH2DXsDDHZWcp2f0KG0VCAnlVbIrjk29G4wAWMXb/Hn1YobA==}
@@ -4558,79 +4545,66 @@ packages:
     resolution: {integrity: sha512-T1dMEQhXA/jkJ/jyMIw9IovK8bSUq7A8kLIlvZTb/6YIVsp2zLavr4F3oyllHWo7eIVJRyE5n3tUjQJEbE1IuQ==}
     cpu: [arm]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.62.0':
     resolution: {integrity: sha512-2as0LgT7qQpyceQq6VUJYnumUMUrgGQCWIiDIN9DE0/tglsk6o66uCB4f3djRawAltvfCNLyZZrsqbPA6inCsA==}
     cpu: [arm]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.62.0':
     resolution: {integrity: sha512-bVURMg+6eNN9C/yc0aVjooZcwTTtYF4YW3xta5pP0//r3o1V8gXEHXWCndj47w/HhwsFroZrFhR+6uQP5T0n0g==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.62.0':
     resolution: {integrity: sha512-Ful8pM/2yYI83PViWdFdpZhdI8HJ5qsXANe5atypbHDf+KIBBDsZsbyy8hbXnULVvW9NsTh5DHwbcBftyLTfiw==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.62.0':
     resolution: {integrity: sha512-9Gp/DgrkzfUBmNPVTyPTvay+4xEP7M/clXpj3efXBcm6uTIVIgDg4rqUpqKXvLEuFRVuEpSAOkhgNeecvaZ4Cg==}
     cpu: [loong64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-loong64-musl@4.62.0':
     resolution: {integrity: sha512-m9tsJz54LUXkSYM8+8PG81B9IKK5r+2T0clMq4QrS16xFosufU7firBDAZEsDheDs7wTlP7h3++S7lMsU955HA==}
     cpu: [loong64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-ppc64-gnu@4.62.0':
     resolution: {integrity: sha512-3UvJ5PNVU16aJf6M3tFI24pWzAl2/ynfbyRN3ICyQajK1lSkrnVYNnLz3v04J32qKa0FczJc22zeToc0lr2A3w==}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-musl@4.62.0':
     resolution: {integrity: sha512-vRWUAbYLGHBZS6Q8Msb2sfnf1fvJf+47t8l/TwOerM2qArzy+IeNMTHrYLHXh95h8MoatPHI5hhSZNs+mGXKPg==}
     cpu: [ppc64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-riscv64-gnu@4.62.0':
     resolution: {integrity: sha512-c00T5SYENHAt86cfW47URaP3Us5vLC/4QO7GYud1G5VNRffCwwCuBspwqYrriuJB+5m0WFzClCn9wed0FBjKvg==}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.62.0':
     resolution: {integrity: sha512-krrCDilhXOwFkSkO3Wm9I/f9H0L92XHHwy2fwxjukxIbh0dem8gZqOW5Y8BsHrpJv5qwlRBV+Wl4ZFyRWhUpwg==}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.62.0':
     resolution: {integrity: sha512-7pfYFSTc4/rUC/FtAI0Qp6QthDBCIi6/AuP1xYqFk5vanI6KnL5dWKP60OM/05LOsbwTmIcvr6eXC4CJuJ75IA==}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.62.0':
     resolution: {integrity: sha512-7SDIalKeIpG0Ifogbbdn58HmSotYMlf23K3dCJEmiVd9Fg36Vmni82iPQec27N3wY4Bvbxftkxz6vSx9OcouTg==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.62.0':
     resolution: {integrity: sha512-eRZevouTH2i1HeAVLqJuLnt256krQkGY0TN6WsTmsIhuzbh457HuWDMakKwmi0Cjadux983CoSr8Lim2QhUIFw==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@rollup/rollup-openbsd-x64@4.62.0':
     resolution: {integrity: sha512-3oVS7FLGa4U1qcvao9ylGxrjXZyUQqR8UwxEcnUEyPX53O/C/mKDZegNXTdHCP+h3e6ta/f1EN38Yif1mmZHYg==}
@@ -4780,42 +4754,36 @@ packages:
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@swc/core-linux-arm64-musl@1.15.41':
     resolution: {integrity: sha512-dXu/5vd4gh8symyhRF+4G7gOPkjmb4pONhh7sl+6GSiW0LOKZlfu5kXmyFbTz9smOT7jgr002qY9b1nujjXt2A==}
     engines: {node: '>=10'}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@swc/core-linux-ppc64-gnu@1.15.41':
     resolution: {integrity: sha512-XGO6zVPXoPE0gf/XnI4jBbafNT13AYgoh6ns0JCSdOetI/kqVf0vhpz7NuNgAzZrMVCsmieqjPoTwViDgh4mOQ==}
     engines: {node: '>=10'}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@swc/core-linux-s390x-gnu@1.15.41':
     resolution: {integrity: sha512-0WUglRwyZtW+iMi7J3iFdrCxreZZIKf4egTwEQfIYRsqFax69A0OrFj+NIoFSE03xBT/IFRrg+S8K6f9Ky+4hA==}
     engines: {node: '>=10'}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@swc/core-linux-x64-gnu@1.15.41':
     resolution: {integrity: sha512-VxkuQK59c0tHm6uJZCUrS3cyA2JhGGfdU6e41SZz0x/JS+4Sm7C1mIc97In14vkZJopEt7yXA2TouCqZDSygEA==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@swc/core-linux-x64-musl@1.15.41':
     resolution: {integrity: sha512-/0qXIu1ZxggLuovLb22vFfKHq2AA4n6Whw5UwmVCHk4pkw7KWnPIQpMCEqUMPsNkFJig7PPp/TSYFu8ZEb2rtQ==}
     engines: {node: '>=10'}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@swc/core-win32-arm64-msvc@1.15.41':
     resolution: {integrity: sha512-Y481sMNZM6rECh9VO4+y26N1lWEDAyxnBZskUf37fl90uHE946VHfmiVQWT0uMFOhyJJFovGTRuF4W82dwewUg==}
@@ -5230,61 +5198,51 @@ packages:
     resolution: {integrity: sha512-zJc0H99FEPoFfSrNpa91HYfxzfAJCr502oxNK1cfdC9hlaFI43RT+JFCann9JUgZmLzzntChHyn13Sgn9ljHNg==}
     cpu: [arm64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-arm64-musl@1.12.2':
     resolution: {integrity: sha512-KQ3Lki6l+Pz1k/eBipN41ES+YUK30beLGb9YqcB1O542cyLCNE6GaxrfcY3T6EezmGGk84wb5XyO9loTM9tkcA==}
     cpu: [arm64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-loong64-gnu@1.12.2':
     resolution: {integrity: sha512-3SJGEh1DborhG6pyxvhPzCT4bbSIVihsvgJc13P1bHG7KLdNDaF9T3gsTwFc7Jw/5Y5/iWOjkEx7Zy0NvCGX3Q==}
     cpu: [loong64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-loong64-musl@1.12.2':
     resolution: {integrity: sha512-jiuG/Obbel7uw1PwHNFfrkiKhLAF6mnyZ6aWlOAVN9WqKm8v0OFGnciJIHu8+CMvXLQ8AD51LPzAoUfT21D5Ew==}
     cpu: [loong64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-ppc64-gnu@1.12.2':
     resolution: {integrity: sha512-q7xRvVpmcfeL+LlZg8Pbbo6QaTZwDU5BaGZbwfhkEsXJn3Was8xYfE0RBH266xZt0rM6B7i8xAYIvjthuUIWHg==}
     cpu: [ppc64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-gnu@1.12.2':
     resolution: {integrity: sha512-0CVdx6lcnT3Q9inOH8tsMIOJ6ImndllMjqJHg8RLVdB7Vq4SfkEXl9mCSsVNuNA4MCYycRicCUxPCabVHJRr6A==}
     cpu: [riscv64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-riscv64-musl@1.12.2':
     resolution: {integrity: sha512-iOwlRo9vnp6R6ohHQS11n0NnfdXx/omhkocmIfaPRpQhKZ+3BDMkkdRVh53qjkFkpPddf+FETA28NwGN7l5l+w==}
     cpu: [riscv64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-linux-s390x-gnu@1.12.2':
     resolution: {integrity: sha512-HYJtLfXq94q8iZNFT1lknx258wlkkWhZeUXJRqzKBBUJ00CvZ+N33zgbCqimLjsyw5Va6uUxhVa12mI+kaveEw==}
     cpu: [s390x]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-gnu@1.12.2':
     resolution: {integrity: sha512-mPsUhunKKDih5O96Y6enDQyHc1SqBPlY1E/SfMWDM3EdJ95Z9CArPeCVwCCqbP45ljvivdEk8Fxn+SIb1rDAJQ==}
     cpu: [x64]
     os: [linux]
-    libc: [glibc]
 
   '@unrs/resolver-binding-linux-x64-musl@1.12.2':
     resolution: {integrity: sha512-azrt6+5ydLd8Vt210AAFis/lZevSfPw93EJRIJG+xPu4WCJ8K0kppCTpMyLPcKT7H15M4Jnt2tMp5bOvCkRC6A==}
     cpu: [x64]
     os: [linux]
-    libc: [musl]
 
   '@unrs/resolver-binding-openharmony-arm64@1.12.2':
     resolution: {integrity: sha512-YZ9hP4O0X9PQb8eO980qmLNGH4zT3I9+SZTdt0Pr0YyuGQhYKoOZkV02VzrzyOZJ5xIJ3UFIenKkUkGg8GjgWQ==}
@@ -11453,45 +11411,6 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.13.4(@medusajs/cli@2.15.5(@types/node@22.19.21))(@types/node@22.19.21)(ioredis@5.11.1)(zod@3.25.76)
 
-  '@medusajs/cli@2.13.4(@types/node@24.13.2)':
-    dependencies:
-      '@medusajs/deps': 2.13.4(@types/node@24.13.2)
-      '@medusajs/telemetry': 2.13.4
-      '@medusajs/utils': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@types/express': 4.17.25
-      chalk: 4.1.2
-      configstore: 5.0.1
-      dotenv: 16.6.1
-      execa: 5.1.1
-      express: 4.22.2
-      fs-exists-cached: 1.0.0
-      fs-extra: 11.3.5
-      glob: 11.1.0
-      hosted-git-info: 4.1.0
-      inquirer: 8.2.7(@types/node@24.13.2)
-      is-valid-path: 0.1.1
-      meant: 1.0.3
-      ora: 5.4.1
-      pg-god: 1.0.12
-      prompts: 2.4.2
-      resolve-cwd: 3.0.0
-      stack-trace: 0.0.10
-      ulid: 2.4.0
-      winston: 3.19.0
-      yargs: 17.7.2
-    transitivePeerDependencies:
-      - '@types/node'
-      - better-sqlite3
-      - debug
-      - libsql
-      - mariadb
-      - mysql
-      - mysql2
-      - pg-native
-      - sqlite3
-      - supports-color
-      - tedious
-
   '@medusajs/cli@2.15.5(@types/node@20.19.43)':
     dependencies:
       '@medusajs/deps': 2.15.5(@types/node@20.19.43)
@@ -11548,6 +11467,46 @@ snapshots:
       glob: 13.0.6
       hosted-git-info: 4.1.0
       inquirer: 8.2.7(@types/node@22.19.21)
+      is-valid-path: 0.1.1
+      meant: 1.0.3
+      ora: 5.4.1
+      pg-god: 1.0.12
+      prompts: 2.4.2
+      resolve-cwd: 3.0.0
+      stack-trace: 0.0.10
+      ulid: 2.4.0
+      winston: 3.19.0
+      yargs: 17.7.2
+    transitivePeerDependencies:
+      - '@types/node'
+      - better-sqlite3
+      - debug
+      - libsql
+      - mariadb
+      - mysql
+      - mysql2
+      - pg-native
+      - pg-query-stream
+      - sqlite3
+      - supports-color
+      - tedious
+
+  '@medusajs/cli@2.15.5(@types/node@24.13.2)':
+    dependencies:
+      '@medusajs/deps': 2.15.5(@types/node@24.13.2)
+      '@medusajs/telemetry': 2.15.5
+      '@medusajs/utils': 2.15.5(@types/node@24.13.2)(express@4.22.2)
+      '@types/express': 4.17.25
+      chalk: 4.1.2
+      configstore: 5.0.1
+      dotenv: 16.6.1
+      execa: 5.1.1
+      express: 4.22.2
+      fs-exists-cached: 1.0.0
+      fs-extra: 11.3.5
+      glob: 13.0.6
+      hosted-git-info: 4.1.0
+      inquirer: 8.2.7(@types/node@24.13.2)
       is-valid-path: 0.1.1
       meant: 1.0.3
       ora: 5.4.1
@@ -11850,6 +11809,34 @@ snapshots:
       - supports-color
       - tedious
 
+  '@medusajs/deps@2.15.5(@types/node@24.13.2)':
+    dependencies:
+      '@mikro-orm/cli': 6.6.12(pg@8.21.0)
+      '@mikro-orm/core': 6.6.12
+      '@mikro-orm/knex': 6.6.12(@mikro-orm/core@6.6.12)(pg@8.21.0)
+      '@mikro-orm/migrations': 6.6.12(@mikro-orm/core@6.6.12)(@types/node@24.13.2)(pg@8.21.0)
+      '@mikro-orm/postgresql': 6.6.12(@mikro-orm/core@6.6.12)
+      '@opentelemetry/api': 1.9.1
+      '@opentelemetry/instrumentation-pg': 0.52.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/resources': 2.8.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-node': 0.200.0(@opentelemetry/api@1.9.1)
+      '@opentelemetry/sdk-trace-node': 2.8.0(@opentelemetry/api@1.9.1)
+      awilix: 8.0.1
+      pg: 8.21.0
+      zod: 4.2.0
+    transitivePeerDependencies:
+      - '@types/node'
+      - better-sqlite3
+      - libsql
+      - mariadb
+      - mysql
+      - mysql2
+      - pg-native
+      - pg-query-stream
+      - sqlite3
+      - supports-color
+      - tedious
+
   '@medusajs/draft-order@2.13.4(@medusajs/admin-sdk@2.15.5)(@medusajs/cli@2.15.5(@types/node@20.19.43))(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0))(@medusajs/test-utils@2.15.5)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(react-dom@18.3.1(react@18.3.1))(react-router-dom@6.30.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@ariakit/react': 0.4.29(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -12090,96 +12077,6 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.13.4(@medusajs/cli@2.15.5(@types/node@22.19.21))(@types/node@22.19.21)(ioredis@5.11.1)(zod@3.25.76)
 
-  '@medusajs/framework@2.13.4(@medusajs/cli@2.13.4(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@3.25.76)':
-    dependencies:
-      '@aws-sdk/client-dynamodb': 3.1068.0
-      '@jercle/yargonaut': 1.1.5
-      '@medusajs/cli': 2.13.4(@types/node@24.13.2)
-      '@medusajs/deps': 2.13.4(@types/node@24.13.2)
-      '@medusajs/modules-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@medusajs/orchestration': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@medusajs/telemetry': 2.13.4
-      '@medusajs/types': 2.13.4(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))
-      '@medusajs/utils': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@medusajs/workflows-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@types/express': 4.17.25
-      chokidar: 4.0.3
-      compression: 1.8.1
-      connect-dynamodb: 3.0.5
-      connect-redis: 5.2.0
-      cookie-parser: 1.4.7
-      cors: 2.8.6
-      express: 4.22.2
-      express-session: 1.19.0
-      glob: 11.1.0
-      jsonwebtoken: 9.0.2
-      lodash.memoize: 4.1.2
-      morgan: 1.11.0
-      path-to-regexp: 8.4.2
-      tsconfig-paths: 4.2.0
-      zod-validation-error: 3.5.1(zod@3.25.76)
-    optionalDependencies:
-      ioredis: 5.11.1
-      vite: 5.4.21(@types/node@24.13.2)
-    transitivePeerDependencies:
-      - '@types/node'
-      - better-sqlite3
-      - debug
-      - libsql
-      - mariadb
-      - mysql
-      - mysql2
-      - pg-native
-      - sqlite3
-      - supports-color
-      - tedious
-      - zod
-
-  '@medusajs/framework@2.13.4(@medusajs/cli@2.13.4(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@4.2.0)':
-    dependencies:
-      '@aws-sdk/client-dynamodb': 3.1068.0
-      '@jercle/yargonaut': 1.1.5
-      '@medusajs/cli': 2.13.4(@types/node@24.13.2)
-      '@medusajs/deps': 2.13.4(@types/node@24.13.2)
-      '@medusajs/modules-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@medusajs/orchestration': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@medusajs/telemetry': 2.13.4
-      '@medusajs/types': 2.13.4(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))
-      '@medusajs/utils': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@medusajs/workflows-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
-      '@types/express': 4.17.25
-      chokidar: 4.0.3
-      compression: 1.8.1
-      connect-dynamodb: 3.0.5
-      connect-redis: 5.2.0
-      cookie-parser: 1.4.7
-      cors: 2.8.6
-      express: 4.22.2
-      express-session: 1.19.0
-      glob: 11.1.0
-      jsonwebtoken: 9.0.2
-      lodash.memoize: 4.1.2
-      morgan: 1.11.0
-      path-to-regexp: 8.4.2
-      tsconfig-paths: 4.2.0
-      zod-validation-error: 3.5.1(zod@4.2.0)
-    optionalDependencies:
-      ioredis: 5.11.1
-      vite: 5.4.21(@types/node@24.13.2)
-    transitivePeerDependencies:
-      - '@types/node'
-      - better-sqlite3
-      - debug
-      - libsql
-      - mariadb
-      - mysql
-      - mysql2
-      - pg-native
-      - sqlite3
-      - supports-color
-      - tedious
-      - zod
-
   '@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@3.25.76)':
     dependencies:
       '@aws-sdk/client-dynamodb': 3.1068.0
@@ -12300,6 +12197,96 @@ snapshots:
       zod-validation-error: 3.5.1(zod@3.25.76)
     optionalDependencies:
       ioredis: 5.11.1
+    transitivePeerDependencies:
+      - '@types/node'
+      - better-sqlite3
+      - debug
+      - libsql
+      - mariadb
+      - mysql
+      - mysql2
+      - pg-native
+      - sqlite3
+      - supports-color
+      - tedious
+      - zod
+
+  '@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@3.25.76)':
+    dependencies:
+      '@aws-sdk/client-dynamodb': 3.1068.0
+      '@jercle/yargonaut': 1.1.5
+      '@medusajs/cli': 2.15.5(@types/node@24.13.2)
+      '@medusajs/deps': 2.13.4(@types/node@24.13.2)
+      '@medusajs/modules-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@medusajs/orchestration': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@medusajs/telemetry': 2.13.4
+      '@medusajs/types': 2.13.4(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))
+      '@medusajs/utils': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@medusajs/workflows-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@types/express': 4.17.25
+      chokidar: 4.0.3
+      compression: 1.8.1
+      connect-dynamodb: 3.0.5
+      connect-redis: 5.2.0
+      cookie-parser: 1.4.7
+      cors: 2.8.6
+      express: 4.22.2
+      express-session: 1.19.0
+      glob: 11.1.0
+      jsonwebtoken: 9.0.2
+      lodash.memoize: 4.1.2
+      morgan: 1.11.0
+      path-to-regexp: 8.4.2
+      tsconfig-paths: 4.2.0
+      zod-validation-error: 3.5.1(zod@3.25.76)
+    optionalDependencies:
+      ioredis: 5.11.1
+      vite: 5.4.21(@types/node@24.13.2)
+    transitivePeerDependencies:
+      - '@types/node'
+      - better-sqlite3
+      - debug
+      - libsql
+      - mariadb
+      - mysql
+      - mysql2
+      - pg-native
+      - sqlite3
+      - supports-color
+      - tedious
+      - zod
+
+  '@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@24.13.2))(@types/node@24.13.2)(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))(zod@4.2.0)':
+    dependencies:
+      '@aws-sdk/client-dynamodb': 3.1068.0
+      '@jercle/yargonaut': 1.1.5
+      '@medusajs/cli': 2.15.5(@types/node@24.13.2)
+      '@medusajs/deps': 2.13.4(@types/node@24.13.2)
+      '@medusajs/modules-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@medusajs/orchestration': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@medusajs/telemetry': 2.13.4
+      '@medusajs/types': 2.13.4(ioredis@5.11.1)(vite@5.4.21(@types/node@24.13.2))
+      '@medusajs/utils': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@medusajs/workflows-sdk': 2.13.4(@types/node@24.13.2)(express@4.22.2)
+      '@types/express': 4.17.25
+      chokidar: 4.0.3
+      compression: 1.8.1
+      connect-dynamodb: 3.0.5
+      connect-redis: 5.2.0
+      cookie-parser: 1.4.7
+      cors: 2.8.6
+      express: 4.22.2
+      express-session: 1.19.0
+      glob: 11.1.0
+      jsonwebtoken: 9.0.2
+      lodash.memoize: 4.1.2
+      morgan: 1.11.0
+      path-to-regexp: 8.4.2
+      tsconfig-paths: 4.2.0
+      zod-validation-error: 3.5.1(zod@4.2.0)
+    optionalDependencies:
+      ioredis: 5.11.1
+      vite: 5.4.21(@types/node@24.13.2)
     transitivePeerDependencies:
       - '@types/node'
       - better-sqlite3
@@ -13553,6 +13540,36 @@ snapshots:
       - supports-color
       - tedious
 
+  '@medusajs/utils@2.15.5(@types/node@24.13.2)(express@4.22.2)':
+    dependencies:
+      '@graphql-codegen/core': 4.0.2(graphql@16.14.2)
+      '@graphql-codegen/typescript': 4.1.6(graphql@16.14.2)
+      '@graphql-tools/merge': 9.1.9(graphql@16.14.2)
+      '@graphql-tools/schema': 10.0.33(graphql@16.14.2)
+      '@medusajs/deps': 2.15.5(@types/node@24.13.2)
+      '@types/pluralize': 0.0.33
+      bignumber.js: 9.3.1
+      dotenv: 16.6.1
+      dotenv-expand: 11.0.7
+      express: 4.22.2
+      graphql: 16.14.2
+      jsonwebtoken: 9.0.2
+      pg-connection-string: 2.13.0
+      pluralize: 8.0.0
+      ulid: 2.4.0
+    transitivePeerDependencies:
+      - '@types/node'
+      - better-sqlite3
+      - libsql
+      - mariadb
+      - mysql
+      - mysql2
+      - pg-native
+      - pg-query-stream
+      - sqlite3
+      - supports-color
+      - tedious
+
   '@medusajs/workflow-engine-inmemory@2.15.5(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@3.25.76))':
     dependencies:
       '@medusajs/framework': 2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@3.25.76)
@@ -13709,7 +13726,7 @@ snapshots:
       - react-native
       - typescript
 
-  '@mercurjs/cli@2.1.6(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(esbuild@0.28.1)(ioredis@5.11.1)':
+  '@mercurjs/cli@2.1.6(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(ioredis@5.11.1)':
     dependencies:
       '@antfu/ni': 27.0.1
       '@medusajs/admin-bundler': 2.13.4(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(typescript@5.9.3)
@@ -13790,15 +13807,6 @@ snapshots:
       typescript: 5.9.3
     transitivePeerDependencies:
       - react
-
-  '@mercurjs/core@2.1.6(@medusajs/admin-sdk@2.15.5)(@medusajs/cli@2.15.5(@types/node@20.19.43))(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0))(@medusajs/medusa@2.15.5)(@medusajs/test-utils@2.15.5)(express@4.22.2)':
-    dependencies:
-      '@medusajs/admin-sdk': 2.15.5
-      '@medusajs/cli': 2.15.5(@types/node@20.19.43)
-      '@medusajs/framework': 2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0)
-      '@medusajs/medusa': 2.15.5(@medusajs/admin-sdk@2.15.5)(@medusajs/cli@2.15.5(@types/node@20.19.43))(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0))(@medusajs/test-utils@2.15.5)(@swc/core@1.15.41(@swc/helpers@0.5.23))(@types/node@20.19.43)(@types/react-dom@18.3.7(@types/react@18.3.31))(@types/react@18.3.31)(awilix@8.0.1)(posthog-node@5.37.0(rxjs@7.8.2))(react-dom@18.3.1(react@18.3.1))(react-router-dom@6.30.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(yalc@1.0.0-pre.53)
-      '@medusajs/test-utils': 2.15.5(@medusajs/core-flows@2.15.5(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0)))(@medusajs/framework@2.13.4(@medusajs/cli@2.15.5(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0))(@medusajs/medusa@2.15.5)
-      express: 4.22.2
 
   '@mercurjs/core@2.1.6(@medusajs/framework@2.13.4(@types/node@20.19.43)(ioredis@5.11.1)(vite@5.4.21(@types/node@20.19.43))(zod@4.2.0))(@medusajs/medusa@2.15.5)(@medusajs/test-utils@2.15.5)(express@4.22.2)':
     dependencies:
@@ -14131,6 +14139,26 @@ snapshots:
       '@mikro-orm/knex': 6.6.12(@mikro-orm/core@6.6.12)(pg@8.21.0)
       fs-extra: 11.3.3
       umzug: 3.8.2(@types/node@22.19.21)
+    transitivePeerDependencies:
+      - '@types/node'
+      - better-sqlite3
+      - libsql
+      - mariadb
+      - mysql
+      - mysql2
+      - pg
+      - pg-native
+      - pg-query-stream
+      - sqlite3
+      - supports-color
+      - tedious
+
+  '@mikro-orm/migrations@6.6.12(@mikro-orm/core@6.6.12)(@types/node@24.13.2)(pg@8.21.0)':
+    dependencies:
+      '@mikro-orm/core': 6.6.12
+      '@mikro-orm/knex': 6.6.12(@mikro-orm/core@6.6.12)(pg@8.21.0)
+      fs-extra: 11.3.3
+      umzug: 3.8.2(@types/node@24.13.2)
     transitivePeerDependencies:
       - '@types/node'
       - better-sqlite3

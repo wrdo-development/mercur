@@ -34,8 +34,8 @@
     "@medusajs/admin-shared": "^2.13.4",
     "@medusajs/medusa": "^2.13.4",
     "@medusajs/draft-order": "2.13.4",
-    "@mercurjs/core": "*",
-    "@mercurjs/types": "*",
+    "@mercurjs/core": "workspace:*",
+    "@mercurjs/types": "workspace:*",
     "http-proxy-middleware": "^3.0.3",
     "@mercurjs/cli": "*"
   },
