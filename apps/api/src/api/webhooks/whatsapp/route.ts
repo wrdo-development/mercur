@@ -48,6 +48,59 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
   const t0 = performance.now();
   const logger = req.scope.resolve<WebhookLogger>(ContainerRegistrationKeys.LOGGER);
 
+  // TEMP DIAGNOSTIC (WRDO-169): x-wrdo-debug-pipeline:1 runs the real pipeline on
+  // a synthetic message WITHOUT handlePayload's swallowing catch, surfacing the
+  // throw + stack in the response. Remove after the live test passes.
+  if (req.headers['x-wrdo-debug-pipeline'] === '1') {
+    const pid = process.env.WHATSAPP_PHONE_NUMBER_ID ?? '';
+    const to = (req.headers['x-wrdo-debug-to'] as string | undefined) ?? '27761271676';
+    const synthetic = {
+      object: 'whatsapp_business_account',
+      entry: [
+        {
+          id: '0',
+          changes: [
+            {
+              value: {
+                messaging_product: 'whatsapp',
+                metadata: { display_phone_number: '+27721104651', phone_number_id: pid },
+                contacts: [{ profile: { name: 'Probe' }, wa_id: to.replaceAll(/\D/g, '') }],
+                messages: [
+                  {
+                    from: to.replaceAll(/\D/g, ''),
+                    id: `wamid.PIPEPROBE${String(Date.now())}`,
+                    timestamp: String(Math.floor(Date.now() / 1000)),
+                    type: 'text',
+                    text: { body: 'pipeline probe' },
+                  },
+                ],
+              },
+              field: 'messages',
+            },
+          ],
+        },
+      ],
+    };
+    let pipeline: unknown;
+    try {
+      const p = createWebhookPipeline({ logger: logger ? logger : undefined, scope: req.scope });
+      const pAny = p as unknown as {
+        opts: { handlerService: { parsePayload: (x: unknown) => unknown } };
+        processParsedResult: (r: unknown) => Promise<void>;
+      };
+      const parsed = pAny.opts.handlerService.parsePayload(synthetic);
+      await pAny.processParsedResult(parsed);
+      pipeline = 'completed-no-throw';
+    } catch (e) {
+      pipeline = {
+        throw: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? (e.stack ?? '').split('\n').slice(0, 8) : undefined,
+      };
+    }
+    res.status(200).json({ pipeline });
+    return;
+  }
+
   try {
     const rawBody: unknown = req.rawBody ?? req.body;
 
