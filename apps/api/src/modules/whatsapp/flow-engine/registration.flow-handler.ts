@@ -43,6 +43,16 @@ export class RegistrationFlowHandler {
    * @returns First prompt message
    */
   async startRegistration(phone: string): Promise<string> {
+    // Never clobber an in-progress registration. A re-greeting ("hi"/"hey") or
+    // a stray 'register' classification must not reset someone who is already
+    // partway through — that silently wiped their name/role and desynced the
+    // screen from the state machine (WRDO-169 follow-up: restart loops). If a
+    // registration is already live, resume by re-prompting the current step.
+    const existing = await this.conversationStateService.getState(phone);
+    if (existing !== null && existing.flow === 'registration') {
+      return getPromptForStep(existing.step);
+    }
+
     const initialState: ConversationState = {
       flow: 'registration',
       step: 'collect_name',

@@ -31,7 +31,36 @@ const CANCEL_TRIGGERS = ['stop', 'cancel'];
 const SKIP_TRIGGERS = ['skip', 'none', 'done'];
 const CONSENT_YES = ['yes', 'y', 'agree', 'i agree', 'ok', 'okay'];
 
-const VALID_ROLES = ['resident', 'provider', 'informal_worker'];
+/**
+ * Map a free-text role reply to a canonical role, forgivingly.
+ *
+ * People pluralise ("residents"), abbreviate ("informal", "worker"), and
+ * phrase it their own way ("service provider"). The role question is free text,
+ * so we must accept the obvious human variants instead of demanding an exact
+ * token — a mismatch here silently desyncs the whole conversation (WRDO-169
+ * follow-up: "residents" was rejected with "Hmm, I didn't quite get that").
+ *
+ * @param text - Raw user reply
+ * @returns Canonical role ('resident' | 'provider' | 'informal_worker') or null
+ */
+export function normalizeRole(text: string): string | null {
+  const t = text.trim().toLowerCase().replace(/[^a-z\s]/g, '');
+  if (t === '') {
+    return null;
+  }
+  // Order matters: check 'informal'/'worker' before 'provider' so "informal
+  // worker" doesn't get caught by a broader match.
+  if (t.includes('resident')) {
+    return 'resident';
+  }
+  if (t.includes('informal') || t.includes('worker') || t.includes('casual')) {
+    return 'informal_worker';
+  }
+  if (t.includes('provider') || t.includes('service') || t.includes('business')) {
+    return 'provider';
+  }
+  return null;
+}
 
 /** Interest options, indexed 1..12 to match the collect_interests prompt list. */
 const INTEREST_OPTIONS = [
@@ -165,8 +194,8 @@ export function processRegistrationStep(
       };
     }
     case 'collect_role': {
-      const role = trimmed;
-      if (!VALID_ROLES.includes(role)) {
+      const role = normalizeRole(text);
+      if (role === null) {
         return {
           errorCode: 'unrecognised_input',
           message: buildUnrecognisedMessage('collect_role'),
