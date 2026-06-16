@@ -13,7 +13,18 @@ import SellerRegistrationFeatureFlag from "../../../feature-flags/seller-registr
 export default async function registerFeatureFlagsLoader({
   container: _container,
 }: LoaderOptions) {
-  const { featureFlags: projectConfigFlags = {} } = configManager.config
+  // configManager.config is a getter that THROWS if config hasn't been loaded
+  // yet. On Medusa Cloud's boot/migration sequence this loader can run before
+  // the config loader has populated configManager, crashing the Seller module
+  // with "[config] Config not loaded". Guard it: if config isn't ready, fall
+  // back to empty projectConfigFlags (same as the original `= {}` default) —
+  // the feature flag still registers correctly. (wrdo fork patch)
+  let projectConfigFlags = {}
+  try {
+    projectConfigFlags = configManager.config?.featureFlags ?? {}
+  } catch {
+    projectConfigFlags = {}
+  }
 
   registerFeatureFlag({
     flag: SellerRegistrationFeatureFlag,
