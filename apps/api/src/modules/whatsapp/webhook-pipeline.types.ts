@@ -6,7 +6,7 @@ import type { IAiClient } from '../../clients/ai-client/ai-client';
 import type { ConversationStateService } from '../tribe-sessions/conversation-state.service';
 import type { TribeUserService } from './_step1-stubs'; // Step-1: stubbed
 import type { DegradationService } from './degradation.service';
-import type { FeedbackHandlerDeps } from './feedback/feedback-handler.js';
+import type { FeedbackHandlerDeps } from './feedback/feedback-handler';
 import type { BookingFlowHandler } from './flow-engine/booking.flow-handler';
 import type { RegistrationFlowHandler } from './flow-engine/registration.flow-handler';
 import type { IdempotencyService } from './idempotency.service';

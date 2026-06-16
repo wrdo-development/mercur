@@ -8,7 +8,7 @@
  *    Always retrieve from own message_logs. If evicted, store null.
  *    The reply text alone is still valuable signal.
  */
-import { classifyFeedback, type FeedbackSignal } from './feedback-classifier.js';
+import { classifyFeedback, type FeedbackSignal } from './feedback-classifier';
 
 export type { FeedbackSignal };
 

@@ -113,9 +113,9 @@ export interface FallbackPolicy {
 
 // Per-node-data types live in ./flow-engine.node-data.types.ts (size cap);
 // imported for the graph types below + re-exported so the public surface is unchanged.
-import type { FlowNodeData } from './flow-engine.node-data.types.js';
+import type { FlowNodeData } from './flow-engine.node-data.types';
 
-export * from './flow-engine.node-data.types.js';
+export * from './flow-engine.node-data.types';
 
 export interface FlowNode {
   id: string;

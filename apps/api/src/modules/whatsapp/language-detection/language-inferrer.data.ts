@@ -37,6 +37,6 @@ export const SUPPORTED = [
 
 export type Language = (typeof SUPPORTED)[number];
 
-export { BIGRAM_HINTS, STRONG_MARKERS } from './language-inferrer.markers.js';
+export { BIGRAM_HINTS, STRONG_MARKERS } from './language-inferrer.markers';
 // Re-export all data tables so consumers only need to import from this file.
-export { STOPWORDS } from './language-inferrer.stopwords.js';
+export { STOPWORDS } from './language-inferrer.stopwords';

@@ -1,4 +1,4 @@
-export type { FeedbackSignal } from './feedback-classifier.js';
-export { classifyFeedback } from './feedback-classifier.js';
-export type { FeedbackHandlerDeps, IncomingFeedback } from './feedback-handler.js';
-export { handleFeedback } from './feedback-handler.js';
+export type { FeedbackSignal } from './feedback-classifier';
+export { classifyFeedback } from './feedback-classifier';
+export type { FeedbackHandlerDeps, IncomingFeedback } from './feedback-handler';
+export { handleFeedback } from './feedback-handler';

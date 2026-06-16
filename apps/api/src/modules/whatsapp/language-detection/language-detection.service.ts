@@ -3,13 +3,13 @@
  * Orchestrates inference, profile storage, and nudge replies.
  */
 
-import { getBilingualGreeting, getConfirmNudge } from './confirm-messages.js';
-import { inferLanguageFromMessage } from './language-inferrer.js';
+import { getBilingualGreeting, getConfirmNudge } from './confirm-messages';
+import { inferLanguageFromMessage } from './language-inferrer';
 import {
   defaultProfile,
   type LanguageProfile,
   type LanguageProfileStore,
-} from './language-profile.store.js';
+} from './language-profile.store';
 
 export interface LanguageDetectionDeps {
   store: LanguageProfileStore;

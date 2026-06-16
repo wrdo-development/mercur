@@ -4,8 +4,8 @@
  * Split from flow-engine.types.ts (200-line cap); re-exported from there.
  */
 
-import type { ChannelConstraints, FallbackPolicy, FlowNodeType } from './flow-engine.types.js';
-import type { Channel } from './renderer/channel-renderer.types.js';
+import type { ChannelConstraints, FallbackPolicy, FlowNodeType } from './flow-engine.types';
+import type { Channel } from './renderer/channel-renderer.types';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Per-node-type intent payloads

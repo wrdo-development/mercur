@@ -116,4 +116,4 @@ export function renderTemplate(
 
 // Form/flow-node renderers split to ./whatsapp.io-nodes.forms.ts (size cap);
 // re-exported so importers keep the ./whatsapp.io-nodes.js path.
-export * from './whatsapp.io-nodes.forms.js';
+export * from './whatsapp.io-nodes.forms';

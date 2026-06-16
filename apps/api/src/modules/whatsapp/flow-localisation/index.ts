@@ -1,2 +1,2 @@
-export type { FlowStringsDeps } from './resolve-flow-strings.js';
-export { clearFlowStringsCache, resolveFlowStrings } from './resolve-flow-strings.js';
+export type { FlowStringsDeps } from './resolve-flow-strings';
+export { clearFlowStringsCache, resolveFlowStrings } from './resolve-flow-strings';

@@ -15,10 +15,10 @@ import {
   STOPWORDS,
   STRONG_MARKERS,
   SUPPORTED,
-} from './language-inferrer.data.js';
+} from './language-inferrer.data';
 
-export type { Language } from './language-inferrer.data.js';
-export { SUPPORTED } from './language-inferrer.data.js';
+export type { Language } from './language-inferrer.data';
+export { SUPPORTED } from './language-inferrer.data';
 
 const CONFIDENCE_THRESHOLD = 0.6;
 

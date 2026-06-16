@@ -3,7 +3,7 @@
  * Key: lang_profile:{userId}, TTL: 90 days.
  */
 
-import type { RedisAdapter } from '../idempotency.service.js';
+import type { RedisAdapter } from '../idempotency.service';
 
 const KEY_PREFIX = 'lang_profile:';
 const TTL_SECONDS = 90 * 24 * 60 * 60; // 7,776,000 seconds — 90 days

@@ -11,7 +11,7 @@
 import { performance } from 'node:perf_hooks';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { isBookingFlow, isRegistrationFlow } from '../tribe-sessions/conversation-state.service';
-import { handleFeedback } from './feedback/feedback-handler.js';
+import { handleFeedback } from './feedback/feedback-handler';
 import { classifyAndRoute } from './webhook-pipeline.classify';
 import { fireAndForgetLogEvent } from './webhook-pipeline.log-event';
 import type { WebhookPipelineServiceOptions } from './webhook-pipeline.types';

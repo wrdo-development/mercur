@@ -7,7 +7,7 @@
  * orthogonality between the languages.
  */
 
-import type { Language } from './language-inferrer.data.js';
+import type { Language } from './language-inferrer.data';
 
 export const STOPWORDS: Record<Language, string[]> = {
   en: [

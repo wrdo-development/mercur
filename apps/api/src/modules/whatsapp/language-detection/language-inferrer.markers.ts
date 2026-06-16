@@ -3,7 +3,7 @@
  * Extracted to keep language-inferrer.data.ts within the 300-line limit.
  */
 
-import type { Language } from './language-inferrer.data.js';
+import type { Language } from './language-inferrer.data';
 
 /** Tokens that, if present, strongly indicate a specific language. */
 export const STRONG_MARKERS: Record<Language, string[]> = {
