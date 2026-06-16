@@ -14634,6 +14634,7 @@ __metadata:
     globals: "npm:^17.0.0"
     oxlint: "npm:^1.64.0"
     prettier: "npm:^3.7.4"
+    ts-node: "npm:^10.9.2"
     turbo: "npm:^2.7.4"
     typescript: "npm:5.9.3"
     typescript-eslint: "npm:^8.53.0"
