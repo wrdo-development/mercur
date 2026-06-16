@@ -10,7 +10,10 @@ import type {
   WhatsAppTemplateMessage,
 } from '../../types/whatsapp.types';
 
-const CLOUD_API_BASE = 'https://graph.facebook.com/v21';
+// Meta Graph API version MUST include the minor: 'v21.0', not 'v21'. A bare
+// 'v21' yields "Unknown path components: /<id>/messages" (error 2500) and every
+// send fails silently. (WRDO-169)
+const CLOUD_API_BASE = 'https://graph.facebook.com/v21.0';
 const MAX_RETRIES = 3;
 const INITIAL_BACKOFF_MS = 500;
 
