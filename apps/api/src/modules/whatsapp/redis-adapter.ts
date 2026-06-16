@@ -55,12 +55,28 @@ export function createRedisAdapter(): RedisAdapter {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Redis = require('ioredis') as new (
     url: string,
+    opts?: Record<string, unknown>,
   ) => {
     del(key: string): Promise<number>;
     set(key: string, value: string, ...args: string[]): Promise<string | null>;
     get(key: string): Promise<string | null>;
+    on(event: string, cb: (err: unknown) => void): void;
   };
-  const redis = new Redis(url);
+  // Hardened ioredis options (Upstash + Cloud): TLS is auto-enabled from a
+  // rediss:// URL; lazyConnect avoids a connect storm at boot; bounded retries
+  // + offline-queue-off so a Redis hiccup degrades instead of hammering; and an
+  // 'error' handler so an unhandled ECONNRESET can't crash the whole backend
+  // (the module is meant to degrade gracefully without Redis). (wrdo fork)
+  const redis = new Redis(url, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 2,
+    enableOfflineQueue: false,
+    connectTimeout: 8000,
+    retryStrategy: (times: number) => (times > 5 ? null : Math.min(times * 200, 2000)),
+  });
+  redis.on('error', () => {
+    /* swallow — degrade rather than crash; reads/writes will throw and callers handle */
+  });
   sharedClient = {
     async del(key: string): Promise<unknown> {
       return redis.del(key);

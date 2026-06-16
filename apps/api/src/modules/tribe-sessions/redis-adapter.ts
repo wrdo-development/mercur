@@ -41,12 +41,26 @@ export function createConversationStateRedisAdapter(): ConversationStateRedisAda
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Redis = require('ioredis') as new (
     u: string,
+    opts?: Record<string, unknown>,
   ) => {
     del(key: string): Promise<number>;
     get(key: string): Promise<string | null>;
     set(key: string, value: string, ...args: string[]): Promise<string>;
+    on(event: string, cb: (err: unknown) => void): void;
   };
-  const redis = new Redis(url);
+  // Hardened ioredis options — see whatsapp/redis-adapter.ts. TLS auto from
+  // rediss://, lazyConnect, bounded retries, 'error' handler so a Redis failure
+  // degrades instead of crashing boot. (wrdo fork)
+  const redis = new Redis(url, {
+    lazyConnect: true,
+    maxRetriesPerRequest: 2,
+    enableOfflineQueue: false,
+    connectTimeout: 8000,
+    retryStrategy: (times: number) => (times > 5 ? null : Math.min(times * 200, 2000)),
+  });
+  redis.on('error', () => {
+    /* swallow — degrade rather than crash */
+  });
   sharedAdapter = {
     async del(key: string): Promise<unknown> {
       return redis.del(key);
