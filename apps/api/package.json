@@ -18,6 +18,7 @@
     "medusa"
   ],
   "scripts": {
+    "build": "mercurjs build",
     "seed": "medusa exec ./src/scripts/seed.ts",
     "start": "mercurjs start",
     "dev": "mercurjs develop",
