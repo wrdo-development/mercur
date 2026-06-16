@@ -1,0 +1,189 @@
+{
+  "version": "7.0",
+  "data_api_version": "3.0",
+  "routing_model": {
+    "RATING": ["TAGS_AND_COMMENT"],
+    "TAGS_AND_COMMENT": ["VISIBILITY"],
+    "VISIBILITY": ["THANKS"],
+    "THANKS": []
+  },
+  "screens": [
+    {
+      "id": "RATING",
+      "title": "How was the job?",
+      "data": {
+        "resident_name": {
+          "type": "string",
+          "__example__": "Thandi"
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "How was working with ${data.resident_name}?"
+          },
+          {
+            "type": "TextBody",
+            "text": "Just a couple of quick tags help future providers know what to expect."
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "label": "Overall",
+            "required": true,
+            "name": "rating",
+            "data-source": [
+              { "id": "5", "title": "⭐⭐⭐⭐⭐ Great" },
+              { "id": "4", "title": "⭐⭐⭐⭐ Good" },
+              { "id": "3", "title": "⭐⭐⭐ Okay" },
+              { "id": "2", "title": "⭐⭐ Below average" },
+              { "id": "1", "title": "⭐ Tough" }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "TAGS_AND_COMMENT" },
+              "payload": {
+                "rating": "${form.rating}",
+                "resident_name": "${data.resident_name}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "TAGS_AND_COMMENT",
+      "title": "Anything stand out?",
+      "data": {
+        "rating": { "type": "string", "__example__": "5" },
+        "resident_name": { "type": "string", "__example__": "Thandi" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextBody",
+            "text": "Tick whatever fits. You decide who sees this on the next screen."
+          },
+          {
+            "type": "CheckboxGroup",
+            "label": "Tags",
+            "name": "signal_tags",
+            "data-source": [
+              { "id": "pays_on_time", "title": "Paid on time" },
+              { "id": "clear_brief", "title": "Clear brief" },
+              { "id": "respectful", "title": "Respectful" },
+              { "id": "fair", "title": "Fair" },
+              { "id": "easy_to_work_with", "title": "Easy to work with" },
+              { "id": "flexible", "title": "Flexible" },
+              { "id": "late_payment", "title": "Late payment" },
+              { "id": "unrealistic_expectations", "title": "Unrealistic expectations" },
+              { "id": "rude_or_disrespectful", "title": "Rude or disrespectful" },
+              { "id": "unsafe_environment", "title": "Unsafe environment (⚠️ Leader-only)" },
+              { "id": "wage_theft", "title": "Wage theft (⚠️ Leader-only)" },
+              { "id": "discrimination", "title": "Discrimination (⚠️ Leader-only)" }
+            ]
+          },
+          {
+            "type": "TextArea",
+            "label": "Anything else? (optional)",
+            "name": "comment",
+            "required": false,
+            "max-length": 500,
+            "helper-text": "Up to 500 characters. Keep it factual — it helps future providers."
+          },
+          {
+            "type": "Footer",
+            "label": "Next",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "VISIBILITY" },
+              "payload": {
+                "rating": "${data.rating}",
+                "signal_tags": "${form.signal_tags}",
+                "comment": "${form.comment}",
+                "resident_name": "${data.resident_name}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "VISIBILITY",
+      "title": "Who can see this?",
+      "data": {
+        "rating": { "type": "string", "__example__": "5" },
+        "signal_tags": { "type": "array", "__example__": ["pays_on_time"] },
+        "comment": { "type": "string", "__example__": "" },
+        "resident_name": { "type": "string", "__example__": "Thandi" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextBody",
+            "text": "You decide who can see your review. Serious flags (wage theft, discrimination, unsafe environments) always go to Leader only — Alwyn looks at every one personally."
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "label": "Visibility",
+            "required": true,
+            "name": "visibility",
+            "data-source": [
+              { "id": "public", "title": "Public — visible on this resident's profile" },
+              { "id": "provider_only", "title": "Providers only — keep it between workers" },
+              { "id": "leader_only", "title": "Leader only — only Alwyn sees this" }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Submit review",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "screen": "VISIBILITY",
+                "rating": "${data.rating}",
+                "signal_tags": "${data.signal_tags}",
+                "comment": "${data.comment}",
+                "visibility": "${form.visibility}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "THANKS",
+      "title": "Thanks",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Thanks — this stays useful."
+          },
+          {
+            "type": "TextBody",
+            "text": "Workers look out for each other on WRDO. We've recorded your feedback."
+          },
+          {
+            "type": "Footer",
+            "label": "Done",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {}
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

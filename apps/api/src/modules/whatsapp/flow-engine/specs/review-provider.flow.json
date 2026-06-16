@@ -1,0 +1,142 @@
+{
+  "version": "7.0",
+  "data_api_version": "3.0",
+  "routing_model": {
+    "RATING": ["TAGS_AND_COMMENT"],
+    "TAGS_AND_COMMENT": ["THANKS"],
+    "THANKS": []
+  },
+  "screens": [
+    {
+      "id": "RATING",
+      "title": "How was it?",
+      "data": {
+        "provider_name": {
+          "type": "string",
+          "__example__": "Sipho the plumber"
+        }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "How was working with ${data.provider_name}?"
+          },
+          {
+            "type": "TextBody",
+            "text": "Tap a rating below — 1 means rough, 5 means excellent."
+          },
+          {
+            "type": "RadioButtonsGroup",
+            "label": "Rating",
+            "required": true,
+            "name": "rating",
+            "data-source": [
+              { "id": "5", "title": "⭐⭐⭐⭐⭐ Excellent" },
+              { "id": "4", "title": "⭐⭐⭐⭐ Good" },
+              { "id": "3", "title": "⭐⭐⭐ Okay" },
+              { "id": "2", "title": "⭐⭐ Below average" },
+              { "id": "1", "title": "⭐ Rough" }
+            ]
+          },
+          {
+            "type": "Footer",
+            "label": "Next",
+            "on-click-action": {
+              "name": "navigate",
+              "next": { "type": "screen", "name": "TAGS_AND_COMMENT" },
+              "payload": {
+                "rating": "${form.rating}",
+                "provider_name": "${data.provider_name}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "TAGS_AND_COMMENT",
+      "title": "What stood out?",
+      "data": {
+        "rating": { "type": "string", "__example__": "5" },
+        "provider_name": { "type": "string", "__example__": "Sipho" }
+      },
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextBody",
+            "text": "Tick anything that fits. Your feedback helps your neighbours find good people."
+          },
+          {
+            "type": "CheckboxGroup",
+            "label": "Tags",
+            "name": "signal_tags",
+            "data-source": [
+              { "id": "great_communication", "title": "Great communication" },
+              { "id": "on_time", "title": "On time" },
+              { "id": "professional", "title": "Professional" },
+              { "id": "reasonable_price", "title": "Reasonable price" },
+              { "id": "quality_work", "title": "Quality work" },
+              { "id": "went_above_and_beyond", "title": "Went above and beyond" },
+              { "id": "poor_quality", "title": "Poor quality" },
+              { "id": "late_arrival", "title": "Late arrival" },
+              { "id": "no_show", "title": "Didn't show up" },
+              { "id": "overcharged", "title": "Overcharged" },
+              { "id": "unprofessional", "title": "Unprofessional" }
+            ]
+          },
+          {
+            "type": "TextArea",
+            "label": "Anything else? (optional)",
+            "name": "comment",
+            "required": false,
+            "max-length": 500,
+            "helper-text": "Up to 500 characters."
+          },
+          {
+            "type": "Footer",
+            "label": "Submit review",
+            "on-click-action": {
+              "name": "data_exchange",
+              "payload": {
+                "screen": "TAGS_AND_COMMENT",
+                "rating": "${data.rating}",
+                "signal_tags": "${form.signal_tags}",
+                "comment": "${form.comment}"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "THANKS",
+      "title": "Thanks!",
+      "terminal": true,
+      "data": {},
+      "layout": {
+        "type": "SingleColumnLayout",
+        "children": [
+          {
+            "type": "TextHeading",
+            "text": "Thanks for the review 💚"
+          },
+          {
+            "type": "TextBody",
+            "text": "It helps your neighbours find good people. We've passed it along."
+          },
+          {
+            "type": "Footer",
+            "label": "Done",
+            "on-click-action": {
+              "name": "complete",
+              "payload": {}
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
