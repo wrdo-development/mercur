@@ -57,11 +57,26 @@ class SellerModuleService extends MedusaService({
     this.baseRepository_ = baseRepository
 
     const opts = (moduleDeclaration?.options as SellerModuleOptions) ?? {}
+    // configManager.config throws "[config] Config not loaded" if accessed
+    // before the config loader runs — which happens here on Cloud's boot when
+    // the Seller module service is constructed during module loading. Guard it
+    // and fall back to the JWT_SECRET env var (set by Cloud). Same root cause as
+    // the register-feature-flags loader guard. (wrdo fork patch — confirmed via
+    // VPS stack trace at service.ts:64)
+    let configJwtSecret: string | undefined
+    try {
+      configJwtSecret = configManager.config?.projectConfig?.http?.jwtSecret as
+        | string
+        | undefined
+    } catch {
+      configJwtSecret = undefined
+    }
     this.options_ = {
       ...opts,
       jwt_secret:
         opts.jwt_secret ??
-        (configManager.config.projectConfig.http.jwtSecret as string),
+        configJwtSecret ??
+        (process.env.JWT_SECRET as string),
       vendor_url: opts.vendor_url ?? process.env.MERCUR_VENDOR_URL ?? "",
     }
   }

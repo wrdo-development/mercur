@@ -1,7 +1,6 @@
 import { SqlEntityManager } from "@medusajs/framework/mikro-orm/postgresql"
 import { Context, FindOptions } from "@medusajs/framework/types"
 import { DALUtils, isObject } from "@medusajs/framework/utils"
-import { OrderGroup } from "../models"
 
 const OPERATOR_MAP = {
   $eq: "=",
@@ -16,9 +15,17 @@ const OPERATOR_MAP = {
   $ilike: "ILIKE",
 }
 
-export class OrderGroupRepository extends DALUtils.mikroOrmBaseRepositoryFactory(
-  OrderGroup
-) {
+// Upstream extends mikroOrmBaseRepositoryFactory(OrderGroup), whose generated
+// subclass constructor reads `mikroOrmEntity.meta.collection`. The DML model's
+// .meta isn't populated when this class is DEFINED (before MikroORM registers
+// the entity), so it crashes boot: "Cannot read properties of undefined
+// (reading 'collection')". Reproduces at BOTH Medusa 2.13.4 and 2.15.5 — a
+// Mercur bug, not version drift (confirmed via VPS stack trace).
+// This repository only uses getActiveManager() for its raw-SQL findAndCount, so
+// extend MikroOrmBaseRepository directly — it provides getActiveManager + the
+// RepositoryService surface WITHOUT binding an entity at construction time.
+// (wrdo fork patch — report upstream; drop when Mercur fixes the factory call.)
+export class OrderGroupRepository extends DALUtils.MikroOrmBaseRepository {
   
 
   private parseFilterValue(
