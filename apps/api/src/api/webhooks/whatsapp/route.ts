@@ -85,6 +85,53 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
         send = { fetchError: e instanceof Error ? e.message : String(e) };
       }
     }
+    // Run the REAL pipeline on a synthetic message, surfacing any swallowed throw.
+    let pipeline: unknown = 'not-run';
+    if (req.headers['x-wrdo-debug-pipeline'] === '1' && to !== '') {
+      const synthetic = {
+        object: 'whatsapp_business_account',
+        entry: [
+          {
+            id: '0',
+            changes: [
+              {
+                value: {
+                  messaging_product: 'whatsapp',
+                  metadata: { display_phone_number: '+27721104651', phone_number_id: pid },
+                  contacts: [{ profile: { name: 'Probe' }, wa_id: to.replaceAll(/\D/g, '') }],
+                  messages: [
+                    {
+                      from: to.replaceAll(/\D/g, ''),
+                      id: `wamid.PIPEPROBE${String(Date.now())}`,
+                      timestamp: String(Math.floor(Date.now() / 1000)),
+                      type: 'text',
+                      text: { body: 'pipeline probe' },
+                    },
+                  ],
+                },
+                field: 'messages',
+              },
+            ],
+          },
+        ],
+      };
+      try {
+        const p = createWebhookPipeline({ logger: logger ? logger : undefined, scope: req.scope });
+        // call the inner method directly so a throw is NOT swallowed by handlePayload's catch
+        const pAny = p as unknown as {
+          opts: { handlerService: { parsePayload: (x: unknown) => unknown } };
+          processParsedResult: (r: unknown) => Promise<void>;
+        };
+        const parsed = pAny.opts.handlerService.parsePayload(synthetic);
+        await pAny.processParsedResult(parsed);
+        pipeline = 'completed-no-throw';
+      } catch (e) {
+        pipeline = {
+          throw: e instanceof Error ? e.message : String(e),
+          stack: e instanceof Error ? (e.stack ?? '').split('\n').slice(0, 6) : undefined,
+        };
+      }
+    }
     res.status(200).json({
       env: {
         accessTokenLen: at.length,
@@ -93,6 +140,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
         redisUrlScheme: (process.env.REDIS_URL ?? '').slice(0, 9),
       },
       send,
+      pipeline,
     });
     return;
   }
