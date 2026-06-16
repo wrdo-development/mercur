@@ -82,12 +82,24 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
       ],
     };
     let pipeline: unknown;
+    let directSend: unknown = 'not-run';
     try {
       const p = createWebhookPipeline({ logger: logger ? logger : undefined, scope: req.scope });
       const pAny = p as unknown as {
-        opts: { handlerService: { parsePayload: (x: unknown) => unknown } };
+        opts: {
+          handlerService: { parsePayload: (x: unknown) => unknown };
+          messageSenderService: {
+            sendText: (to: string, body: string) => Promise<unknown>;
+          };
+        };
         processParsedResult: (r: unknown) => Promise<void>;
       };
+      // Call the pipeline's OWN messageSenderService — the exact instance the
+      // reply path uses — and return its SendMessageResult so we see success/error.
+      directSend = await pAny.opts.messageSenderService.sendText(
+        to.replaceAll(/\D/g, ''),
+        'WRDO pipeline-sender probe',
+      );
       const parsed = pAny.opts.handlerService.parsePayload(synthetic);
       await pAny.processParsedResult(parsed);
       pipeline = 'completed-no-throw';
@@ -97,7 +109,7 @@ export const POST = async (req: MedusaRequest, res: MedusaResponse): Promise<voi
         stack: e instanceof Error ? (e.stack ?? '').split('\n').slice(0, 8) : undefined,
       };
     }
-    res.status(200).json({ pipeline });
+    res.status(200).json({ pipeline, directSend });
     return;
   }
 
