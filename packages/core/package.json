@@ -52,6 +52,7 @@
     "prepublishOnly": "tsc --declaration --outDir .medusa/server"
   },
   "dependencies": {
+    "@medusajs/cli": "^2.13.4",
     "@medusajs/core-flows": "^2.13.4",
     "@medusajs/framework": "^2.13.4",
     "@medusajs/medusa": "^2.13.4",
