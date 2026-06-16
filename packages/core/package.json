@@ -51,6 +51,9 @@
     "dev": "medusa plugin:develop",
     "prepublishOnly": "tsc --declaration --outDir .medusa/server"
   },
+  "dependencies": {
+    "@medusajs/framework": "^2.13.4"
+  },
   "devDependencies": {
     "cors": "^2.8.5",
     "@medusajs/core-flows": "^2.13.4",
