@@ -45,6 +45,11 @@ module.exports = withMercur({
       // tribe-sessions note below for why that breaks the whole deploy).
       resolve: './src/modules/wrdo-user',
     },
+    {
+      // tribe-messages: the conversation spine (tribe_thread + tribe_message).
+      // Model + generated migration committed together (predeploy trap).
+      resolve: './src/modules/tribe-messages',
+    },
     // NOTE: tribe-sessions is intentionally NOT registered as a Medusa module in
     // Step 1. Its TribeSession model would require a DB migration, and Cloud's
     // predeploy `medusa db:migrate` fails the whole backend deploy on the missing
