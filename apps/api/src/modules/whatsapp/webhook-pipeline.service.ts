@@ -140,7 +140,9 @@ export class WebhookPipelineService {
       return;
     }
 
-    // 3. No state -- classify intent and route
+    // 3. No state -- classify intent and route. Pass the WhatsApp profile name
+    // through so a fresh registration confirms it instead of asking cold
+    // (confirm-not-collect, WRDO-169).
     const { replyText, intent } = await classifyAndRoute(
       {
         aiClient: this.opts.aiClient,
@@ -152,6 +154,7 @@ export class WebhookPipelineService {
       from,
       userMessage,
       messageType,
+      result.contactName,
     );
 
     await this.sendReplyWithSpan(from, replyText);
