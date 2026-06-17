@@ -4,16 +4,16 @@
  * The token MINT point for the WhatsApp side of the conversation spine. A
  * WhatsApp flow that wants to hand the conversation off to the web ("continue on
  * web") mints a single-use `t` here, then the storefront exchanges it for a
- * first-party cookie at POST /store/session/exchange (Task 8). This module only
+ * first-party cookie at POST /spine/session/exchange (Task 8). This module only
  * MINTS — it deliberately does NOT auto-send any link to a user.
  *
  * The secret is read fail-fast (a strong SPINE_TOKEN_SECRET is the ENTIRE
  * token-forgery defense). We reuse the canonical assertSecret + env name from the
- * spine store helpers so there is one source of truth.
+ * spine helpers so there is one source of truth.
  */
 
 import { createWebTokenService, type WebTokenKv } from '../tribe-messages';
-import { assertSecret } from '../../api/store/spine.helpers';
+import { assertSecret } from '../../api/spine/spine.helpers';
 
 export interface CreateWebHandoffMinterOptions {
   /** KV store backing single-use nonces (createRedisAdapter() in production). */

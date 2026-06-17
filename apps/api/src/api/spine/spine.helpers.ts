@@ -1,7 +1,7 @@
 /**
- * Spine store-API helpers (WRDO-180, Task 8).
+ * Spine API helpers (WRDO-180, Task 8).
  *
- * Pure, dependency-light helpers shared by the same-origin store routes:
+ * Pure, dependency-light helpers shared by the same-origin spine routes:
  *   - assertSecret    — fail-fast env reads (no weak defaults)
  *   - signUserCookie / readUserCookie — HMAC-signed first-party auth cookie
  *   - getSpineUserId  — read the wrdo_spine cookie off the request

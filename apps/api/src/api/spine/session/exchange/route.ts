@@ -1,5 +1,5 @@
 /**
- * POST /store/session/exchange (WRDO-180, Task 8)
+ * POST /spine/session/exchange (WRDO-180, Task 8)
  *
  * The single auth primitive for the same-origin spine. Exchanges a single-use
  * web token (minted server-side, e.g. handed to a WhatsApp webview) for a signed

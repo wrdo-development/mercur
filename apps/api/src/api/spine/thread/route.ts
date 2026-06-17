@@ -1,5 +1,5 @@
 /**
- * GET /store/thread (WRDO-180, Task 8)
+ * GET /spine/thread (WRDO-180, Task 8)
  *
  * Return the person's single thread plus a coarse unread count. Auth is the
  * signed wrdo_spine cookie — no cookie → 401.
