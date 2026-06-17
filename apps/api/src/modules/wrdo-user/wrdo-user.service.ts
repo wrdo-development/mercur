@@ -80,9 +80,25 @@ export class WrdoUserService {
     channelUserId: string,
     options: GetOrCreateOptions = {},
   ): Promise<WrdoUserRecord> {
+    // Exact-match idempotency: same (channel, phone) already linked -> return it.
     const existing = await this.getByChannelIdentity(channel, channelUserId);
     if (existing !== null) {
       return existing;
+    }
+
+    // Phone is the universal anchor. If this phone already exists on ANY OTHER
+    // channel, the person already exists — LINK this channel to that user, never
+    // create a duplicate. The phone IS the merge; there is no merge engine.
+    const byPhone = await this.getByPhone(channelUserId);
+    if (byPhone !== null) {
+      await this.dir.createUserChannelIdentities({
+        user_id: byPhone.id,
+        channel,
+        channel_user_id: channelUserId,
+        display_name_on_channel: options.channelDisplayName ?? null,
+        is_verified: options.verified ?? false,
+      });
+      return byPhone;
     }
 
     const user = first(
@@ -117,6 +133,25 @@ export class WrdoUserService {
     const identities = await this.dir.listUserChannelIdentities({
       channel,
       channel_user_id: channelUserId,
+    });
+    const identity = identities[0];
+    if (identity === undefined) {
+      return null;
+    }
+    return this.dir.retrieveWrdoUser(identity.user_id);
+  }
+
+  /**
+   * Cross-channel lookup by phone (channel_user_id) across ALL channels. Returns
+   * the canonical wrdo_user that owns ANY identity with this phone, or null.
+   *
+   * Convention: channel_user_id IS the phone for whatsapp AND web — so a phone
+   * seen on either channel resolves to the same person. This is the load-bearing
+   * identity invariant: link, never duplicate.
+   */
+  private async getByPhone(phone: string): Promise<WrdoUserRecord | null> {
+    const identities = await this.dir.listUserChannelIdentities({
+      channel_user_id: phone,
     });
     const identity = identities[0];
     if (identity === undefined) {
