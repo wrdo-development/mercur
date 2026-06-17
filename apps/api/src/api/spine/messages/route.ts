@@ -1,5 +1,5 @@
 /**
- * /store/messages (WRDO-180, Task 8)
+ * /spine/messages (WRDO-180, Task 8)
  *
  * POST — append one web turn to the person's single thread and return WRDO's
  *        reply (rendered for web). Idempotent on client_msg_id so a retried
