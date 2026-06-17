@@ -78,6 +78,16 @@ function fakeDirectory() {
       }
       return u;
     },
+    async updateWrdoUsers(data) {
+      const id = data.id as string;
+      const existing = users.get(id);
+      if (existing === undefined) {
+        throw new Error(`wrdo_user ${id} not found`);
+      }
+      const updated: WrdoUserRecord = { ...existing, ...(data as Partial<WrdoUserRecord>), id };
+      users.set(id, updated);
+      return updated;
+    },
     _userCount: () => users.size,
     _identityCount: () => identities.length,
   };

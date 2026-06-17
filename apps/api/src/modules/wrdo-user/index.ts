@@ -11,6 +11,7 @@ export default Module(WRDO_USER_MODULE, {
 export {
   type Channel,
   type GetOrCreateOptions,
+  type UpdateProfileOptions,
   type UserChannelIdentityRecord,
   WrdoUserService,
   type WrdoUserDirectory,

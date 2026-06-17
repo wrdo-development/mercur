@@ -61,6 +61,23 @@ export class WebhookPipelineService {
       return;
     }
 
+    // Guest-first (WRDO-180): birth a wrdo_user at FIRST contact so the
+    // conversation spine has a stable user_id from message one. Idempotent +
+    // no-clobber (getOrCreate only sets state on CREATE), so this is safe to
+    // call on every inbound — a returning 'complete' user is never downgraded.
+    // Best-effort: a write failure must NEVER block the WhatsApp reply.
+    if (this.opts.ensureGuestUser !== undefined) {
+      try {
+        await this.opts.ensureGuestUser(from);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[whatsapp] ensureGuest failed (best-effort, WRDO-180):',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+
     if (result.identityPair !== null && this.opts.tribeUserService !== undefined) {
       try {
         await this.opts.tribeUserService.updateBsuidByPhone(

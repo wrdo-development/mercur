@@ -35,4 +35,11 @@ export interface WebhookPipelineServiceOptions {
   nowFn?: () => Date;
   /** Persist phone↔BSUID pairing on every webhook that carries an identityPair. Best-effort; never fails message processing. */
   tribeUserService?: Pick<TribeUserService, 'updateBsuidByPhone'>;
+  /**
+   * Guest-first (WRDO-180): ensure a wrdo_user row exists at first contact so the
+   * conversation spine has a stable user_id from message one. Called once per
+   * processed inbound message. Optional + best-effort — when absent it's a clean
+   * no-op, and a throw must never block the WhatsApp reply.
+   */
+  ensureGuestUser?: (phone: string) => Promise<void>;
 }

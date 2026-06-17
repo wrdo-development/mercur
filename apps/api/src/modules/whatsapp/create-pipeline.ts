@@ -120,11 +120,18 @@ export function createWebhookPipeline(
     },
   });
 
-  // Persist a wrdo_user on registration completion (WRDO-179). Resolved from the
-  // Medusa scope when available; absent in contexts without a container (the
-  // handler treats an undefined hook as a clean no-op). The hook itself is
+  // Resolve the wrdo_user service once from the Medusa scope (absent in contexts
+  // without a container — both hooks then stay clean no-ops).
+  const wrdoUserService = resolveWrdoUserService(options?.scope);
+
+  // Persist a wrdo_user on registration completion (WRDO-179). The hook is
   // best-effort — the handler swallows throws so the friend always gets welcomed.
-  const onRegistrationComplete = buildOnRegistrationComplete(options?.scope, whatsappLogger);
+  // Guest-first (WRDO-180): this now PROMOTES the row born at first contact.
+  const onRegistrationComplete = buildOnRegistrationComplete(wrdoUserService, whatsappLogger);
+
+  // Guest-first (WRDO-180): birth a wrdo_user at first contact so the spine has a
+  // stable user_id from message one. Best-effort + idempotent; undefined = no-op.
+  const ensureGuestUser = buildEnsureGuestUser(wrdoUserService);
 
   const registrationFlowHandler = new RegistrationFlowHandler({
     conversationStateService,
@@ -159,42 +166,82 @@ export function createWebhookPipeline(
     conversationStateService,
     languageDetectionService,
     feedbackHandlerDeps,
+    ensureGuestUser,
   });
 }
 
 /**
- * Build the registration-completion persistence hook from the Medusa scope.
- *
- * Returns undefined when no scope is available or the wrdo_user module can't be
- * resolved (e.g. local contexts without a container) — the handler treats an
- * undefined hook as a clean no-op. The returned hook maps the collected
- * registration data to an idempotent getOrCreateByChannelIdentity('whatsapp', …).
+ * Resolve a WrdoUserService from the Medusa scope, or undefined when no scope is
+ * available or the wrdo_user module isn't registered in this context (e.g. local
+ * runs without a container). Centralises the resolve so both the guest-first and
+ * completion hooks share one service instance.
  *
  * @param scope - Optional Medusa injection scope
+ * @returns WrdoUserService, or undefined
+ */
+function resolveWrdoUserService(
+  scope: { resolve: (key: string) => unknown } | undefined,
+): WrdoUserService | undefined {
+  if (scope === undefined) {
+    return undefined;
+  }
+  try {
+    const directory = scope.resolve(WRDO_USER_MODULE) as WrdoUserDirectory;
+    return new WrdoUserService(directory);
+  } catch {
+    // Module not registered in this context — hooks stay no-ops.
+    return undefined;
+  }
+}
+
+/**
+ * Build the guest-first persistence hook (WRDO-180). Returns undefined when no
+ * wrdo_user service is available — the pipeline treats undefined as a clean
+ * no-op. The hook itself is idempotent (getOrCreate only sets state on CREATE)
+ * so calling it on every inbound is safe and never downgrades a 'complete' user.
+ *
+ * @param service - Resolved WrdoUserService, or undefined
+ * @returns ensureGuestUser hook, or undefined
+ */
+function buildEnsureGuestUser(
+  service: WrdoUserService | undefined,
+): ((phone: string) => Promise<void>) | undefined {
+  if (service === undefined) {
+    return undefined;
+  }
+  return async (phone) => {
+    await service.ensureGuest('whatsapp', phone);
+  };
+}
+
+/**
+ * Build the registration-completion persistence hook.
+ *
+ * Returns undefined when no wrdo_user service is available (e.g. local contexts
+ * without a container) — the handler treats an undefined hook as a clean no-op.
+ * Guest-first (WRDO-180): the returned hook PROMOTES the row born at first
+ * contact to 'complete' (update in place), never creating a duplicate.
+ *
+ * @param service - Resolved WrdoUserService, or undefined
  * @param logger - Optional WhatsApp logger for failure breadcrumbs
  * @returns OnRegistrationComplete hook, or undefined
  */
 function buildOnRegistrationComplete(
-  scope: { resolve: (key: string) => unknown } | undefined,
+  service: WrdoUserService | undefined,
   logger?: WhatsappLogger,
 ): OnRegistrationComplete | undefined {
-  if (scope === undefined) {
+  if (service === undefined) {
     return undefined;
   }
-  let directory: WrdoUserDirectory;
-  try {
-    directory = scope.resolve(WRDO_USER_MODULE) as WrdoUserDirectory;
-  } catch {
-    // Module not registered in this context — completion stays a no-op.
-    return undefined;
-  }
-  const service = new WrdoUserService(directory);
 
   return async (data) => {
-    await service.getOrCreateByChannelIdentity('whatsapp', data.phone, {
+    // Guest-first (WRDO-180): the row was born 'guest' at first contact. On
+    // consent we PROMOTE it to 'complete' (update in place) rather than create —
+    // a returning user's spine row is lifted, never duplicated. promoteToComplete
+    // resolves the row by (channel, phone), creating a guest first only if
+    // ensureGuest was somehow skipped.
+    await service.promoteToComplete('whatsapp', data.phone, {
       displayName: data.name ?? null,
-      channelDisplayName: data.name ?? null,
-      registrationState: 'complete',
       // Consent copy ("Terms + Privacy") is service-only; marketing consent is a
       // separate later opt-in, so default it false here.
       serviceConsent: true,
