@@ -110,6 +110,10 @@ export class WebhookPipelineService {
     // reply lands in the SAME durable thread the web reads. All best-effort: a
     // null userId or a throw skips persistence and never blocks the reply.
     const spineUserId = await this.resolveSpineUserId(from);
+    // Awaited (not voided) so the inbound user turn is durably ordered BEFORE any
+    // WRDO reply turn below; it sits after the idempotency return above, so it's
+    // retry-safe (a duplicate webhook never reaches here) and doesn't delay the
+    // reply (it runs before the reply is even computed).
     await this.persistUserTurn(spineUserId, userMessage);
 
     // Check for reply-to feedback signal (context.message_id present = user replied to a WRDO message)
@@ -135,7 +139,10 @@ export class WebhookPipelineService {
       const langResult = await this.opts.languageDetectionService.processMessage(from, userMessage);
       if (langResult.confirmationReply !== null) {
         await this.opts.messageSenderService.sendText(from, langResult.confirmationReply);
-        await this.persistWrdoTurn(spineUserId, langResult.confirmationReply);
+        // Fire-and-forget (WRDO-180): a slow/degraded spine store must never add
+        // latency to the webhook handler. persistWrdoTurn swallows internally, so
+        // voiding can't raise an unhandledRejection.
+        void this.persistWrdoTurn(spineUserId, langResult.confirmationReply);
         return; // language nudge sent — don't run normal pipeline this turn
       }
     }
@@ -156,7 +163,7 @@ export class WebhookPipelineService {
           ? providerResult.message
           : 'Thank you! We have updated the booking status.';
       await this.opts.messageSenderService.sendText(from, msg);
-      await this.persistWrdoTurn(spineUserId, msg);
+      void this.persistWrdoTurn(spineUserId, msg); // fire-and-forget (WRDO-180)
       return;
     }
 
@@ -164,7 +171,7 @@ export class WebhookPipelineService {
     const flowReply = await this.checkConversationState(from, userMessage, messageType);
     if (flowReply !== null) {
       await this.opts.messageSenderService.sendText(from, flowReply);
-      await this.persistWrdoTurn(spineUserId, flowReply);
+      void this.persistWrdoTurn(spineUserId, flowReply); // fire-and-forget (WRDO-180)
       return;
     }
 
@@ -186,7 +193,7 @@ export class WebhookPipelineService {
     );
 
     await this.sendReplyWithSpan(from, replyText);
-    await this.persistWrdoTurn(spineUserId, replyText);
+    void this.persistWrdoTurn(spineUserId, replyText); // fire-and-forget (WRDO-180)
     fireAndForgetLogEvent(this.opts.aiClient, from, messageId, intent, this.nowFn);
   }
 
@@ -236,7 +243,7 @@ export class WebhookPipelineService {
         sendResult.error ?? 'unknown',
       );
     }
-    await this.persistWrdoTurn(spineUserId, tier0Message);
+    void this.persistWrdoTurn(spineUserId, tier0Message); // fire-and-forget (WRDO-180)
   }
 
   /**
