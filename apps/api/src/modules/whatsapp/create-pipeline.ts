@@ -19,6 +19,11 @@ import {
 } from './flow-engine/registration.flow-handler';
 import { WRDO_USER_MODULE, WrdoUserService } from '../wrdo-user';
 import type { WrdoUserDirectory } from '../wrdo-user';
+import {
+  ThreadService,
+  TRIBE_MESSAGES_MODULE,
+  type ThreadServiceDirectory,
+} from '../tribe-messages';
 import { IdempotencyService } from './idempotency.service';
 import { KillswitchService } from './killswitch.service';
 import { createLanguageProfileStore, LanguageDetectionService } from './language-detection/index';
@@ -138,6 +143,12 @@ export function createWebhookPipeline(
     onRegistrationComplete,
   });
 
+  // Spine persistence (WRDO-180, Task 9): persist WhatsApp turns into the SAME
+  // durable thread the web reads. resolveUserId REUSES the guest row ensured at
+  // first contact (getOrCreateByChannelIdentity is idempotent) so no second user
+  // is ever created. undefined when no scope/module → clean no-op in the pipeline.
+  const spinePersistence = buildSpinePersistence(wrdoUserService, options?.scope);
+
   const feedbackHandlerDeps =
     process.env['SUPABASE_URL'] !== undefined && process.env['SUPABASE_SECRET_KEY'] !== undefined
       ? {
@@ -167,7 +178,62 @@ export function createWebhookPipeline(
     languageDetectionService,
     feedbackHandlerDeps,
     ensureGuestUser,
+    spinePersistence,
   });
+}
+
+/**
+ * Build the spine persistence adapter (WRDO-180, Task 9). Returns undefined when
+ * no wrdo_user service is available or the tribe_messages module isn't registered
+ * in this context — the pipeline treats undefined as a clean no-op.
+ *
+ * resolveUserId resolves the sender phone to the canonical wrdo_users.id via
+ * getOrCreateByChannelIdentity, which is idempotent and returns the guest row
+ * already born at first contact — it never creates a second user. appendUser /
+ * appendWrdo write one turn each into the person's single thread. All three are
+ * called best-effort by the pipeline (each wrapped in try/catch there too).
+ *
+ * @param service - Resolved WrdoUserService, or undefined.
+ * @param scope - Optional Medusa injection scope (for the tribe_messages module).
+ * @returns A spinePersistence adapter, or undefined.
+ */
+function buildSpinePersistence(
+  service: WrdoUserService | undefined,
+  scope: { resolve: (key: string) => unknown } | undefined,
+):
+  | {
+      resolveUserId(phone: string): Promise<string | null>;
+      appendUser(userId: string, text: string, channel: 'whatsapp' | 'web'): Promise<void>;
+      appendWrdo(userId: string, text: string, channel: 'whatsapp' | 'web'): Promise<void>;
+    }
+  | undefined {
+  if (service === undefined || scope === undefined) {
+    return undefined;
+  }
+  let threadService: ThreadService;
+  try {
+    const dir = scope.resolve(TRIBE_MESSAGES_MODULE) as ThreadServiceDirectory;
+    threadService = new ThreadService(dir);
+  } catch {
+    // tribe_messages module not registered in this context — no-op.
+    return undefined;
+  }
+
+  return {
+    async resolveUserId(phone: string): Promise<string | null> {
+      // Idempotent: reuses the guest row born at first contact; never duplicates.
+      const user = await service.getOrCreateByChannelIdentity('whatsapp', phone, {
+        registrationState: 'guest',
+      });
+      return user.id;
+    },
+    async appendUser(userId, text, channel): Promise<void> {
+      await threadService.appendMessage(userId, { sender: 'user', channel, text });
+    },
+    async appendWrdo(userId, text, channel): Promise<void> {
+      await threadService.appendMessage(userId, { sender: 'wrdo', channel, text });
+    },
+  };
 }
 
 /**

@@ -42,4 +42,20 @@ export interface WebhookPipelineServiceOptions {
    * no-op, and a throw must never block the WhatsApp reply.
    */
   ensureGuestUser?: (phone: string) => Promise<void>;
+  /**
+   * Spine persistence (WRDO-180, Task 9): persist WhatsApp turns into the SAME
+   * durable thread the web reads. Optional + best-effort — when absent it's a
+   * clean no-op, and EVERY method may throw without ever blocking the WhatsApp
+   * reply (the pipeline wraps each call in try/catch).
+   *
+   * resolveUserId maps the sender phone to the wrdo_users.id — it MUST reuse the
+   * guest row already ensured by ensureGuestUser (getOrCreateByChannelIdentity is
+   * idempotent) so we never create a second user. A null result means "couldn't
+   * resolve" → persistence is skipped silently for that turn.
+   */
+  spinePersistence?: {
+    resolveUserId(phone: string): Promise<string | null>;
+    appendUser(userId: string, text: string, channel: 'whatsapp' | 'web'): Promise<void>;
+    appendWrdo(userId: string, text: string, channel: 'whatsapp' | 'web'): Promise<void>;
+  };
 }
