@@ -7,7 +7,7 @@
  *   - getSpineUserId  — read the wrdo_spine cookie off the request
  *   - buildThreadService — resolve the tribe_messages module and wrap it as a
  *     ThreadServiceDirectory, translating the cursor into the REAL Medusa
- *     `created_at > X` filter.
+ *     `created_at >= X` filter.
  *
  * The cookie is the entire same-origin auth: it carries userId and is signed
  * with COOKIE_SECRET so it cannot be forged. The signature uses a timing-safe,
@@ -121,9 +121,15 @@ export function getSpineUserId(req: MedusaRequest): string | null {
  *
  * The cursor: ThreadService.getMessages passes `{ thread_id, _after }` to
  * listTribeMessages. We translate `_after` (an ISO timestamp) into the REAL
- * Medusa query operator `{ created_at: { $gt: <Date> } }` against the
+ * Medusa query operator `{ created_at: { $gte: <Date> } }` against the
  * (thread_id, created_at) composite index, and force ascending order. The
  * test-only `_after` key never reaches Medusa.
+ *
+ * Why $gte (inclusive) and not $gt: two messages sharing the same millisecond
+ * created_at could cause the second to be SKIPPED on the next poll under an
+ * exclusive cursor — that's silent data loss. $gte re-delivers the boundary
+ * message at most once; the widget dedupes by id, so the re-delivery is
+ * harmless. Trade a harmless (absorbed) re-delivery for never-skip.
  */
 export function buildThreadService(scope: {
   resolve: (key: string) => unknown;
@@ -149,7 +155,9 @@ export function buildThreadService(scope: {
       const { _after, ...rest } = filters as { _after?: string } & Record<string, unknown>;
       const realFilters: Record<string, unknown> = { ...rest };
       if (typeof _after === 'string' && _after !== '') {
-        realFilters['created_at'] = { $gt: new Date(_after) };
+        // $gte (inclusive): never skip a same-millisecond message; the boundary
+        // re-delivery is absorbed by the widget's id-based dedupe.
+        realFilters['created_at'] = { $gte: new Date(_after) };
       }
       const realConfig: Record<string, unknown> = {
         order: { created_at: 'ASC' },
