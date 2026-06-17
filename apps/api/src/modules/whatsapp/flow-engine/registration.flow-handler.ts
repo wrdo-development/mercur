@@ -13,8 +13,31 @@ import {
   processRegistrationStep,
 } from '../../../modules/tribe-sessions/registration.flow';
 
+/**
+ * Data collected over the registration flow, handed to onRegistrationComplete
+ * when the user consents. All fields are best-effort — selfie/location are
+ * optional, interests may be empty.
+ */
+export interface CompletedRegistration {
+  phone: string;
+  name?: string;
+  role?: string;
+  interests?: string[];
+  selfieProvided?: boolean;
+  locationProvided?: boolean;
+}
+
+/**
+ * Persistence hook fired once, best-effort, when registration completes (consent
+ * given). MUST NOT throw out — the handler swallows errors so a DB hiccup never
+ * blocks the friend's "You're all set!" (idempotent retry happens on their next
+ * message). Optional: when absent, completion is a clean no-op (Step-1 behaviour).
+ */
+export type OnRegistrationComplete = (data: CompletedRegistration) => Promise<void>;
+
 export interface RegistrationFlowHandlerOptions {
   conversationStateService: ConversationStateService;
+  onRegistrationComplete?: OnRegistrationComplete;
 }
 
 const REGISTRATION_TRIGGERS = ['register', 'sign up', 'signup', 'join', 'hi', 'hey', 'hello'];
@@ -24,9 +47,11 @@ const REGISTRATION_TRIGGERS = ['register', 'sign up', 'signup', 'join', 'hi', 'h
  */
 export class RegistrationFlowHandler {
   private readonly conversationStateService: ConversationStateService;
+  private readonly onRegistrationComplete?: OnRegistrationComplete;
 
   constructor(options: RegistrationFlowHandlerOptions) {
     this.conversationStateService = options.conversationStateService;
+    this.onRegistrationComplete = options.onRegistrationComplete;
   }
 
   /**
@@ -108,6 +133,12 @@ export class RegistrationFlowHandler {
     const result = processRegistrationStep(state, text, messageType);
 
     if (result.cleared === true) {
+      // Persist on completion (consent given) before clearing. Best-effort:
+      // a write failure must never block the welcome — getOrCreate is idempotent
+      // so the next message retries cleanly (confirmed design, WRDO-179).
+      if (result.completed === true) {
+        await this.persistOnComplete(phone, state);
+      }
       await this.conversationStateService.clearState(phone);
       return { clearState: true, message: result.message };
     }
@@ -123,5 +154,41 @@ export class RegistrationFlowHandler {
     return {
       message: result.message,
     };
+  }
+
+  /**
+   * Fire the persistence hook with the collected data, swallowing any error.
+   * Best-effort by design (WRDO-179): the friend always gets "You're all set!"
+   * even if the write fails; the idempotent getOrCreate retries on their next
+   * message. The error is logged to the console stream so it stays diagnosable.
+   */
+  private async persistOnComplete(phone: string, state: ConversationState): Promise<void> {
+    if (this.onRegistrationComplete === undefined) {
+      return;
+    }
+    const data = state.data as {
+      name?: unknown;
+      role?: unknown;
+      interests?: unknown;
+      selfieProvided?: unknown;
+      locationProvided?: unknown;
+    };
+    try {
+      await this.onRegistrationComplete({
+        phone,
+        name: typeof data.name === 'string' ? data.name : undefined,
+        role: typeof data.role === 'string' ? data.role : undefined,
+        interests: Array.isArray(data.interests)
+          ? data.interests.filter((i): i is string => typeof i === 'string')
+          : undefined,
+        selfieProvided: typeof data.selfieProvided === 'boolean' ? data.selfieProvided : undefined,
+        locationProvided:
+          typeof data.locationProvided === 'boolean' ? data.locationProvided : undefined,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // eslint-disable-next-line no-console
+      console.error('[whatsapp] registration persist failed (best-effort):', msg);
+    }
   }
 }

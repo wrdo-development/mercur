@@ -38,6 +38,13 @@ module.exports = withMercur({
     {
       resolve: './src/modules/whatsapp',
     },
+    {
+      // wrdo-user: channel-agnostic identity (wrdo_users + user_channel_identity).
+      // Registered WITH its generated migration in the same commit — a model
+      // without a migration fails predeploy `medusa db:migrate` (see the
+      // tribe-sessions note below for why that breaks the whole deploy).
+      resolve: './src/modules/wrdo-user',
+    },
     // NOTE: tribe-sessions is intentionally NOT registered as a Medusa module in
     // Step 1. Its TribeSession model would require a DB migration, and Cloud's
     // predeploy `medusa db:migrate` fails the whole backend deploy on the missing

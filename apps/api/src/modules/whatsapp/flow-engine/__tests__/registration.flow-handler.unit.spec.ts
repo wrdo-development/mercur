@@ -116,3 +116,75 @@ describe('startRegistration — confirm-not-collect (WRDO-169)', () => {
     expect(reply).toContain('Lerato');
   });
 });
+
+describe('processInput — persists on completion (WRDO-179)', () => {
+  function consentState(): ConversationState {
+    return {
+      flow: 'registration',
+      step: 'request_consent',
+      data: {
+        name: 'Thabo',
+        role: 'resident',
+        interests: ['pets', 'tech_gadgets'],
+        selfieProvided: true,
+        locationProvided: false,
+      },
+      retriesLeft: 3,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+  }
+
+  it('fires onRegistrationComplete with the mapped data on consent, then clears state', async () => {
+    const svc = fakeStateService(consentState());
+    const onRegistrationComplete = jest.fn(async () => {});
+    const handler = new RegistrationFlowHandler({
+      conversationStateService: svc as never,
+      onRegistrationComplete,
+    });
+
+    const result = await handler.processInput(PHONE, consentState(), 'yes', 'text');
+
+    expect(result.clearState).toBe(true);
+    expect(onRegistrationComplete).toHaveBeenCalledTimes(1);
+    expect(onRegistrationComplete).toHaveBeenCalledWith({
+      phone: PHONE,
+      name: 'Thabo',
+      role: 'resident',
+      interests: ['pets', 'tech_gadgets'],
+      selfieProvided: true,
+      locationProvided: false,
+    });
+    expect(svc._current()).toBeNull();
+  });
+
+  it('still welcomes (best-effort) when the persist hook throws', async () => {
+    const svc = fakeStateService(consentState());
+    const onRegistrationComplete = jest.fn(async () => {
+      throw new Error('DB down');
+    });
+    const handler = new RegistrationFlowHandler({
+      conversationStateService: svc as never,
+      onRegistrationComplete,
+    });
+
+    const result = await handler.processInput(PHONE, consentState(), 'yes', 'text');
+
+    // The friend is welcomed and state is cleared despite the persist failure.
+    expect(result.clearState).toBe(true);
+    expect(result.message).toContain('all set');
+    expect(svc._current()).toBeNull();
+  });
+
+  it('does not fire the hook on cancel (only on completion)', async () => {
+    const svc = fakeStateService(consentState());
+    const onRegistrationComplete = jest.fn(async () => {});
+    const handler = new RegistrationFlowHandler({
+      conversationStateService: svc as never,
+      onRegistrationComplete,
+    });
+
+    await handler.processInput(PHONE, consentState(), 'cancel', 'text');
+
+    expect(onRegistrationComplete).not.toHaveBeenCalled();
+  });
+});

@@ -13,7 +13,12 @@ import {
   type FindTopProvidersOptions,
   type IBookingProviderFinder,
 } from './flow-engine/booking.flow-handler';
-import { RegistrationFlowHandler } from './flow-engine/registration.flow-handler';
+import {
+  type OnRegistrationComplete,
+  RegistrationFlowHandler,
+} from './flow-engine/registration.flow-handler';
+import { WRDO_USER_MODULE, WrdoUserService } from '../wrdo-user';
+import type { WrdoUserDirectory } from '../wrdo-user';
 import { IdempotencyService } from './idempotency.service';
 import { KillswitchService } from './killswitch.service';
 import { createLanguageProfileStore, LanguageDetectionService } from './language-detection/index';
@@ -115,8 +120,15 @@ export function createWebhookPipeline(
     },
   });
 
+  // Persist a wrdo_user on registration completion (WRDO-179). Resolved from the
+  // Medusa scope when available; absent in contexts without a container (the
+  // handler treats an undefined hook as a clean no-op). The hook itself is
+  // best-effort — the handler swallows throws so the friend always gets welcomed.
+  const onRegistrationComplete = buildOnRegistrationComplete(options?.scope, whatsappLogger);
+
   const registrationFlowHandler = new RegistrationFlowHandler({
     conversationStateService,
+    onRegistrationComplete,
   });
 
   const feedbackHandlerDeps =
@@ -148,4 +160,52 @@ export function createWebhookPipeline(
     languageDetectionService,
     feedbackHandlerDeps,
   });
+}
+
+/**
+ * Build the registration-completion persistence hook from the Medusa scope.
+ *
+ * Returns undefined when no scope is available or the wrdo_user module can't be
+ * resolved (e.g. local contexts without a container) — the handler treats an
+ * undefined hook as a clean no-op. The returned hook maps the collected
+ * registration data to an idempotent getOrCreateByChannelIdentity('whatsapp', …).
+ *
+ * @param scope - Optional Medusa injection scope
+ * @param logger - Optional WhatsApp logger for failure breadcrumbs
+ * @returns OnRegistrationComplete hook, or undefined
+ */
+function buildOnRegistrationComplete(
+  scope: { resolve: (key: string) => unknown } | undefined,
+  logger?: WhatsappLogger,
+): OnRegistrationComplete | undefined {
+  if (scope === undefined) {
+    return undefined;
+  }
+  let directory: WrdoUserDirectory;
+  try {
+    directory = scope.resolve(WRDO_USER_MODULE) as WrdoUserDirectory;
+  } catch {
+    // Module not registered in this context — completion stays a no-op.
+    return undefined;
+  }
+  const service = new WrdoUserService(directory);
+
+  return async (data) => {
+    await service.getOrCreateByChannelIdentity('whatsapp', data.phone, {
+      displayName: data.name ?? null,
+      channelDisplayName: data.name ?? null,
+      registrationState: 'complete',
+      // Consent copy ("Terms + Privacy") is service-only; marketing consent is a
+      // separate later opt-in, so default it false here.
+      serviceConsent: true,
+      marketingConsent: false,
+      metadata: {
+        role: data.role ?? null,
+        interests: data.interests ?? [],
+        selfieProvided: data.selfieProvided ?? false,
+        locationProvided: data.locationProvided ?? false,
+      },
+    });
+    logger?.logTiming('registration_persisted', 0);
+  };
 }
