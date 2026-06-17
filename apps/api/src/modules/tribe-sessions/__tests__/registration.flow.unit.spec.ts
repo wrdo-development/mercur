@@ -46,3 +46,38 @@ describe('registration collect_role — forgiving input', () => {
     expect(result.nextState).toBeUndefined();
   });
 });
+
+describe('registration confirm_name — confirm-not-collect (WRDO-169)', () => {
+  function confirmState(): ConversationState {
+    return {
+      flow: 'registration',
+      step: 'confirm_name',
+      data: { name: 'Thabo' },
+      retriesLeft: 3,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+  }
+
+  it.each(['yes', 'y', 'Yep', '  CORRECT '])(
+    'keeps the seeded name and advances to collect_role on %p',
+    (input) => {
+      const result = processRegistrationStep(confirmState(), input, 'text');
+      expect(result.ok).toBe(true);
+      expect(result.nextState?.data.name).toBe('Thabo');
+      expect(result.nextState?.step).toBe('collect_role');
+    },
+  );
+
+  it('treats a non-yes reply as the corrected name', () => {
+    const result = processRegistrationStep(confirmState(), 'Thabo Mokoena', 'text');
+    expect(result.ok).toBe(true);
+    expect(result.nextState?.data.name).toBe('Thabo Mokoena');
+    expect(result.nextState?.step).toBe('collect_role');
+  });
+
+  it('rejects a too-short correction and stays on confirm_name', () => {
+    const result = processRegistrationStep(confirmState(), 'x', 'text');
+    expect(result.ok).toBe(false);
+    expect(result.nextState).toBeUndefined();
+  });
+});

@@ -39,6 +39,7 @@ export async function classifyAndRoute(
   from: string,
   userMessage: string,
   messageType: 'text' | 'image' | 'audio' | 'location',
+  contactName?: string | null,
 ): Promise<ClassifyAndRouteResult> {
   const {
     aiClient,
@@ -82,7 +83,7 @@ export async function classifyAndRoute(
       resolvedIntent === 'register' ||
       RegistrationFlowHandler.isRegistrationTrigger(userMessage)
     ) {
-      replyText = await registrationFlowHandler.startRegistration(from);
+      replyText = await registrationFlowHandler.startRegistration(from, contactName);
     } else {
       const tCompose = performance.now();
       try {

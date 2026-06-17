@@ -1,12 +1,17 @@
 /**
  * Resident registration flow orchestrator.
- * Multi-step: collect_name → collect_role → collect_interests → request_selfie → request_gps → request_consent → create_user.
+ * Multi-step: (confirm_name | collect_name) → collect_role → collect_interests → request_selfie → request_gps → request_consent → create_user.
+ *
+ * confirm_name is the WhatsApp-first "confirm-not-collect" entry: when we already
+ * know the name from contacts[].profile.name we confirm it rather than ask cold.
+ * collect_name remains the fallback when the profile name is hidden.
  */
 
 import type { ConversationState } from './conversation-state.service';
 import { FAILURE_MESSAGES } from './failure-messages.constants';
 
 export const RESIDENT_STEPS = [
+  'confirm_name',
   'collect_name',
   'collect_role',
   'collect_interests',
@@ -101,6 +106,9 @@ export function parseInterests(text: string): string[] {
 }
 
 const STEP_PROMPTS: Record<string, string> = {
+  // Static fallback only — confirm_name is normally rendered by buildConfirmNamePrompt
+  // with the known name. This bare form is used if we somehow land here without one.
+  confirm_name: "Hey! 👋 Before we start — what's your name?",
   collect_name: "Hey! 👋 What's your name?",
   collect_role:
     'Nice to meet you! Are you here as a resident, service provider, or informal worker? (Reply: resident / provider / informal worker)',
@@ -121,6 +129,8 @@ const STEP_PROMPTS: Record<string, string> = {
  */
 export function getPromptForStep(step: string): string {
   switch (step) {
+    case 'confirm_name':
+      return STEP_PROMPTS.confirm_name;
     case 'collect_name':
       return STEP_PROMPTS.collect_name;
     case 'collect_role':
@@ -139,6 +149,18 @@ export function getPromptForStep(step: string): string {
       return '';
   }
 }
+
+/**
+ * Build the confirm-not-collect prompt from the known WhatsApp profile name.
+ *
+ * @param name - The name we already have (from contacts[].profile.name)
+ * @returns A prompt that confirms rather than asks cold
+ */
+export function buildConfirmNamePrompt(name: string): string {
+  return `Hey ${name.trim()}! 👋 Just to confirm — that's your name, right? (reply *yes*, or just type your name)`;
+}
+
+const CONFIRM_NAME_YES = ['yes', 'y', 'yep', 'yeah', 'yup', 'correct', 'thats me'];
 
 function buildUnrecognisedMessage(step: string): string {
   const prompt = getPromptForStep(step);
@@ -172,6 +194,33 @@ export function processRegistrationStep(
   }
 
   switch (state.step) {
+    case 'confirm_name': {
+      // "yes" → keep the seeded name. Anything else IS the corrected name
+      // (one tap if right, one message if wrong) — but reject too-short text
+      // so a stray "x" doesn't become someone's name.
+      const isYes = CONFIRM_NAME_YES.includes(trimmed);
+      const corrected = text.trim();
+      if (!isYes && corrected.length < 2) {
+        return {
+          errorCode: 'name_too_short',
+          message: FAILURE_MESSAGES.name_too_short,
+          ok: false,
+        };
+      }
+      const name = isYes ? (state.data.name ?? corrected) : corrected;
+      const nextState: ConversationState = {
+        ...state,
+        data: { ...state.data, name },
+        lastUpdatedAt: new Date().toISOString(),
+        retriesLeft: 3,
+        step: 'collect_role',
+      };
+      return {
+        message: getPromptForStep('collect_role'),
+        nextState,
+        ok: true,
+      };
+    }
     case 'collect_name': {
       if (text.trim().length < 2) {
         return {

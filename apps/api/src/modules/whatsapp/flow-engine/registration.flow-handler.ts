@@ -8,6 +8,7 @@ import type {
   ConversationStateService,
 } from '../../../modules/tribe-sessions/conversation-state.service';
 import {
+  buildConfirmNamePrompt,
   getPromptForStep,
   processRegistrationStep,
 } from '../../../modules/tribe-sessions/registration.flow';
@@ -39,10 +40,15 @@ export class RegistrationFlowHandler {
   /**
    * Create initial registration state and return first prompt.
    *
+   * Confirm-not-collect (WRDO-169): when we already know the WhatsApp profile
+   * name we open by confirming it ("You're Thabo, right?") instead of asking
+   * cold. When no name is available we fall back to the cold collect_name path.
+   *
    * @param phone - WhatsApp phone number
+   * @param contactName - Name from contacts[].profile.name, if present
    * @returns First prompt message
    */
-  async startRegistration(phone: string): Promise<string> {
+  async startRegistration(phone: string, contactName?: string | null): Promise<string> {
     // Never clobber an in-progress registration. A re-greeting ("hi"/"hey") or
     // a stray 'register' classification must not reset someone who is already
     // partway through — that silently wiped their name/role and desynced the
@@ -50,7 +56,23 @@ export class RegistrationFlowHandler {
     // registration is already live, resume by re-prompting the current step.
     const existing = await this.conversationStateService.getState(phone);
     if (existing !== null && existing.flow === 'registration') {
+      if (existing.step === 'confirm_name' && typeof existing.data.name === 'string') {
+        return buildConfirmNamePrompt(existing.data.name);
+      }
       return getPromptForStep(existing.step);
+    }
+
+    const knownName = typeof contactName === 'string' ? contactName.trim() : '';
+    if (knownName.length >= 2) {
+      const confirmState: ConversationState = {
+        flow: 'registration',
+        step: 'confirm_name',
+        data: { name: knownName },
+        retriesLeft: 3,
+        lastUpdatedAt: new Date().toISOString(),
+      };
+      await this.conversationStateService.setState(phone, confirmState);
+      return buildConfirmNamePrompt(knownName);
     }
 
     const initialState: ConversationState = {
