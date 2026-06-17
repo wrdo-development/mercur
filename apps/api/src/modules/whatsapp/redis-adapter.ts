@@ -3,6 +3,7 @@
  * Uses REDIS_URL with ioredis when set; in-memory fallback when not (e.g. dev without Redis).
  */
 
+import { isQuotaError, RedisQuotaCircuitBreaker } from './redis-circuit-breaker';
 import type { RedisAdapter } from './idempotency.service';
 
 let sharedClient: {
@@ -75,25 +76,77 @@ export function createRedisAdapter(): RedisAdapter {
   // message after boot. The offline queue buffers that first command and flushes
   // it once connected; maxRetriesPerRequest + connectTimeout still bound a truly
   // dead Redis so it degrades rather than hangs. (WRDO-169)
+  // Quota circuit breaker (WRDO-180): a maxed-out Upstash returns
+  // "ERR max requests limit exceeded" on EVERY command. That error is
+  // deterministic — retrying or reconnecting cannot succeed, it only burns more
+  // quota and spams logs. reconnectOnError suppresses the reconnect (so the
+  // offline queue never replays doomed commands), and the breaker short-circuits
+  // subsequent commands to the same degraded values a dead Redis already yields,
+  // which every caller here already tolerates (idempotency → treat-as-new,
+  // language profile → defaultProfile). When Redis is healthy the breaker is a
+  // complete no-op.
+  const breaker = new RedisQuotaCircuitBreaker();
   const redis = new Redis(url, {
     lazyConnect: true,
     maxRetriesPerRequest: 2,
     enableOfflineQueue: true,
     connectTimeout: 8000,
     retryStrategy: (times: number) => (times > 5 ? null : Math.min(times * 200, 2000)),
+    // Do NOT reconnect on the quota error (reconnect + offline-queue replay is
+    // the storm amplifier); reconnect normally for genuine connection errors.
+    reconnectOnError: (err: Error): boolean => !isQuotaError(err),
   });
-  redis.on('error', () => {
-    /* swallow — degrade rather than crash; reads/writes will throw and callers handle */
+  redis.on('error', (err: unknown) => {
+    // Trip the breaker on a quota error surfaced on the connection too, so the
+    // very next command short-circuits instead of issuing another doomed request.
+    breaker.recordError(err);
+    /* otherwise swallow — degrade rather than crash; reads/writes will throw and callers handle */
   });
   sharedClient = {
     async del(key: string): Promise<unknown> {
-      return redis.del(key);
+      if (breaker.isOpen()) {
+        return 0; // degraded: same as a dead-Redis del (callers ignore the value)
+      }
+      try {
+        const result = await redis.del(key);
+        breaker.recordSuccess();
+        return result;
+      } catch (err) {
+        if (breaker.recordError(err)) {
+          return 0; // quota error: degrade quietly, do NOT retry/throw (no storm)
+        }
+        throw err; // transient error: preserve existing throw/retry behavior
+      }
     },
     async set(key: string, value: string, ...args: string[]): Promise<unknown> {
-      return redis.set(key, value, ...args);
+      if (breaker.isOpen()) {
+        return 'OK'; // degraded: idempotency reads this as "treat as new" (process)
+      }
+      try {
+        const result = await redis.set(key, value, ...args);
+        breaker.recordSuccess();
+        return result;
+      } catch (err) {
+        if (breaker.recordError(err)) {
+          return 'OK';
+        }
+        throw err;
+      }
     },
     async get(key: string): Promise<string | null> {
-      return redis.get(key);
+      if (breaker.isOpen()) {
+        return null; // degraded: callers treat null as "no value" (empty/default)
+      }
+      try {
+        const result = await redis.get(key);
+        breaker.recordSuccess();
+        return result;
+      } catch (err) {
+        if (breaker.recordError(err)) {
+          return null;
+        }
+        throw err;
+      }
     },
   };
   return sharedClient;
