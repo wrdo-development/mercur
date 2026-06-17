@@ -132,6 +132,15 @@
           "expression": "CREATE INDEX IF NOT EXISTS \"IDX_tribe_message_thread_id\" ON \"tribe_message\" (\"thread_id\") WHERE deleted_at IS NULL"
         },
         {
+          "keyName": "IDX_tribe_message_thread_id_created_at",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_tribe_message_thread_id_created_at\" ON \"tribe_message\" (\"thread_id\", \"created_at\") WHERE deleted_at IS NULL"
+        },
+        {
           "keyName": "tribe_message_pkey",
           "columnNames": [
             "id"

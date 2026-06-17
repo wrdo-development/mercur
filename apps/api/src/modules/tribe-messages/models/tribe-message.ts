@@ -16,6 +16,6 @@ const TribeMessage = model
     media_urls: model.json().nullable(),
     context: model.json().nullable(),
   })
-  .indexes([{ on: ['thread_id'] }]);
+  .indexes([{ on: ['thread_id'] }, { on: ['thread_id', 'created_at'] }]);
 
 export default TribeMessage;
