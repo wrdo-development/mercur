@@ -61,6 +61,23 @@ export class WebhookPipelineService {
       return;
     }
 
+    // Guest-first (WRDO-180): birth a wrdo_user at FIRST contact so the
+    // conversation spine has a stable user_id from message one. Idempotent +
+    // no-clobber (getOrCreate only sets state on CREATE), so this is safe to
+    // call on every inbound — a returning 'complete' user is never downgraded.
+    // Best-effort: a write failure must NEVER block the WhatsApp reply.
+    if (this.opts.ensureGuestUser !== undefined) {
+      try {
+        await this.opts.ensureGuestUser(from);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(
+          '[whatsapp] ensureGuest failed (best-effort, WRDO-180):',
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+
     if (result.identityPair !== null && this.opts.tribeUserService !== undefined) {
       try {
         await this.opts.tribeUserService.updateBsuidByPhone(
@@ -87,6 +104,18 @@ export class WebhookPipelineService {
 
     const { message: userMessage, messageType } = getMessageTextAndType(firstMessage);
 
+    // Spine persistence (WRDO-180, Task 9): resolve the wrdo_users.id ONCE (reuses
+    // the guest row ensured above — never creates a second user) and persist the
+    // inbound user turn. userId is then threaded to every reply path so the WRDO
+    // reply lands in the SAME durable thread the web reads. All best-effort: a
+    // null userId or a throw skips persistence and never blocks the reply.
+    const spineUserId = await this.resolveSpineUserId(from);
+    // Awaited (not voided) so the inbound user turn is durably ordered BEFORE any
+    // WRDO reply turn below; it sits after the idempotency return above, so it's
+    // retry-safe (a duplicate webhook never reaches here) and doesn't delay the
+    // reply (it runs before the reply is even computed).
+    await this.persistUserTurn(spineUserId, userMessage);
+
     // Check for reply-to feedback signal (context.message_id present = user replied to a WRDO message)
     if (this.opts.feedbackHandlerDeps !== undefined) {
       const contextId = this.extractContextId(firstMessage);
@@ -110,12 +139,16 @@ export class WebhookPipelineService {
       const langResult = await this.opts.languageDetectionService.processMessage(from, userMessage);
       if (langResult.confirmationReply !== null) {
         await this.opts.messageSenderService.sendText(from, langResult.confirmationReply);
+        // Fire-and-forget (WRDO-180): a slow/degraded spine store must never add
+        // latency to the webhook handler. persistWrdoTurn swallows internally, so
+        // voiding can't raise an unhandledRejection.
+        void this.persistWrdoTurn(spineUserId, langResult.confirmationReply);
         return; // language nudge sent — don't run normal pipeline this turn
       }
     }
 
     if (!this.opts.killswitchService.isAiEnabled()) {
-      await this.sendTier0Fallback(from);
+      await this.sendTier0Fallback(from, spineUserId);
       return;
     }
 
@@ -130,6 +163,7 @@ export class WebhookPipelineService {
           ? providerResult.message
           : 'Thank you! We have updated the booking status.';
       await this.opts.messageSenderService.sendText(from, msg);
+      void this.persistWrdoTurn(spineUserId, msg); // fire-and-forget (WRDO-180)
       return;
     }
 
@@ -137,6 +171,7 @@ export class WebhookPipelineService {
     const flowReply = await this.checkConversationState(from, userMessage, messageType);
     if (flowReply !== null) {
       await this.opts.messageSenderService.sendText(from, flowReply);
+      void this.persistWrdoTurn(spineUserId, flowReply); // fire-and-forget (WRDO-180)
       return;
     }
 
@@ -158,6 +193,7 @@ export class WebhookPipelineService {
     );
 
     await this.sendReplyWithSpan(from, replyText);
+    void this.persistWrdoTurn(spineUserId, replyText); // fire-and-forget (WRDO-180)
     fireAndForgetLogEvent(this.opts.aiClient, from, messageId, intent, this.nowFn);
   }
 
@@ -198,13 +234,76 @@ export class WebhookPipelineService {
     });
   }
 
-  private async sendTier0Fallback(to: string): Promise<void> {
+  private async sendTier0Fallback(to: string, spineUserId: string | null): Promise<void> {
     const tier0Message = this.opts.degradationService.getTier0DefaultMessage();
     const sendResult = await this.opts.messageSenderService.sendText(to, tier0Message);
     if (!sendResult.success && this.opts.whatsappLogger) {
       this.opts.whatsappLogger.logFailedSend(
         sendResult.errorCode ?? 'unknown',
         sendResult.error ?? 'unknown',
+      );
+    }
+    void this.persistWrdoTurn(spineUserId, tier0Message); // fire-and-forget (WRDO-180)
+  }
+
+  /**
+   * Resolve the spine wrdo_users.id for a sender phone (WRDO-180, Task 9).
+   * Best-effort: returns null when no spinePersistence is injected, the resolver
+   * returns null, or it throws — the caller then skips persistence silently.
+   */
+  private async resolveSpineUserId(phone: string): Promise<string | null> {
+    if (this.opts.spinePersistence === undefined) {
+      return null;
+    }
+    try {
+      return await this.opts.spinePersistence.resolveUserId(phone);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[whatsapp] spine resolveUserId failed (best-effort, WRDO-180):',
+        err instanceof Error ? err.message : String(err),
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Persist the inbound user turn to the spine thread (WRDO-180, Task 9).
+   * Best-effort: no-op when persistence absent or userId unresolved; a throw is
+   * swallowed so it can NEVER block the WhatsApp reply.
+   */
+  private async persistUserTurn(spineUserId: string | null, text: string): Promise<void> {
+    if (this.opts.spinePersistence === undefined || spineUserId === null) {
+      return;
+    }
+    try {
+      await this.opts.spinePersistence.appendUser(spineUserId, text, 'whatsapp');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[whatsapp] spine appendUser failed (best-effort, WRDO-180):',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
+  /**
+   * Persist a WRDO reply turn to the spine thread (WRDO-180, Task 9).
+   * Best-effort: no-op when persistence absent or userId unresolved; a throw is
+   * swallowed so it can NEVER block the WhatsApp reply. Called from every reply
+   * path (language nudge / tier0 / provider / flow / classifyAndRoute primary).
+   */
+  private async persistWrdoTurn(spineUserId: string | null, text: string): Promise<void> {
+    if (this.opts.spinePersistence === undefined || spineUserId === null) {
+      return;
+    }
+    try {
+      await this.opts.spinePersistence.appendWrdo(spineUserId, text, 'whatsapp');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[whatsapp] spine appendWrdo failed (best-effort, WRDO-180):',
+        err instanceof Error ? err.message : String(err),
       );
     }
   }
